@@ -135,22 +135,8 @@ jobs:
             CODE_SIGNING_ALLOWED=YES CODE_SIGNING_REQUIRED=NO CODE_SIGN_IDENTITY="-" DEVELOPMENT_TEAM="" \
             2>&1 | tee "$RUNNER_TEMP/ios-test-build.log"
 
-      - name: Boot simulator with a bounded wait
-        env:
-          TEST_DESTINATION: ${{ steps.simulator.outputs.destination }}
-        shell: bash
-        run: |
-          set -euo pipefail
-          python3 - <<'PY' 2>&1 | tee "$RUNNER_TEMP/simulator-boot.log"
-          import os, subprocess
-          udid = os.environ["TEST_DESTINATION"].split("id=", 1)[1]
-          try:
-              subprocess.run(["xcrun", "simctl", "bootstatus", udid, "-b"], check=True, timeout=180)
-          except subprocess.TimeoutExpired:
-              raise SystemExit("Simulator boot exceeded 180 seconds. Check runner resources/runtime health; app compilation already completed.")
-          PY
-
       - name: Test iOS workflow, Vision and Keychain
+        timeout-minutes: 15
         env:
           TEST_DESTINATION: ${{ steps.simulator.outputs.destination }}
         shell: bash
@@ -166,6 +152,23 @@ jobs:
             CODE_SIGNING_ALLOWED=YES CODE_SIGNING_REQUIRED=NO CODE_SIGN_IDENTITY="-" DEVELOPMENT_TEAM="" \
             2>&1 | tee "$RUNNER_TEMP/ios-tests.log"
 
+      - name: Shut down the simulator started by this job
+        if: always() && steps.simulator.outputs.destination != ''
+        env:
+          TEST_DESTINATION: ${{ steps.simulator.outputs.destination }}
+        shell: bash
+        run: |
+          python3 - <<'PYTHON'
+          import os, subprocess
+          udid = os.environ["TEST_DESTINATION"].split("id=", 1)[1]
+          try:
+              result = subprocess.run(["xcrun", "simctl", "shutdown", udid], timeout=60)
+              if result.returncode:
+                  print("::warning::Simulator shutdown returned a nonzero status; the device may already be stopped.")
+          except subprocess.TimeoutExpired:
+              print("::warning::Simulator cleanup timed out; the runner will dispose of the machine.")
+          PYTHON
+
       - name: Upload validation reports even on failure
         if: always()
         uses: actions/upload-artifact@v4
@@ -175,7 +178,6 @@ jobs:
             ${{ runner.temp }}/core-tests.log
             ${{ runner.temp }}/ios-tests.log
             ${{ runner.temp }}/ios-test-build.log
-            ${{ runner.temp }}/simulator-boot.log
             ${{ runner.temp }}/ios-build.log
             ${{ runner.temp }}/TestResults.xcresult
             ${{ runner.temp }}/TestBuild.xcresult

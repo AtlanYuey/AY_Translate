@@ -67,7 +67,7 @@ nonisolated enum AIServiceError: LocalizedError, Equatable {
         case .missingModel: "Enter a model name in the selected AI engine’s settings."
         case .invalidResponse: "The AI service did not return the requested JSON. Try another model or use Apple’s engine."
         case .invalidRegions: "The AI service returned invalid OCR regions. Local recognition is available as a fallback."
-        case .incompleteTranslation: "The AI service omitted or duplicated text regions. Retry or switch to Apple Translation."
+        case .incompleteTranslation: "The translation service omitted or duplicated text regions. Retry or choose a different translation engine."
         case .requestTooLarge: "This screenshot contains too much text for one AI request. Use Apple’s engines or a smaller screenshot."
         case .responseTooLarge: "The AI service response exceeded the size limit. Try a smaller screenshot."
         case .transport: "Could not reach the AI service securely. Check the endpoint and your connection."

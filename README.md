@@ -8,7 +8,7 @@
 [![Platform](https://img.shields.io/badge/Platform-iOS-000000?logo=apple&logoColor=white)](https://developer.apple.com/ios/)
 [![UI](https://img.shields.io/badge/UI-SwiftUI-007AFF?logo=swift&logoColor=white)](https://developer.apple.com/xcode/swiftui/)
 [![License](https://img.shields.io/badge/License-Apache%202.0-D22128?logo=apache&logoColor=white)](LICENSE)
-[![Build IPA](https://github.com/0xffvirus/translate-screen/actions/workflows/release-ipa.yml/badge.svg)](https://github.com/0xffvirus/translate-screen/actions/workflows/release-ipa.yml)
+[![Build IPA](https://github.com/AtlanYuey/translate-screen/actions/workflows/release-ipa.yml/badge.svg)](https://github.com/AtlanYuey/translate-screen/actions/workflows/release-ipa.yml)
 [![Built with](https://img.shields.io/badge/Built%20with-Vision%20%2B%20Translation-5856D6)](https://developer.apple.com/documentation/)
 
 See foreign text → press the Action Button → see the translated screen.
