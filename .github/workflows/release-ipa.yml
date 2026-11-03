@@ -17,7 +17,7 @@ env:
 jobs:
   build:
     name: Build unsigned IPA
-    runs-on: macos-26
+    runs-on: macos-26-intel
 
     steps:
       - name: Check out repository
