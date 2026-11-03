@@ -181,8 +181,8 @@ final class WorkflowTests: XCTestCase {
         let updated = AIServiceConfiguration(baseURL: "https://second.test/v1", model: "m")
         try settings.saveConfiguration(updated, keyReplacement: nil, for: .ocr)
         XCTAssertFalse(settings.hasConsent(for: .ocr))
-        XCTAssertEqual(try keys.read(.ocr), "")
-        let persisted = String(decoding: try XCTUnwrap(defaults.data(forKey: "ai.ocr")), as: UTF8.self)
+        XCTAssertEqual(try settings.readAPIKey(for: .ocr), "")
+        let persisted = String(decoding: try XCTUnwrap(defaults.data(forKey: "ai.services.v1")), as: UTF8.self)
         XCTAssertFalse(persisted.contains("test-credential"))
     }
 
@@ -219,7 +219,7 @@ final class WorkflowTests: XCTestCase {
 @MainActor
 private final class MemoryKeys: APIKeyStoring {
     var readCount = 0
-    private var values: [AIProfile: String] = [:]
-    func read(_ profile: AIProfile) throws -> String { readCount += 1; return values[profile] ?? "" }
-    func save(_ key: String, for profile: AIProfile) throws { values[profile] = key }
+    private var values: [APIKeySlot: String] = [:]
+    func read(_ profile: APIKeySlot) throws -> String { readCount += 1; return values[profile] ?? "" }
+    func save(_ key: String, for profile: APIKeySlot) throws { values[profile] = key }
 }

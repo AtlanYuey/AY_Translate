@@ -86,6 +86,10 @@ enum TranslationAppearance: String, CaseIterable, Identifiable {
 
     var id: String { rawValue }
 
+    var name: String {
+        switch self { case .natural: "Background Match"; case .readable: "High Contrast"; case .minimal: "Text Only" }
+    }
+
     var detail: String {
         switch self {
         case .natural: "Blends into the original screen"
@@ -121,6 +125,7 @@ struct HistoryItem: Identifiable, Codable {
 
 @MainActor
 final class AppSettings: ObservableObject {
+    static let shared = AppSettings()
     @Published var source: AppLanguage {
         didSet { defaults.set(source.rawValue, forKey: Keys.source) }
     }
@@ -145,8 +150,17 @@ final class AppSettings: ObservableObject {
     @Published var overlayTextScale: Double {
         didSet { defaults.set(overlayTextScale, forKey: "overlayTextScale") }
     }
-    @Published private(set) var aiOCR: AIServiceConfiguration
-    @Published private(set) var aiTranslation: AIServiceConfiguration
+    @Published var defaultResultMode: ResultDisplayMode {
+        didSet { defaults.set(defaultResultMode.rawValue, forKey: "defaultResultMode") }
+    }
+    @Published private(set) var serviceCatalog: AIServiceCatalog
+    @Published private(set) var serviceMigrationError: String?
+    @Published var interfaceLanguage: InterfaceLanguage {
+        didSet { defaults.set(interfaceLanguage.rawValue, forKey: "interfaceLanguage") }
+    }
+    var aiOCR: AIServiceConfiguration { configuration(for: .ocr) }
+    var aiTranslation: AIServiceConfiguration { configuration(for: .translation) }
+    var interfaceLocale: Locale { Locale(identifier: interfaceLanguage.resolvedIdentifier()) }
     let keyStore: any APIKeyStoring
 
     private let defaults: UserDefaults
@@ -163,39 +177,144 @@ final class AppSettings: ObservableObject {
         preference = TranslationPreference(rawValue: defaults.string(forKey: "translationPreference") ?? "") ?? .speed
         let textScale = defaults.double(forKey: "overlayTextScale")
         overlayTextScale = textScale == 0 ? 1 : min(1.8, max(0.8, textScale))
-        aiOCR = defaults.data(forKey: "ai.ocr").flatMap { try? JSONDecoder().decode(AIServiceConfiguration.self, from: $0) } ?? AIServiceConfiguration()
-        aiTranslation = defaults.data(forKey: "ai.translation").flatMap { try? JSONDecoder().decode(AIServiceConfiguration.self, from: $0) } ?? AIServiceConfiguration()
+        defaultResultMode = ResultDisplayMode(rawValue: defaults.string(forKey: "defaultResultMode") ?? "") ?? .overlay
+        serviceCatalog = defaults.data(forKey: "ai.services.v1").flatMap { try? JSONDecoder().decode(AIServiceCatalog.self, from: $0) } ?? AIServiceCatalog()
+        interfaceLanguage = InterfaceLanguage(rawValue: defaults.string(forKey: "interfaceLanguage") ?? "") ?? .simplifiedChinese
+        migrateLegacyServices()
     }
+
+    func text(_ key: String) -> String { AppLocalization.text(key, language: interfaceLanguage) }
 
     func configuration(for profile: AIProfile) -> AIServiceConfiguration {
-        profile == .ocr ? aiOCR : aiTranslation
+        serviceCatalog.selected(for: profile)?.configuration ?? AIServiceConfiguration()
     }
 
-    func saveConfiguration(_ configuration: AIServiceConfiguration, keyReplacement: String?, for profile: AIProfile) throws {
-        try configuration.validate()
-        let previous = self.configuration(for: profile)
-        // A credential belonging to one endpoint must not silently follow a new destination.
-        if let keyReplacement {
-            try keyStore.save(keyReplacement.trimmingCharacters(in: .whitespacesAndNewlines), for: profile)
-        } else if (try? previous.endpoint()) != (try? configuration.endpoint()) {
-            try keyStore.save("", for: profile)
-        }
-        let data = try JSONEncoder().encode(configuration)
-        defaults.set(data, forKey: "ai." + profile.rawValue)
-        if profile == .ocr { aiOCR = configuration } else { aiTranslation = configuration }
+    func selectedService(for profile: AIProfile) -> SavedAIService? { serviceCatalog.selected(for: profile) }
+
+    func readAPIKey(for profile: AIProfile) throws -> String {
+        guard let service = selectedService(for: profile) else { throw ServiceCatalogError.serviceMissing }
+        try finishKeyMigration(for: service.id)
+        return try keyStore.read(.service(service.id))
     }
+
+    func readAPIKey(forService id: UUID) throws -> String {
+        try finishKeyMigration(for: id)
+        return try keyStore.read(.service(id))
+    }
+
+    func deleteAPIKey(forService id: UUID) throws {
+        try keyStore.save("", for: .service(id))
+        for profile in AIProfile.allCases where defaults.string(forKey: "ai.migration." + profile.rawValue) == id.uuidString {
+            try keyStore.save("", for: profile == .ocr ? .ocr : .translation)
+            defaults.removeObject(forKey: "ai.migration." + profile.rawValue)
+        }
+    }
+
+    func saveService(_ service: SavedAIService, keyReplacement: String?) throws {
+        try service.validate()
+        var updated = serviceCatalog
+        try updated.upsert(service)
+        let data = try JSONEncoder().encode(updated)
+        let previous = serviceCatalog.services.first { $0.id == service.id }
+        if let keyReplacement {
+            try keyStore.save(keyReplacement.trimmingCharacters(in: .whitespacesAndNewlines), for: .service(service.id))
+        } else if let previous, (try? previous.configuration.endpoint()) != (try? service.configuration.endpoint()) {
+            try deleteAPIKey(forService: service.id)
+        }
+        defaults.set(data, forKey: "ai.services.v1")
+        serviceCatalog = updated
+        if updated.selected(for: .ocr) == nil { ocrEngine = .appleVision }
+    }
+
+    func selectService(_ id: UUID?, for profile: AIProfile, enableEngine: Bool = true) throws {
+        var updated = serviceCatalog
+        try updated.select(id, for: profile)
+        defaults.set(try JSONEncoder().encode(updated), forKey: "ai.services.v1")
+        serviceCatalog = updated
+        if enableEngine {
+            if profile == .ocr { ocrEngine = id == nil ? .appleVision : .ai }
+            else { translationEngine = id == nil ? .apple : .ai }
+        }
+    }
+
+    func removeService(_ id: UUID) throws {
+        var updated = serviceCatalog
+        updated.remove(id)
+        let data = try JSONEncoder().encode(updated)
+        try deleteAPIKey(forService: id)
+        defaults.set(data, forKey: "ai.services.v1")
+        serviceCatalog = updated
+        if updated.selected(for: .ocr) == nil { ocrEngine = .appleVision }
+        if updated.selected(for: .translation) == nil { translationEngine = .apple }
+        for profile in AIProfile.allCases { defaults.removeObject(forKey: "cloudConsent." + profile.rawValue + "." + id.uuidString) }
+    }
+
+    /// Kept for existing callers and regression tests; does not turn on cloud engines.
+    func saveConfiguration(_ configuration: AIServiceConfiguration, keyReplacement: String?, for profile: AIProfile) throws {
+        var service = selectedService(for: profile) ?? SavedAIService(name: profile.title, supportsVision: true)
+        service.configuration = configuration
+        try saveService(service, keyReplacement: keyReplacement)
+        try selectService(service.id, for: profile, enableEngine: false)
+    }
+
+    func consentIdentity(for profile: AIProfile) -> String { selectedService(for: profile)?.consentID ?? "" }
 
     func hasConsent(for profile: AIProfile) -> Bool {
-        let id = configuration(for: profile).consentID
-        return !id.isEmpty && defaults.string(forKey: "cloudConsent." + profile.rawValue) == id
+        guard let service = selectedService(for: profile) else { return false }
+        return defaults.string(forKey: "cloudConsent." + profile.rawValue + "." + service.id.uuidString) == service.consentID
     }
 
     func grantConsent(for profile: AIProfile) {
-        defaults.set(configuration(for: profile).consentID, forKey: "cloudConsent." + profile.rawValue)
+        guard let service = selectedService(for: profile) else { return }
+        defaults.set(service.consentID, forKey: "cloudConsent." + profile.rawValue + "." + service.id.uuidString)
     }
 
     func revokeCloudConsent() {
-        AIProfile.allCases.forEach { defaults.removeObject(forKey: "cloudConsent." + $0.rawValue) }
+        for service in serviceCatalog.services {
+            for profile in AIProfile.allCases { defaults.removeObject(forKey: "cloudConsent." + profile.rawValue + "." + service.id.uuidString) }
+        }
+    }
+
+    private func migrateLegacyServices() {
+        if !defaults.bool(forKey: "ai.catalog.initialized") {
+            for profile in AIProfile.allCases {
+                guard let data = defaults.data(forKey: "ai." + profile.rawValue),
+                      let configuration = try? JSONDecoder().decode(AIServiceConfiguration.self, from: data),
+                      (try? configuration.validate()) != nil else { continue }
+                let marker = "ai.migration." + profile.rawValue
+                let id = defaults.string(forKey: marker).flatMap(UUID.init(uuidString:)) ?? UUID()
+                let service = SavedAIService(id: id, name: profile == .ocr ? "原有 OCR 服务" : "原有翻译服务", configuration: configuration, supportsVision: true)
+                do {
+                    try serviceCatalog.upsert(service)
+                    try serviceCatalog.select(id, for: profile)
+                    defaults.set(id.uuidString, forKey: marker)
+                } catch { serviceMigrationError = error.localizedDescription }
+            }
+            if let data = try? JSONEncoder().encode(serviceCatalog) {
+                defaults.set(data, forKey: "ai.services.v1")
+                defaults.set(true, forKey: "ai.catalog.initialized")
+            }
+        }
+        for service in serviceCatalog.services {
+            do { try finishKeyMigration(for: service.id) }
+            catch { serviceMigrationError = "Unlock the device to finish migrating saved API keys." }
+        }
+    }
+
+    private func finishKeyMigration(for id: UUID) throws {
+        for profile in AIProfile.allCases {
+            let marker = "ai.migration." + profile.rawValue
+            guard defaults.string(forKey: marker) == id.uuidString else { continue }
+            let legacy: APIKeySlot = profile == .ocr ? .ocr : .translation
+            let current = try keyStore.read(.service(id))
+            let old = try keyStore.read(legacy)
+            if current.isEmpty && !old.isEmpty { try keyStore.save(old, for: .service(id)) }
+            try keyStore.save("", for: legacy)
+            defaults.removeObject(forKey: marker)
+        }
+        if AIProfile.allCases.allSatisfy({ defaults.string(forKey: "ai.migration." + $0.rawValue) == nil }) {
+            serviceMigrationError = nil
+        }
     }
 
     private enum Keys {

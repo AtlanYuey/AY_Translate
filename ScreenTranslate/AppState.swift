@@ -67,10 +67,10 @@ final class AppState: ObservableObject {
         }
         let missingConsent = profiles.filter { !settings.hasConsent(for: $0) }
         if !missingConsent.isEmpty {
-            pendingConsentIDs = Dictionary(uniqueKeysWithValues: profiles.map { ($0, settings.configuration(for: $0).consentID) })
+            pendingConsentIDs = Dictionary(uniqueKeysWithValues: profiles.map { ($0, settings.consentIdentity(for: $0)) })
             consentDestinations = missingConsent.map { profile in
                 let host = (try? settings.configuration(for: profile).endpoint().host) ?? "selected provider"
-                return profile == .ocr ? "Screenshot → \(host)" : "Recognized text → \(host)"
+                return (settings.selectedService(for: profile)?.name ?? "") + " · " + settings.text(profile == .ocr ? "Screenshot" : "Recognized Text") + " → " + host
             }
             phase = .awaitingConsent
             return
@@ -82,8 +82,8 @@ final class AppState: ObservableObject {
         let ocrKey: String
         let translationKey: String
         do {
-            ocrKey = ocrEngine == .ai ? try settings.keyStore.read(.ocr) : ""
-            translationKey = translator == .ai ? try settings.keyStore.read(.translation) : ""
+            ocrKey = ocrEngine == .ai ? try settings.readAPIKey(for: .ocr) : ""
+            translationKey = translator == .ai ? try settings.readAPIKey(for: .translation) : ""
         } catch {
             phase = .failed(error.localizedDescription)
             return
@@ -155,7 +155,7 @@ final class AppState: ObservableObject {
     func allowCloudProcessing() {
         guard phase == .awaitingConsent, let image = sourceImage else { return }
         let selected: [AIProfile] = (settings.ocrEngine == .ai ? [.ocr] : []) + (settings.translationEngine == .ai ? [.translation] : [])
-        guard Set(selected) == Set(pendingConsentIDs.keys), pendingConsentIDs.allSatisfy({ settings.configuration(for: $0.key).consentID == $0.value }) else {
+        guard Set(selected) == Set(pendingConsentIDs.keys), pendingConsentIDs.allSatisfy({ settings.consentIdentity(for: $0.key) == $0.value }) else {
             process(image) // Changed settings require a new, accurate disclosure.
             return
         }
@@ -190,7 +190,7 @@ final class AppState: ObservableObject {
             finish(processID)
         } catch {
             guard isActive(processID) else { return }
-            phase = .failed("Translation couldn’t be completed: \(error.localizedDescription)")
+            phase = .failed(AppLocalization.formatted("Translation couldn’t be completed: %@", settings.text(error.localizedDescription), language: settings.interfaceLanguage))
         }
     }
 
@@ -198,6 +198,14 @@ final class AppState: ObservableObject {
         guard let image = sourceImage else { return }
         if let engine { settings.ocrEngine = engine }
         process(image)
+    }
+
+    /// The background shortcut can avoid an unsupported same-language session
+    /// after local language detection. No cloud request is needed in this case.
+    func completeIdentityTranslation(processID: UUID) {
+        guard isActive(processID), phase == .translating, let document else { return }
+        translatedBlockCount = document.blocks.count
+        finish(processID)
     }
 
     func viewRecognizedText() {

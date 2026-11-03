@@ -73,7 +73,7 @@ nonisolated enum AIServiceError: LocalizedError, Equatable {
         case .transport: "Could not reach the AI service securely. Check the endpoint and your connection."
         case .http(401), .http(403): "The AI service rejected access. Check the API key and model permissions."
         case .http(429): "The AI service rate or usage limit was reached. Wait, or use Apple’s free engine."
-        case .http(let status): "The AI service returned HTTP \(status). Retry or use Apple’s engine."
+        case .http(let status): AppLocalization.formatted("The AI service returned HTTP %d. Retry or use Apple’s engine.", status)
         }
     }
 }

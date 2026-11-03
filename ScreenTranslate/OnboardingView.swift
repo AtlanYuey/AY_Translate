@@ -50,9 +50,9 @@ struct OnboardingView: View {
                                 .symbolEffect(.breathe, options: .repeat(.periodic(delay: 2)))
                         }
                         VStack(spacing: 14) {
-                            Text(item.title)
+                            Text(LocalizedStringKey(item.title))
                                 .font(.system(.largeTitle, design: .rounded, weight: .bold))
-                            Text(item.message)
+                            Text(LocalizedStringKey(item.message))
                                 .font(.title3)
                                 .foregroundStyle(.secondary)
                                 .multilineTextAlignment(.center)
@@ -72,7 +72,7 @@ struct OnboardingView: View {
                     completion()
                 }
             } label: {
-                Text(page == pages.count - 1 ? "Set Up Action Button" : "Continue")
+                Text(LocalizedStringKey(page == pages.count - 1 ? "Set Up Action Button" : "Continue"))
                     .font(.headline)
                     .frame(maxWidth: .infinity)
                     .padding(.vertical, 16)
@@ -118,7 +118,7 @@ struct ShortcutSetupView: View {
                     VStack(spacing: 8) {
                         Text("Screenshot, then translate")
                             .font(.title2.bold())
-                        Text("Create this two-action shortcut once. After that, the Action Button captures and translates the current screen automatically.")
+                        Text("Create this two-action shortcut once. Lightweight results appear without opening the app; dismiss the preview to return to your screen.")
                             .foregroundStyle(.secondary)
                             .multilineTextAlignment(.center)
                     }
@@ -151,7 +151,7 @@ struct ShortcutSetupView: View {
                     .buttonStyle(.borderedProminent)
                     .buttonBorderShape(.roundedRectangle(radius: 14))
 
-                    Label("No photo picker, If action, or separate Open action is needed.", systemImage: "checkmark.circle.fill")
+                    Label("No photo picker or separate Open action is needed. Use Translate Screenshot in App instead if you prefer the full editor.", systemImage: "checkmark.circle.fill")
                         .font(.footnote)
                         .foregroundStyle(.secondary)
                         .multilineTextAlignment(.center)
@@ -217,10 +217,10 @@ private struct ShortcutActionRow: View {
                 .background(color.gradient, in: RoundedRectangle(cornerRadius: 9, style: .continuous))
 
             VStack(alignment: .leading, spacing: 3) {
-                Text(title)
+                Text(LocalizedStringKey(title))
                     .font(.body.weight(.semibold))
                     .foregroundStyle(.white)
-                Text(detail)
+                Text(LocalizedStringKey(detail))
                     .font(.caption)
                     .foregroundStyle(.white.opacity(0.62))
             }
@@ -247,8 +247,8 @@ private struct SetupStep: View {
                 .frame(width: 28, height: 28)
                 .background(.blue, in: Circle())
             VStack(alignment: .leading, spacing: 4) {
-                Text(title).font(.body.weight(.semibold))
-                Text(detail).font(.subheadline).foregroundStyle(.secondary)
+                Text(LocalizedStringKey(title)).font(.body.weight(.semibold))
+                Text(LocalizedStringKey(detail)).font(.subheadline).foregroundStyle(.secondary)
             }
             Spacer()
         }

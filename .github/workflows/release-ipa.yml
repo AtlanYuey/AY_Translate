@@ -135,7 +135,7 @@ jobs:
             CODE_SIGNING_ALLOWED=YES CODE_SIGNING_REQUIRED=NO CODE_SIGN_IDENTITY="-" DEVELOPMENT_TEAM="" \
             2>&1 | tee "$RUNNER_TEMP/ios-test-build.log"
 
-      - name: Test iOS workflow, Vision and Keychain
+      - name: Test iOS workflow, Vision, Keychain and Chinese interface
         timeout-minutes: 15
         env:
           TEST_DESTINATION: ${{ steps.simulator.outputs.destination }}
@@ -151,6 +151,17 @@ jobs:
             -maximum-test-execution-time-allowance 120 \
             CODE_SIGNING_ALLOWED=YES CODE_SIGNING_REQUIRED=NO CODE_SIGN_IDENTITY="-" DEVELOPMENT_TEAM="" \
             2>&1 | tee "$RUNNER_TEMP/ios-tests.log"
+
+      - name: Export interface review screenshots
+        if: always()
+        shell: bash
+        run: |
+          if [[ -d "$RUNNER_TEMP/TestResults.xcresult" ]]; then
+            xcrun xcresulttool export attachments \
+              --path "$RUNNER_TEMP/TestResults.xcresult" \
+              --output-path "$RUNNER_TEMP/interface-screenshots" \
+              || echo "::warning::Screenshot export failed; attachments remain in the test result bundle."
+          fi
 
       - name: Shut down the simulator started by this job
         if: always() && steps.simulator.outputs.destination != ''
@@ -182,6 +193,7 @@ jobs:
             ${{ runner.temp }}/TestResults.xcresult
             ${{ runner.temp }}/TestBuild.xcresult
             ${{ runner.temp }}/BuildResults.xcresult
+            ${{ runner.temp }}/interface-screenshots
           if-no-files-found: warn
           retention-days: 14
 

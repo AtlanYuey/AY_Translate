@@ -2,8 +2,8 @@ import Foundation
 import Security
 
 protocol APIKeyStoring {
-    func read(_ profile: AIProfile) throws -> String
-    func save(_ key: String, for profile: AIProfile) throws
+    func read(_ profile: APIKeySlot) throws -> String
+    func save(_ key: String, for profile: APIKeySlot) throws
 }
 
 struct KeychainStore: APIKeyStoring {
@@ -13,7 +13,7 @@ struct KeychainStore: APIKeyStoring {
         self.service = service
     }
 
-    func read(_ profile: AIProfile) throws -> String {
+    func read(_ profile: APIKeySlot) throws -> String {
         var query = query(profile)
         query[kSecReturnData as String] = true
         query[kSecMatchLimit as String] = kSecMatchLimitOne
@@ -27,7 +27,7 @@ struct KeychainStore: APIKeyStoring {
     }
 
     /// Empty input explicitly removes the credential; keys never enter UserDefaults.
-    func save(_ key: String, for profile: AIProfile) throws {
+    func save(_ key: String, for profile: APIKeySlot) throws {
         let query = query(profile)
         if key.isEmpty {
             let status = SecItemDelete(query as CFDictionary)
@@ -45,12 +45,12 @@ struct KeychainStore: APIKeyStoring {
         guard status == errSecSuccess else { throw KeychainError(status: status) }
     }
 
-    private func query(_ profile: AIProfile) -> [String: Any] {
-        [kSecClass as String: kSecClassGenericPassword, kSecAttrService as String: service, kSecAttrAccount as String: profile.rawValue, kSecAttrSynchronizable as String: false]
+    private func query(_ profile: APIKeySlot) -> [String: Any] {
+        [kSecClass as String: kSecClassGenericPassword, kSecAttrService as String: service, kSecAttrAccount as String: profile.account, kSecAttrSynchronizable as String: false]
     }
 }
 
 struct KeychainError: LocalizedError {
     let status: OSStatus
-    var errorDescription: String? { "Could not access the device Keychain (\(status)). Unlock the device and try again." }
+    var errorDescription: String? { AppLocalization.formatted("Could not access the device Keychain (%d). Unlock the device and try again.", status) }
 }

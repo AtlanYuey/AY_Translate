@@ -9,6 +9,7 @@ struct ContentView: View {
     @Environment(\.scenePhase) private var scenePhase
     @AppStorage("hasCompletedOnboarding") private var hasCompletedOnboarding = false
     @State private var selectedTab = 0
+    @State private var activeShortcutSession: ShortcutSession?
     @State private var showsOnboarding = false
     @State private var showsFirstSetup = false
 
@@ -46,21 +47,41 @@ struct ContentView: View {
         .sheet(isPresented: $showsFirstSetup) {
             ShortcutSetupView()
         }
-        .fullScreenCover(isPresented: $appState.presentsResult) {
-            TranslationResultView()
+        .fullScreenCover(isPresented: resultPresented) {
+            if let session = activeShortcutSession {
+                TranslationResultView().environmentObject(session.state)
+            } else { TranslationResultView() }
         }
         .task {
             if !hasCompletedOnboarding {
                 showsOnboarding = true
             }
             loadPendingShortcutImage()
+            loadShortcutSession()
         }
         .onChange(of: scenePhase) { _, phase in
-            if phase == .active { loadPendingShortcutImage() }
+            if phase == .active { loadPendingShortcutImage(); loadShortcutSession() }
         }
+        .onReceive(NotificationCenter.default.publisher(for: .shortcutForegroundRequested)) { _ in loadShortcutSession() }
         .onReceive(NotificationCenter.default.publisher(for: .pendingScreenshotReady)) { _ in
             loadPendingShortcutImage()
         }
+    }
+
+    private var resultPresented: Binding<Bool> {
+        Binding(get: { activeShortcutSession != nil || appState.presentsResult }, set: { value in
+            if !value {
+                if let session = activeShortcutSession { ShortcutSessionStore.shared.clear(id: session.id) }
+                activeShortcutSession = nil
+                appState.closeResult()
+            }
+        })
+    }
+
+    private func loadShortcutSession() {
+        guard let session = ShortcutSessionStore.shared.takeForegroundRequest() else { return }
+        showsOnboarding = false
+        activeShortcutSession = session
     }
 
     private func loadPendingShortcutImage() {
@@ -190,9 +211,9 @@ private struct HomeView: View {
     }
 
     private var privacyNote: some View {
-        Label(settings.ocrEngine == .appleVision && settings.translationEngine == .apple
+        Label(LocalizedStringKey(settings.ocrEngine == .appleVision && settings.translationEngine == .apple
               ? "Free on-device engines · No account · No ads"
-              : "Cloud AI selected · Sharing requires your permission",
+              : "Cloud AI selected · Sharing requires your permission"),
               systemImage: settings.ocrEngine == .appleVision && settings.translationEngine == .apple ? "lock.shield.fill" : "cloud")
             .font(.caption)
             .foregroundStyle(.secondary)
@@ -211,14 +232,14 @@ private struct LanguageRow: View {
                 .foregroundStyle(.blue)
                 .frame(width: 26)
             VStack(alignment: .leading, spacing: 3) {
-                Text(title).font(.caption).foregroundStyle(.secondary)
-                Text(selection.name).font(.body.weight(.medium))
+                Text(LocalizedStringKey(title)).font(.caption).foregroundStyle(.secondary)
+                Text(LocalizedStringKey(selection.name)).font(.body.weight(.medium))
             }
             Spacer()
             Menu {
                 Picker(title, selection: $selection) {
                     ForEach(options) { language in
-                        Text(language.name).tag(language)
+                        Text(LocalizedStringKey(language.name)).tag(language)
                     }
                 }
             } label: {

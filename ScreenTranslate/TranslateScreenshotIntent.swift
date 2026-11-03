@@ -34,9 +34,9 @@ enum PendingScreenshotStore {
 struct TranslateScreenshotIntent: AppIntent {
     static let title: LocalizedStringResource = "Translate Screenshot"
     static let description = IntentDescription(
-        "Receives the output of Take Screenshot, then opens it in Translate Screen with translated text over the original layout."
+        "Receives Take Screenshot and shows a lightweight translation preview without switching apps."
     )
-    static let supportedModes: IntentModes = .foreground(.immediate)
+    static let supportedModes: IntentModes = .background
 
     @Parameter(
         title: "Screenshot",
@@ -51,9 +51,25 @@ struct TranslateScreenshotIntent: AppIntent {
         Summary("Translate \(\.$screenshot)")
     }
 
-    func perform() async throws -> some IntentResult & ProvidesDialog {
+    @MainActor
+    func perform() async throws -> some IntentResult & ShowsSnippetIntent {
+        guard let image = UIImage(data: screenshot.data) else { throw ScreenReadingError.invalidImage }
+        let id = try await ShortcutSessionStore.shared.start(image)
+        return .result(snippetIntent: ScreenTranslationSnippetIntent(id: id))
+    }
+
+}
+
+struct TranslateScreenshotInAppIntent: AppIntent {
+    static let title: LocalizedStringResource = "Translate Screenshot in App"
+    static let description = IntentDescription("Open the full editor to prepare language models, zoom, pan and read all text.")
+    static let supportedModes: IntentModes = .foreground(.immediate)
+    @Parameter(title: "Screenshot", supportedContentTypes: [.image], inputConnectionBehavior: .connectToPreviousIntentResult)
+    var screenshot: IntentFile
+
+    func perform() async throws -> some IntentResult {
         try PendingScreenshotStore.save(screenshot.data)
-        return .result(dialog: "Opening your translated screen…")
+        return .result()
     }
 }
 

@@ -14,7 +14,7 @@ struct ScreenTranslateApp: App {
     @StateObject private var appState: AppState
 
     init() {
-        let settings = AppSettings()
+        let settings = AppSettings.shared
         let history = HistoryStore()
         _settings = StateObject(wrappedValue: settings)
         _history = StateObject(wrappedValue: history)
@@ -27,6 +27,7 @@ struct ScreenTranslateApp: App {
                 .environmentObject(settings)
                 .environmentObject(history)
                 .environmentObject(appState)
+                .environment(\.locale, settings.interfaceLocale)
         }
     }
 }

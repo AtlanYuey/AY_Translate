@@ -85,9 +85,9 @@ private struct HistoryRow: View {
                     .font(.body.weight(.medium))
                     .lineLimit(2)
                 HStack(spacing: 5) {
-                    Text(item.sourceName)
+                    Text(LocalizedStringKey(item.sourceName))
                     Image(systemName: "arrow.right")
-                    Text(item.targetName)
+                    Text(LocalizedStringKey(item.targetName))
                 }
                 .font(.caption)
                 .foregroundStyle(.secondary)
@@ -120,13 +120,13 @@ private struct HistoryDetailView: View {
             .padding(20)
         }
         .background(Color(uiColor: .systemGroupedBackground))
-        .navigationTitle(item.targetName)
+        .navigationTitle(LocalizedStringKey(item.targetName))
         .navigationBarTitleDisplayMode(.inline)
     }
 
     private func textCard(title: String, text: String) -> some View {
         VStack(alignment: .leading, spacing: 10) {
-            Text(title).font(.headline)
+            Text(LocalizedStringKey(title)).font(.headline)
             Text(text).font(.body).textSelection(.enabled)
         }
         .frame(maxWidth: .infinity, alignment: .leading)

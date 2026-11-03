@@ -15,6 +15,14 @@ See foreign text → press the Action Button → see the translated screen.
 
 </div>
 
+## 1.1：中文与轻量预览
+
+界面默认中文，支持跟随系统/简繁中文/English。结果页改为无上下条目的全屏画面与三个悬浮符号；字号及默认模式移入设置，文字使用周围背景采样覆盖。可保存多个自定义名称的 AI 服务，分别选择用于 OCR 或翻译，切换不丢密钥。
+
+默认快捷指令改用不打开主 App 的系统互动片段，不再弹出 Opening 完成提示；缺少苹果语言包时首次进入 App 准备。片段的显示尺寸及上滑收起由系统管理，需真机验收。需要完整缩放与阅读可进入 App，或使用“在 App 中翻译截图”动作。
+
+详细说明与限制：[中文界面与轻量预览](docs/中文界面与轻量预览.md)。
+
 ## Preview
 
 <p align="center">
@@ -93,10 +101,12 @@ Run Translate Screen once after installing it, then create a shortcut with these
 5. Open **Settings → Action Button → Shortcut**.
 6. Select `Translate Screen`.
 
+Prepare the selected Apple translation language pair in the app once. The default action then returns an interactive system preview without foregrounding the main app; the system handles dismissal back to the previous context. Use **Translate Screenshot in App** for direct access to the full editor.
+
 The resulting workflow is:
 
 ```text
-Take Screenshot → Translate Screenshot → Open translated result
+Take Screenshot → Translate Screenshot → System preview (stay in the source app)
 ```
 
 No photo picker, conditional action, or separate Open action is required. iOS requires the system **Take Screenshot** action to be added during this one-time setup; third-party apps cannot silently capture the contents of other apps.
@@ -138,7 +148,7 @@ The first translation may ask permission to download the required Apple language
 
 ## Optional AI Engines
 
-Apple Vision and Apple Translation remain selected by default. In **Settings → OCR / Translation**, configure the optional AI service's HTTPS Base URL (including `/v1` if required), model ID, and optional API key, then select its engine. OCR and translation use separate configurations and Keychain entries. Self-hosted services that do not require a key are supported.
+Apple Vision and Apple Translation remain selected by default. In **Settings → AI Services**, add named providers with their own HTTPS Base URL (including `/v1` if required), model ID, and optional API key. Choose a saved service independently under OCR or Translation. Multiple profiles and their keys are retained when switching. Each saved service uses its own Keychain entry. OCR and translation can select different services. Self-hosted services that do not require a key are supported.
 
 Before the first request to an endpoint/model, the app discloses the destination and asks permission. AI OCR sends a resized screenshot; AI translation sends recognized text and screen context. Switching only the translation engine does not upload an image. Changing endpoints clears the previous key unless you supply a replacement. Revoke permission under **Privacy**. External provider fees and retention policies apply.
 

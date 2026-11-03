@@ -10,42 +10,55 @@ struct SettingsView: View {
 
     var body: some View {
         Form {
+            Section("Interface") {
+                Picker("App Language", selection: $settings.interfaceLanguage) {
+                    ForEach(InterfaceLanguage.allCases) { Text(LocalizedStringKey($0.name)).tag($0) }
+                }
+            }
             Section {
-                Picker("OCR Engine", selection: $settings.ocrEngine) {
-                    ForEach(OCREngine.allCases) { Text($0.name).tag($0) }
+                NavigationLink { EngineSelectionView(profile: .ocr) } label: {
+                    LabeledContent("OCR Engine", value: engineName(.ocr))
                 }
                 Picker("Source Language", selection: $settings.source) {
-                    ForEach(AppLanguage.sourceLanguages) { Text($0.name).tag($0) }
+                    ForEach(AppLanguage.sourceLanguages) { Text(LocalizedStringKey($0.name)).tag($0) }
                 }
-                NavigationLink("Configure AI OCR") { AIProviderSettingsView(profile: .ocr) }
             } header: { Text("OCR") } footer: {
                 Text("Apple Vision uses accurate recognition, language correction and automatic detection. AI OCR sends a screenshot only with permission; uncertain positions appear in Full Text.")
             }
             Section {
-                Picker("Translation Engine", selection: $settings.translationEngine) {
-                    ForEach(TranslationEngine.allCases) { Text($0.name).tag($0) }
+                NavigationLink { EngineSelectionView(profile: .translation) } label: {
+                    LabeledContent("Translation Engine", value: engineName(.translation))
                 }
                 Picker("Target Language", selection: $settings.target) {
-                    ForEach(AppLanguage.targetLanguages) { Text($0.name).tag($0) }
+                    ForEach(AppLanguage.targetLanguages) { Text(LocalizedStringKey($0.name)).tag($0) }
                 }
                 Picker("Priority", selection: $settings.preference) {
-                    ForEach(TranslationPreference.allCases) { Text($0.name).tag($0) }
+                    ForEach(TranslationPreference.allCases) { Text(LocalizedStringKey($0.name)).tag($0) }
                 }.pickerStyle(.segmented)
-                NavigationLink("Configure AI Translation") { AIProviderSettingsView(profile: .translation) }
             } header: { Text("Translation") } footer: {
                 Text("Apple Translation is free and uses downloaded on-device models. Speed favors low latency; Quality keeps longer paragraphs together and gives AI more output space and screen context.")
             }
+            Section {
+                NavigationLink { AIServicesView() } label: {
+                    LabeledContent("AI Services", value: String(settings.serviceCatalog.services.count))
+                }
+            } footer: { Text("Save multiple named providers and switch instantly. Each API key stays in its own Keychain entry.") }
             Section("Display") {
+                Picker("Default Result View", selection: $settings.defaultResultMode) {
+                    ForEach(ResultDisplayMode.allCases) { Text(LocalizedStringKey($0.name)).tag($0) }
+                }
                 Picker("Overlay Appearance", selection: $settings.appearance) {
-                    ForEach(TranslationAppearance.allCases) { Text($0.rawValue).tag($0) }
+                    ForEach(TranslationAppearance.allCases) { Text(LocalizedStringKey($0.name)).tag($0) }
                 }
                 LabeledContent("Text Size", value: settings.overlayTextScale.formatted(.percent.precision(.fractionLength(0))))
                 Slider(value: $settings.overlayTextScale, in: 0.8...1.8, step: 0.1).accessibilityLabel("Translation text size")
-                Text("Pinch to zoom, drag to pan, or tap any region to read and copy the complete translation. Long text is truncated visibly instead of shrinking to unreadable sizes.")
+                Text("The result fills the screen. Use the floating original icon to compare, and More for copy, full text or settings.")
                     .font(.footnote).foregroundStyle(.secondary)
             }
             Section("Quick Actions") {
                 Button { showsShortcutSetup = true } label: { Label("Action Button & Shortcuts", systemImage: "button.programmable") }
+                Text("Lightweight shortcut results stay above your current app. Dismiss the system preview to return; open the app for pinch, pan and detailed reading.")
+                    .font(.footnote).foregroundStyle(.secondary)
             }
             Section {
                 Toggle("Save Translation History", isOn: $settings.savesHistory)
@@ -67,6 +80,11 @@ struct SettingsView: View {
         .alert("Cloud permission revoked", isPresented: $permissionsCleared) { Button("OK", role: .cancel) {} } message: {
             Text("The next AI operation will ask before sending data. Requests already in progress are not recalled.")
         }
+    }
+
+    private func engineName(_ profile: AIProfile) -> String {
+        let local = profile == .ocr ? settings.ocrEngine == .appleVision : settings.translationEngine == .apple
+        return local ? settings.text(profile == .ocr ? "Apple Vision · Free" : "Apple Translation · Free") : settings.selectedService(for: profile)?.name ?? settings.text("Choose Provider")
     }
 }
 
@@ -112,8 +130,8 @@ private struct PrivacyView: View {
 
     private func privacySection(_ title: String, _ detail: String) -> some View {
         VStack(alignment: .leading, spacing: 7) {
-            Text(title).font(.headline)
-            Text(detail).foregroundStyle(.secondary)
+            Text(LocalizedStringKey(title)).font(.headline)
+            Text(LocalizedStringKey(detail)).foregroundStyle(.secondary)
         }
     }
 }
@@ -135,7 +153,7 @@ private struct AboutView: View {
                 Text("Translate Screen").font(.title2.bold())
                 Text("See it. Press. Understand.")
                     .foregroundStyle(.secondary)
-                Text("Version 1.0")
+                Text("Version \(Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "1.1")")
                     .font(.caption)
                     .foregroundStyle(.tertiary)
                 Spacer()
