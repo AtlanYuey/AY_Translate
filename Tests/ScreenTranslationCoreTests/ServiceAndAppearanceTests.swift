@@ -128,4 +128,14 @@ final class ServiceAndAppearanceTests: XCTestCase {
         let edge = BackgroundSampling.sample(pixels: [UInt8](repeating: 255, count: 100 * 4), width: 10, height: 10, region: CGRect(x: 0, y: 0, width: 0.2, height: 0.2))
         XCTAssertTrue(edge.usesDarkText)
     }
+
+    func testVisionBottomLeftRegionsMapToTopDownBitmapRows() {
+        let white: [UInt8] = [255, 255, 255, 255], blue: [UInt8] = [12, 28, 55, 255]
+        let pixels = (0..<40).flatMap { row in Array(repeating: row < 20 ? white : blue, count: 40).flatMap { $0 } }
+        let top = BackgroundSampling.sample(pixels: pixels, width: 40, height: 40, region: CGRect(x: 0.2, y: 0.7, width: 0.5, height: 0.1))
+        let bottom = BackgroundSampling.sample(pixels: pixels, width: 40, height: 40, region: CGRect(x: 0.2, y: 0.2, width: 0.5, height: 0.1))
+        XCTAssertEqual(top, SampledColor(red: 1, green: 1, blue: 1))
+        XCTAssertFalse(bottom.usesDarkText)
+        XCTAssertEqual(bottom.blue, 55.0 / 255, accuracy: 0.0001)
+    }
 }

@@ -14,19 +14,21 @@ nonisolated struct SampledColor: Equatable, Sendable {
     }
 }
 
-/// RGBA rows run from the image's bottom edge, matching Vision/Core Image.
+/// RGBA bitmap rows run from the top edge; Vision regions use a bottom-left
+/// origin. Convert that boundary explicitly before sampling the perimeter.
 nonisolated enum BackgroundSampling {
     static func sample(pixels: [UInt8], width: Int, height: Int, region: CGRect) -> SampledColor {
         guard width > 0, height > 0, pixels.count >= width * height * 4 else {
             return SampledColor(red: 1, green: 1, blue: 1)
         }
         let left = Int(region.minX * Double(width)), right = Int(region.maxX * Double(width))
-        let bottom = Int(region.minY * Double(height)), top = Int(region.maxY * Double(height))
+        let firstRow = Int((1 - region.maxY) * Double(height))
+        let lastRow = Int((1 - region.minY) * Double(height))
         var points: [(Int, Int)] = []
         for step in 0...10 {
             let x = left + (right - left) * step / 10
-            let y = bottom + (top - bottom) * step / 10
-            points += [(x, bottom - 2), (x, top + 2), (left - 2, y), (right + 2, y)]
+            let y = firstRow + (lastRow - firstRow) * step / 10
+            points += [(x, firstRow - 2), (x, lastRow + 2), (left - 2, y), (right + 2, y)]
         }
         var bins: [Int: [(Int, Int, Int)]] = [:]
         for (x, y) in points where x >= 0 && x < width && y >= 0 && y < height {
