@@ -42,7 +42,10 @@ Instead of reducing a screen to a plain list of sentences, the app preserves the
 
 - **Layout-aware translation** — Uses Vision bounding boxes to position translated text over the original screenshot.
 - **Action Button workflow** — Receives the output of Shortcuts' **Take Screenshot** action and opens the translated result.
-- **On-device processing** — Text recognition and translation use Apple's Vision and Translation frameworks.
+- **Free local defaults** — Apple Vision and Apple Translation work without an account, ads, or an API key.
+- **Optional AI engines** — Independently select OpenAI-compatible image OCR or contextual translation, with custom HTTPS endpoints, models, and device-only Keychain credentials.
+- **Verified OCR positions** — AI text uses local Vision anchors for overlays; uncertain positions remain in Full Text.
+- **Readable results** — Pinch repeatedly to zoom, drag to pan, reset the view, and adjust overlay type size; tap truncated text for its complete translation.
 - **Automatic language detection** — Detects the source language or allows explicit language selection.
 - **Multiple languages** — Supports English, Arabic, Chinese, Japanese, Korean, Spanish, French, German, Italian, Portuguese, and Russian.
 - **First-class Arabic support** — Right-to-left layout, alignment, and mixed text handling.
@@ -133,9 +136,28 @@ xcodebuild \
 
 The first translation may ask permission to download the required Apple language model.
 
+## Optional AI Engines
+
+Apple Vision and Apple Translation remain selected by default. In **Settings → OCR / Translation**, configure the optional AI service's HTTPS Base URL (including `/v1` if required), model ID, and optional API key, then select its engine. OCR and translation use separate configurations and Keychain entries. Self-hosted services that do not require a key are supported.
+
+Before the first request to an endpoint/model, the app discloses the destination and asks permission. AI OCR sends a resized screenshot; AI translation sends recognized text and screen context. Switching only the translation engine does not upload an image. Changing endpoints clears the previous key unless you supply a replacement. Revoke permission under **Privacy**. External provider fees and retention policies apply.
+
+AI-generated coordinates are not trusted by themselves. Only locally verified positions become overlays; remaining text appears in Full Text. Failed AI OCR falls back to available Vision results, and failed recognition can be retried using another engine without importing the screenshot again. Speed/Quality options control context grouping and the selected translation strategy.
+
+Developer details, test coverage, privacy behavior, manual acceptance checks and limitations: [开发与验证（中文）](docs/开发与验证.md). ReplayKit/PiP are [a separate future investigation](docs/实时翻译评估.md); this app currently translates individual screenshots.
+
+## Tests
+
+```bash
+# Shared production core, including mocked HTTP protocol tests (no API key)
+swift test --jobs 3
+```
+
+The shared Xcode scheme also includes `ScreenTranslateTests`: local-only defaults, failure/retry, cloud consent, cancellation, Vision OCR, temporary screenshot cleanup and Keychain integration. Run it on an available iOS 26.5+ simulator using Xcode 26.6+. Linux can run the Foundation core but cannot build or execute the iOS application.
+
 ## IPA Releases
 
-GitHub Actions builds an unsigned IPA for every version tag and attaches it to the corresponding GitHub Release. Unsigned IPAs cannot be installed directly on a standard iPhone; users must sign them with their own Apple ID or certificate using a compatible sideloading tool.
+GitHub Actions tests the shared core and iOS workflow, then builds an unsigned IPA for pull requests, manual runs, and version tags. Tag builds also attach the IPA to the corresponding GitHub Release. The default Intel `macos-26-intel` runner avoids dependence on ARM64 capacity; manual runs can select a standard ARM64 runner as a fallback. Runner allocation failures are infrastructure results, not source compilation failures. Unsigned IPAs cannot be installed directly on a standard iPhone; users must sign them with their own Apple ID or certificate using a compatible sideloading tool.
 
 Each release includes:
 
@@ -151,7 +173,7 @@ git push origin v1.0.0
 
 The tag version becomes the app's `CFBundleShortVersionString`. GitHub automatically generates release notes and uploads the IPA after a successful build.
 
-To test IPA creation without publishing a release, open **Actions → Build IPA → Run workflow**. The IPA will be available under the workflow run's **Artifacts** section.
+To test IPA creation without publishing a release, open **Actions → Build IPA → Run workflow**. Choose the runner (Intel by default). The IPA and SHA-256 file will be available under the successful workflow run's **Artifacts → TranslateScreen-<version>-unsigned**. Diagnostic logs and xcresult bundles are uploaded separately, including on test/build failure when available.
 
 > [!WARNING]
 > Never commit Apple signing certificates, private keys, provisioning profiles, or App Store Connect credentials. A future signed distribution workflow should store them as encrypted GitHub Actions secrets.
@@ -174,10 +196,11 @@ To test IPA creation without publishing a release, open **Actions → Build IPA 
 
 Privacy is a core design constraint:
 
-- Screenshots are recognized and translated using Apple frameworks on the device.
+- Screenshots are recognized and translated using Apple frameworks on the device by default; cloud AI is opt-in and destination-specific.
 - Translate Screen does not include analytics, advertising SDKs, or its own screenshot-upload service.
 - Translation history is disabled by default.
-- When history is off, the app does not intentionally persist completed translations.
+- When history is off, completed translations stay in memory until Close. Shortcuts uses a protected temporary handoff file, removed on consumption or expiry; nothing is added to Photos.
+- Optional provider keys stay in the device-only Keychain. Cloud requests use ephemeral sessions and refuse redirects; provider error bodies and credentials are never logged.
 - When history is enabled, screenshots and text are stored in the app's private local container.
 - Saved history can be removed from the History or Settings screen.
 
@@ -200,7 +223,7 @@ Review all privacy behavior before distributing a modified build, especially if 
 - [ ] Improved background sampling and overlay blending
 - [ ] More supported languages
 - [ ] App localization
-- [ ] OCR and layout regression tests
+- [x] Core OCR alignment/context regression tests and iOS workflow/Keychain tests
 - [ ] Accessibility audit
 - [ ] Performance profiling on older supported devices
 
