@@ -1,4 +1,7 @@
 import Foundation
+#if canImport(CoreGraphics)
+import CoreGraphics
+#endif
 
 nonisolated enum TranslationPlanner {
     /// Join likely wrapped prose before either translator sees it. Keep columns,

@@ -1,4 +1,7 @@
 import Foundation
+#if canImport(CoreGraphics)
+import CoreGraphics
+#endif
 
 nonisolated enum TextPlacement: Hashable, Sendable { case overlay, textOnly }
 
