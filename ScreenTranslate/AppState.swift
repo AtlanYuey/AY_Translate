@@ -76,6 +76,18 @@ final class AppState: ObservableObject {
             return
         }
         consentDestinations = []
+        // Snapshot each key together with its approved endpoint before the first
+        // suspension. Editing Settings during OCR must not send a new key to an
+        // older request's destination.
+        let ocrKey: String
+        let translationKey: String
+        do {
+            ocrKey = ocrEngine == .ai ? try settings.keyStore.read(.ocr) : ""
+            translationKey = translator == .ai ? try settings.keyStore.read(.translation) : ""
+        } catch {
+            phase = .failed(error.localizedDescription)
+            return
+        }
         phase = .reading
         processingTask = Task { [weak self] in
             guard let self else { return }
@@ -91,9 +103,8 @@ final class AppState: ObservableObject {
                     do { anchors = try await services.vision(image, source) }
                     catch { try Task.checkCancellation() }
                     try Task.checkCancellation()
-                    let key = try settings.keyStore.read(.ocr)
                     do {
-                        result = try await services.aiOCR(image, anchors, ocrConfiguration, key)
+                        result = try await services.aiOCR(image, anchors, ocrConfiguration, ocrKey)
                     } catch {
                         try Task.checkCancellation()
                         guard !anchors.isEmpty else { throw error }
@@ -125,8 +136,7 @@ final class AppState: ObservableObject {
                     self.translationConfiguration = cachedAppleConfiguration
                 } else {
                     phase = .translating
-                    let key = try settings.keyStore.read(.translation)
-                    let translations = try await services.aiTranslation(blocks, source, target, preference, translationConfiguration, key)
+                    let translations = try await services.aiTranslation(blocks, source, target, preference, translationConfiguration, translationKey)
                     guard isActive(processID), var current = document else { return }
                     guard current.blocks.allSatisfy({ translations[$0.id]?.isEmpty == false }) else { throw AIServiceError.incompleteTranslation }
                     for index in current.blocks.indices { current.blocks[index].translation = translations[current.blocks[index].id]! }

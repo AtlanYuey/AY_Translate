@@ -150,6 +150,28 @@ final class WorkflowTests: XCTestCase {
         state.closeResult()
     }
 
+    func testChangingProviderDuringOCRCannotSendNewKeyToOldEndpoint() async throws {
+        try settings.saveConfiguration(.init(baseURL: "https://first.test/v1", model: "m"), keyReplacement: "original-test-credential", for: .translation)
+        settings.translationEngine = .ai
+        settings.grantConsent(for: .translation)
+        let region = block()
+        var continuation: CheckedContinuation<[RecognizedBlock], Never>?
+        var injected = services { _, _ in await withCheckedContinuation { continuation = $0 } }
+        injected.aiTranslation = { _, _, _, _, configuration, key in
+            XCTAssertEqual(configuration.baseURL, "https://first.test/v1")
+            XCTAssertEqual(key, "original-test-credential")
+            return [region.id: "Hola"]
+        }
+        let state = AppState(settings: settings, history: HistoryStore(fileURL: historyURL), services: injected)
+        state.process(image())
+        try await waitUntil { continuation != nil }
+        try settings.saveConfiguration(.init(baseURL: "https://second.test/v1", model: "m"), keyReplacement: "new-test-credential", for: .translation)
+        continuation?.resume(returning: [region])
+        try await waitUntil { state.phase == .ready }
+        XCTAssertEqual(state.document?.translatedText, "Hola")
+        state.closeResult()
+    }
+
     func testConsentAndCredentialsAreScopedToEndpointAndProfile() throws {
         let initial = AIServiceConfiguration(baseURL: "https://first.test/v1", model: "m")
         try settings.saveConfiguration(initial, keyReplacement: "test-credential", for: .ocr)
