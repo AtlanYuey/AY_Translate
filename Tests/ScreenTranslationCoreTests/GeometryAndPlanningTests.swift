@@ -120,6 +120,13 @@ final class GeometryAndPlanningTests: XCTestCase {
         XCTAssertEqual(result[0].original, a.original + b.original)
     }
 
+    func testKoreanWrappedWordsKeepTheirRequiredSpace() {
+        let a = block("문장의 의미가 끊기지 않도록"), b = block("다음 줄도 함께 번역합니다", y: 0.75)
+        let result = TranslationPlanner.paragraphs([a, b], preference: .quality)
+        XCTAssertEqual(result.count, 1)
+        XCTAssertEqual(result[0].original, a.original + " " + b.original)
+    }
+
     func testPanningBoundsAndAspectFit() {
         let container = CGSize(width: 300, height: 600)
         let fitted = ImageViewport.fittedSize(image: CGSize(width: 600, height: 1200), container: container)

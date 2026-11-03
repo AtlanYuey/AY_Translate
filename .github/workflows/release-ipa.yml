@@ -58,29 +58,6 @@ jobs:
           set -euo pipefail
           swift test --jobs 3 2>&1 | tee "$RUNNER_TEMP/core-tests.log"
 
-      - name: Choose an available iOS simulator
-        id: simulator
-        shell: bash
-        run: |
-          set -euo pipefail
-          xcrun simctl list devices available --json > "$RUNNER_TEMP/simulators.json"
-          DESTINATION="$(python3 .github/scripts/simulator-destination.py < "$RUNNER_TEMP/simulators.json")"
-          echo "destination=$DESTINATION" >> "$GITHUB_OUTPUT"
-
-      - name: Test iOS workflow, Vision and Keychain
-        env:
-          TEST_DESTINATION: ${{ steps.simulator.outputs.destination }}
-        shell: bash
-        run: |
-          set -euo pipefail
-          xcodebuild test -project "$PROJECT" -scheme "$SCHEME" \
-            -configuration Debug -destination "$TEST_DESTINATION" \
-            -parallel-testing-enabled NO -jobs 3 \
-            -derivedDataPath "$RUNNER_TEMP/DerivedData" \
-            -resultBundlePath "$RUNNER_TEMP/TestResults.xcresult" \
-            CODE_SIGNING_ALLOWED=YES CODE_SIGNING_REQUIRED=NO CODE_SIGN_IDENTITY="-" DEVELOPMENT_TEAM="" \
-            2>&1 | tee "$RUNNER_TEMP/ios-tests.log"
-
       - name: Resolve version and artifact name
         id: metadata
         shell: bash
@@ -135,6 +112,60 @@ jobs:
           if-no-files-found: error
           retention-days: 14
 
+      - name: Choose an available iOS simulator
+        id: simulator
+        shell: bash
+        run: |
+          set -euo pipefail
+          xcrun simctl list devices available --json > "$RUNNER_TEMP/simulators.json"
+          DESTINATION="$(python3 .github/scripts/simulator-destination.py < "$RUNNER_TEMP/simulators.json")"
+          echo "destination=$DESTINATION" >> "$GITHUB_OUTPUT"
+
+      - name: Compile iOS app and hosted tests
+        env:
+          TEST_DESTINATION: ${{ steps.simulator.outputs.destination }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          xcodebuild build-for-testing -project "$PROJECT" -scheme "$SCHEME" \
+            -configuration Debug -destination "$TEST_DESTINATION" \
+            -parallel-testing-enabled NO -jobs 3 \
+            -derivedDataPath "$RUNNER_TEMP/DerivedData" \
+            -resultBundlePath "$RUNNER_TEMP/TestBuild.xcresult" \
+            CODE_SIGNING_ALLOWED=YES CODE_SIGNING_REQUIRED=NO CODE_SIGN_IDENTITY="-" DEVELOPMENT_TEAM="" \
+            2>&1 | tee "$RUNNER_TEMP/ios-test-build.log"
+
+      - name: Boot simulator with a bounded wait
+        env:
+          TEST_DESTINATION: ${{ steps.simulator.outputs.destination }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 - <<'PY' 2>&1 | tee "$RUNNER_TEMP/simulator-boot.log"
+          import os, subprocess
+          udid = os.environ["TEST_DESTINATION"].split("id=", 1)[1]
+          try:
+              subprocess.run(["xcrun", "simctl", "bootstatus", udid, "-b"], check=True, timeout=180)
+          except subprocess.TimeoutExpired:
+              raise SystemExit("Simulator boot exceeded 180 seconds. Check runner resources/runtime health; app compilation already completed.")
+          PY
+
+      - name: Test iOS workflow, Vision and Keychain
+        env:
+          TEST_DESTINATION: ${{ steps.simulator.outputs.destination }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          xcodebuild test-without-building -project "$PROJECT" -scheme "$SCHEME" \
+            -configuration Debug -destination "$TEST_DESTINATION" \
+            -parallel-testing-enabled NO -jobs 3 \
+            -derivedDataPath "$RUNNER_TEMP/DerivedData" \
+            -resultBundlePath "$RUNNER_TEMP/TestResults.xcresult" \
+            -test-timeouts-enabled YES -default-test-execution-time-allowance 60 \
+            -maximum-test-execution-time-allowance 120 \
+            CODE_SIGNING_ALLOWED=YES CODE_SIGNING_REQUIRED=NO CODE_SIGN_IDENTITY="-" DEVELOPMENT_TEAM="" \
+            2>&1 | tee "$RUNNER_TEMP/ios-tests.log"
+
       - name: Upload validation reports even on failure
         if: always()
         uses: actions/upload-artifact@v4
@@ -143,8 +174,11 @@ jobs:
           path: |
             ${{ runner.temp }}/core-tests.log
             ${{ runner.temp }}/ios-tests.log
+            ${{ runner.temp }}/ios-test-build.log
+            ${{ runner.temp }}/simulator-boot.log
             ${{ runner.temp }}/ios-build.log
             ${{ runner.temp }}/TestResults.xcresult
+            ${{ runner.temp }}/TestBuild.xcresult
             ${{ runner.temp }}/BuildResults.xcresult
           if-no-files-found: warn
           retention-days: 14

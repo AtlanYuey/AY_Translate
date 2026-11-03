@@ -53,7 +53,8 @@ nonisolated enum TranslationPlanner {
     }
 
     private static func isCJK(_ scalar: Unicode.Scalar) -> Bool {
-        (0x2E80...0x9FFF).contains(scalar.value) || (0xAC00...0xD7AF).contains(scalar.value)
+        // Chinese/Japanese wraps omit a separator. Korean words still need spaces.
+        (0x2E80...0x9FFF).contains(scalar.value)
     }
 }
 
