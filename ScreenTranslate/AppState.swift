@@ -33,10 +33,10 @@ final class AppState: ObservableObject {
     private var cachedAppleConfiguration: TranslationSession.Configuration?
     private var cachedAppleLanguages = ""
 
-    init(settings: AppSettings, history: HistoryStore, services: ProcessingServices = .live) {
+    init(settings: AppSettings, history: HistoryStore, services: ProcessingServices? = nil) {
         self.settings = settings
         self.history = history
-        self.services = services
+        self.services = services ?? .live
     }
 
     func process(_ image: UIImage) {

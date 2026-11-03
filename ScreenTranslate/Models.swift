@@ -151,9 +151,9 @@ final class AppSettings: ObservableObject {
 
     private let defaults: UserDefaults
 
-    init(defaults: UserDefaults = .standard, keyStore: any APIKeyStoring = KeychainStore()) {
+    init(defaults: UserDefaults = .standard, keyStore: (any APIKeyStoring)? = nil) {
         self.defaults = defaults
-        self.keyStore = keyStore
+        self.keyStore = keyStore ?? KeychainStore()
         source = AppLanguage(rawValue: defaults.string(forKey: Keys.source) ?? "") ?? .automatic
         target = AppLanguage(rawValue: defaults.string(forKey: Keys.target) ?? "") ?? .english
         appearance = TranslationAppearance(rawValue: defaults.string(forKey: Keys.appearance) ?? "") ?? .natural
