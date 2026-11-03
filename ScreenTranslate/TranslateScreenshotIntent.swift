@@ -20,9 +20,13 @@ enum PendingScreenshotStore {
     }
 
     static func take() -> UIImage? {
-        guard let data = try? Data(contentsOf: url),
+        // Remove even malformed/expired handoffs. Never retain a failed import.
+        defer { try? FileManager.default.removeItem(at: url) }
+        guard let attributes = try? FileManager.default.attributesOfItem(atPath: url.path),
+              let modified = attributes[.modificationDate] as? Date,
+              Date().timeIntervalSince(modified) < 120,
+              let data = try? Data(contentsOf: url),
               let image = UIImage(data: data) else { return nil }
-        try? FileManager.default.removeItem(at: url)
         return image
     }
 }

@@ -1,0 +1,8 @@
+.build/
+.swiftpm/
+DerivedData/
+*.xcresult
+*.ipa
+*.ipa.sha256
+*.xcuserstate
+.DS_Store

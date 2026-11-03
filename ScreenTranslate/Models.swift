@@ -95,14 +95,6 @@ enum TranslationAppearance: String, CaseIterable, Identifiable {
     }
 }
 
-struct RecognizedBlock: Identifiable, Hashable {
-    let id: UUID
-    let original: String
-    var translation: String
-    let boundingBox: CGRect
-    let confidence: Float
-}
-
 struct TranslationDocument: Identifiable {
     let id: UUID
     let image: UIImage
@@ -141,15 +133,69 @@ final class AppSettings: ObservableObject {
     @Published var savesHistory: Bool {
         didSet { defaults.set(savesHistory, forKey: Keys.savesHistory) }
     }
+    @Published var ocrEngine: OCREngine {
+        didSet { defaults.set(ocrEngine.rawValue, forKey: "ocrEngine") }
+    }
+    @Published var translationEngine: TranslationEngine {
+        didSet { defaults.set(translationEngine.rawValue, forKey: "translationEngine") }
+    }
+    @Published var preference: TranslationPreference {
+        didSet { defaults.set(preference.rawValue, forKey: "translationPreference") }
+    }
+    @Published var overlayTextScale: Double {
+        didSet { defaults.set(overlayTextScale, forKey: "overlayTextScale") }
+    }
+    @Published private(set) var aiOCR: AIServiceConfiguration
+    @Published private(set) var aiTranslation: AIServiceConfiguration
+    let keyStore: any APIKeyStoring
 
     private let defaults: UserDefaults
 
-    init(defaults: UserDefaults = .standard) {
+    init(defaults: UserDefaults = .standard, keyStore: any APIKeyStoring = KeychainStore()) {
         self.defaults = defaults
+        self.keyStore = keyStore
         source = AppLanguage(rawValue: defaults.string(forKey: Keys.source) ?? "") ?? .automatic
         target = AppLanguage(rawValue: defaults.string(forKey: Keys.target) ?? "") ?? .english
         appearance = TranslationAppearance(rawValue: defaults.string(forKey: Keys.appearance) ?? "") ?? .natural
         savesHistory = defaults.bool(forKey: Keys.savesHistory)
+        ocrEngine = OCREngine(rawValue: defaults.string(forKey: "ocrEngine") ?? "") ?? .appleVision
+        translationEngine = TranslationEngine(rawValue: defaults.string(forKey: "translationEngine") ?? "") ?? .apple
+        preference = TranslationPreference(rawValue: defaults.string(forKey: "translationPreference") ?? "") ?? .speed
+        let textScale = defaults.double(forKey: "overlayTextScale")
+        overlayTextScale = textScale == 0 ? 1 : min(1.8, max(0.8, textScale))
+        aiOCR = defaults.data(forKey: "ai.ocr").flatMap { try? JSONDecoder().decode(AIServiceConfiguration.self, from: $0) } ?? AIServiceConfiguration()
+        aiTranslation = defaults.data(forKey: "ai.translation").flatMap { try? JSONDecoder().decode(AIServiceConfiguration.self, from: $0) } ?? AIServiceConfiguration()
+    }
+
+    func configuration(for profile: AIProfile) -> AIServiceConfiguration {
+        profile == .ocr ? aiOCR : aiTranslation
+    }
+
+    func saveConfiguration(_ configuration: AIServiceConfiguration, keyReplacement: String?, for profile: AIProfile) throws {
+        try configuration.validate()
+        let previous = self.configuration(for: profile)
+        // A credential belonging to one endpoint must not silently follow a new destination.
+        if let keyReplacement {
+            try keyStore.save(keyReplacement.trimmingCharacters(in: .whitespacesAndNewlines), for: profile)
+        } else if (try? previous.endpoint()) != (try? configuration.endpoint()) {
+            try keyStore.save("", for: profile)
+        }
+        let data = try JSONEncoder().encode(configuration)
+        defaults.set(data, forKey: "ai." + profile.rawValue)
+        if profile == .ocr { aiOCR = configuration } else { aiTranslation = configuration }
+    }
+
+    func hasConsent(for profile: AIProfile) -> Bool {
+        let id = configuration(for: profile).consentID
+        return !id.isEmpty && defaults.string(forKey: "cloudConsent." + profile.rawValue) == id
+    }
+
+    func grantConsent(for profile: AIProfile) {
+        defaults.set(configuration(for: profile).consentID, forKey: "cloudConsent." + profile.rawValue)
+    }
+
+    func revokeCloudConsent() {
+        AIProfile.allCases.forEach { defaults.removeObject(forKey: "cloudConsent." + $0.rawValue) }
     }
 
     private enum Keys {
@@ -165,9 +211,9 @@ final class HistoryStore: ObservableObject {
     @Published private(set) var items: [HistoryItem] = []
     private let fileURL: URL
 
-    init() {
+    init(fileURL: URL? = nil) {
         let folder = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask)[0]
-        fileURL = folder.appendingPathComponent("translation-history.json")
+        self.fileURL = fileURL ?? folder.appendingPathComponent("translation-history.json")
         load()
     }
 
@@ -210,7 +256,7 @@ final class HistoryStore: ObservableObject {
                 withIntermediateDirectories: true
             )
             let data = try JSONEncoder().encode(items)
-            try data.write(to: fileURL, options: .atomic)
+            try data.write(to: fileURL, options: [.atomic, .completeFileProtection])
         } catch {
             // History is optional; a failed local write must not interrupt translation.
         }

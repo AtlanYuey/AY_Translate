@@ -1,10 +1,12 @@
 import PhotosUI
 import SwiftUI
 import Translation
+import UIKit
 
 struct ContentView: View {
     @EnvironmentObject private var appState: AppState
     @EnvironmentObject private var settings: AppSettings
+    @Environment(\.scenePhase) private var scenePhase
     @AppStorage("hasCompletedOnboarding") private var hasCompletedOnboarding = false
     @State private var selectedTab = 0
     @State private var showsOnboarding = false
@@ -52,6 +54,9 @@ struct ContentView: View {
                 showsOnboarding = true
             }
             loadPendingShortcutImage()
+        }
+        .onChange(of: scenePhase) { _, phase in
+            if phase == .active { loadPendingShortcutImage() }
         }
         .onReceive(NotificationCenter.default.publisher(for: .pendingScreenshotReady)) { _ in
             loadPendingShortcutImage()
@@ -185,7 +190,10 @@ private struct HomeView: View {
     }
 
     private var privacyNote: some View {
-        Label("Screenshots are read and translated on your device.", systemImage: "lock.shield.fill")
+        Label(settings.ocrEngine == .appleVision && settings.translationEngine == .apple
+              ? "Free on-device engines · No account · No ads"
+              : "Cloud AI selected · Sharing requires your permission",
+              systemImage: settings.ocrEngine == .appleVision && settings.translationEngine == .apple ? "lock.shield.fill" : "cloud")
             .font(.caption)
             .foregroundStyle(.secondary)
             .frame(maxWidth: .infinity)
@@ -221,316 +229,5 @@ private struct LanguageRow: View {
             }
         }
         .padding(16)
-    }
-}
-
-private struct ProcessingView: View {
-    let phase: AppState.Phase
-    let completedBlockCount: Int
-    let totalBlockCount: Int
-
-    private var content: (String, String) {
-        switch phase {
-        case .reading: ("Reading screen…", "Finding text and its position")
-        case .translating:
-            if totalBlockCount > 0 {
-                (
-                    "Translating…",
-                    "Completed \(completedBlockCount) of \(totalBlockCount) text regions"
-                )
-            } else {
-                ("Translating…", "Keeping the original layout")
-            }
-        case .preparing: ("Preparing translation…", "Almost ready")
-        default: ("Working…", "")
-        }
-    }
-
-    var body: some View {
-        VStack(spacing: 22) {
-            if phase == .translating, totalBlockCount > 0 {
-                ProgressView(
-                    value: Double(completedBlockCount),
-                    total: Double(totalBlockCount)
-                )
-                .frame(width: 180)
-                .tint(.blue)
-            } else {
-                ProgressView()
-                    .controlSize(.large)
-                    .tint(.blue)
-            }
-            VStack(spacing: 6) {
-                Text(content.0).font(.title3.weight(.semibold))
-                Text(content.1).font(.subheadline).foregroundStyle(.secondary)
-            }
-        }
-    }
-}
-
-struct TranslationResultView: View {
-    @EnvironmentObject private var appState: AppState
-    @EnvironmentObject private var settings: AppSettings
-    @State private var showsOriginal = false
-    @State private var selectedBlock: RecognizedBlock?
-    @State private var showsAllText = false
-    @State private var zoomScale: CGFloat = 1
-
-    var body: some View {
-        NavigationStack {
-            Group {
-                switch appState.phase {
-                case .reading, .translating, .preparing:
-                    ProcessingView(
-                        phase: appState.phase,
-                        completedBlockCount: appState.translatedBlockCount,
-                        totalBlockCount: appState.totalBlockCount
-                    )
-                case .failed(let message):
-                    failureView(message)
-                case .ready:
-                    if let document = appState.document {
-                        screenshot(document)
-                    }
-                case .idle:
-                    EmptyView()
-                }
-            }
-            .frame(maxWidth: .infinity, maxHeight: .infinity)
-            .background(Color(uiColor: .secondarySystemBackground))
-            .navigationTitle(appState.phase == .ready ? settings.target.name : "")
-            .navigationBarTitleDisplayMode(.inline)
-            .toolbar {
-                ToolbarItem(placement: .topBarLeading) {
-                    Button("Close") { appState.closeResult() }
-                }
-                if appState.phase == .ready {
-                    ToolbarItemGroup(placement: .topBarTrailing) {
-                        Button {
-                            withAnimation(.easeInOut(duration: 0.2)) { showsOriginal.toggle() }
-                        } label: {
-                            Image(systemName: showsOriginal ? "character.bubble" : "photo")
-                        }
-                        Button {
-                            showsAllText = true
-                        } label: {
-                            Image(systemName: "text.alignleft")
-                        }
-                    }
-                }
-            }
-        }
-        .translationTask(appState.translationConfiguration) { session in
-            await appState.translate(using: session)
-        }
-        .sheet(item: $selectedBlock) { block in
-            TextDetailSheet(block: block, isRTL: settings.target.isRightToLeft)
-                .presentationDetents([.medium])
-        }
-        .sheet(isPresented: $showsAllText) {
-            if let document = appState.document {
-                AllTextView(document: document)
-            }
-        }
-    }
-
-    private func screenshot(_ document: TranslationDocument) -> some View {
-        GeometryReader { proxy in
-            let fitted = fittedRect(for: document.image.size, in: proxy.size)
-            ZStack {
-                Color.black.opacity(0.94)
-                ZStack(alignment: .topLeading) {
-                    Image(uiImage: document.image)
-                        .resizable()
-                        .frame(width: fitted.width, height: fitted.height)
-
-                    if !showsOriginal {
-                        ForEach(document.blocks) { block in
-                            OverlayTextView(
-                                block: block,
-                                canvasSize: fitted.size,
-                                appearance: settings.appearance,
-                                isRTL: settings.target.isRightToLeft,
-                                onTap: { selectedBlock = block }
-                            )
-                        }
-                    }
-                }
-                .frame(width: fitted.width, height: fitted.height)
-                .scaleEffect(zoomScale)
-                .gesture(
-                    MagnifyGesture()
-                        .onChanged { value in zoomScale = min(max(value.magnification, 1), 4) }
-                        .onEnded { value in
-                            withAnimation(.snappy) {
-                                zoomScale = min(max(value.magnification, 1), 4)
-                            }
-                        }
-                )
-            }
-        }
-        .safeAreaInset(edge: .bottom) {
-            Picker("View", selection: $showsOriginal) {
-                Text("Translated").tag(false)
-                Text("Original").tag(true)
-            }
-            .pickerStyle(.segmented)
-            .padding(.horizontal, 42)
-            .padding(.vertical, 10)
-            .background(.bar)
-        }
-    }
-
-    private func failureView(_ message: String) -> some View {
-        VStack(spacing: 18) {
-            Image(systemName: message.contains("No text") ? "text.magnifyingglass" : "exclamationmark.triangle")
-                .font(.system(size: 42))
-                .foregroundStyle(.secondary)
-            Text(message)
-                .font(.title3.weight(.semibold))
-                .multilineTextAlignment(.center)
-            HStack {
-                if appState.document != nil {
-                    Button("Try Again") { appState.retry() }.buttonStyle(.borderedProminent)
-                    Button("View Original") {
-                        appState.phase = .ready
-                        showsOriginal = true
-                    }
-                    .buttonStyle(.bordered)
-                } else {
-                    Button("Close") { appState.closeResult() }.buttonStyle(.borderedProminent)
-                }
-            }
-        }
-        .padding(32)
-    }
-
-    private func fittedRect(for image: CGSize, in container: CGSize) -> CGRect {
-        guard image.width > 0, image.height > 0 else { return .zero }
-        let scale = min(container.width / image.width, container.height / image.height)
-        let size = CGSize(width: image.width * scale, height: image.height * scale)
-        return CGRect(
-            x: (container.width - size.width) / 2,
-            y: (container.height - size.height) / 2,
-            width: size.width,
-            height: size.height
-        )
-    }
-}
-
-private struct OverlayTextView: View {
-    let block: RecognizedBlock
-    let canvasSize: CGSize
-    let appearance: TranslationAppearance
-    let isRTL: Bool
-    let onTap: () -> Void
-    @State private var revealsOriginal = false
-
-    var body: some View {
-        let rect = CGRect(
-            x: block.boundingBox.minX * canvasSize.width,
-            y: (1 - block.boundingBox.maxY) * canvasSize.height,
-            width: max(block.boundingBox.width * canvasSize.width, 24),
-            height: max(block.boundingBox.height * canvasSize.height, 14)
-        )
-        let text = revealsOriginal ? block.original : block.translation
-
-        Text(text)
-            .font(.system(size: max(8, min(rect.height * 0.68, 32)), weight: .semibold))
-            .lineLimit(max(1, Int(rect.height / max(rect.height * 0.62, 9))))
-            .minimumScaleFactor(0.42)
-            .multilineTextAlignment(isRTL ? .trailing : .leading)
-            .frame(width: rect.width, height: rect.height, alignment: isRTL ? .trailing : .leading)
-            .foregroundStyle(foreground)
-            .padding(.horizontal, appearance == .minimal ? 1 : 3)
-            .background(background)
-            .clipShape(RoundedRectangle(cornerRadius: min(5, rect.height * 0.18)))
-            .position(x: rect.midX, y: rect.midY)
-            .environment(\.layoutDirection, isRTL ? .rightToLeft : .leftToRight)
-            .onTapGesture(perform: onTap)
-            .onLongPressGesture(minimumDuration: 0.12, pressing: { pressing in
-                revealsOriginal = pressing
-            }, perform: {})
-            .accessibilityLabel("\(block.original), \(block.translation)")
-    }
-
-    private var foreground: Color {
-        appearance == .readable ? .white : .primary
-    }
-
-    @ViewBuilder private var background: some View {
-        switch appearance {
-        case .natural:
-            Rectangle().fill(.ultraThinMaterial)
-        case .readable:
-            Color.black.opacity(0.82)
-        case .minimal:
-            Color(uiColor: .systemBackground).opacity(0.72)
-        }
-    }
-}
-
-private struct TextDetailSheet: View {
-    @Environment(\.dismiss) private var dismiss
-    let block: RecognizedBlock
-    let isRTL: Bool
-
-    var body: some View {
-        NavigationStack {
-            Form {
-                Section("Original") {
-                    Text(block.original).textSelection(.enabled)
-                    Button("Copy Original") { UIPasteboard.general.string = block.original }
-                }
-                Section("Translation") {
-                    Text(block.translation)
-                        .frame(maxWidth: .infinity, alignment: isRTL ? .trailing : .leading)
-                        .environment(\.layoutDirection, isRTL ? .rightToLeft : .leftToRight)
-                        .textSelection(.enabled)
-                    Button("Copy Translation") { UIPasteboard.general.string = block.translation }
-                }
-            }
-            .navigationTitle("Text")
-            .navigationBarTitleDisplayMode(.inline)
-            .toolbar {
-                ToolbarItem(placement: .confirmationAction) {
-                    Button("Done") { dismiss() }
-                }
-            }
-        }
-    }
-}
-
-private struct AllTextView: View {
-    @Environment(\.dismiss) private var dismiss
-    let document: TranslationDocument
-
-    var body: some View {
-        NavigationStack {
-            List {
-                Section("Original") {
-                    Text(document.originalText).textSelection(.enabled)
-                }
-                Section("Translated") {
-                    Text(document.translatedText)
-                        .textSelection(.enabled)
-                        .environment(\.layoutDirection, document.target.isRightToLeft ? .rightToLeft : .leftToRight)
-                }
-            }
-            .navigationTitle("All Text")
-            .navigationBarTitleDisplayMode(.inline)
-            .toolbar {
-                ToolbarItem(placement: .confirmationAction) {
-                    Button("Done") { dismiss() }
-                }
-                ToolbarItem(placement: .bottomBar) {
-                    Button {
-                        UIPasteboard.general.string = document.translatedText
-                    } label: {
-                        Label("Copy Translation", systemImage: "doc.on.doc")
-                    }
-                }
-            }
-        }
     }
 }

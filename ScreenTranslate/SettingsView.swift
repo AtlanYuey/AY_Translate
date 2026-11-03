@@ -6,68 +6,67 @@ struct SettingsView: View {
     @State private var showsShortcutSetup = false
     @State private var showsPrivacy = false
     @State private var showsAbout = false
+    @State private var permissionsCleared = false
 
     var body: some View {
         Form {
-            Section("Languages") {
-                Picker("Default Source", selection: $settings.source) {
+            Section {
+                Picker("OCR Engine", selection: $settings.ocrEngine) {
+                    ForEach(OCREngine.allCases) { Text($0.name).tag($0) }
+                }
+                Picker("Source Language", selection: $settings.source) {
                     ForEach(AppLanguage.sourceLanguages) { Text($0.name).tag($0) }
                 }
-                Picker("Default Target", selection: $settings.target) {
+                NavigationLink("Configure AI OCR") { AIProviderSettingsView(profile: .ocr) }
+            } header: { Text("OCR") } footer: {
+                Text("Apple Vision uses accurate recognition, language correction and automatic detection. AI OCR sends a screenshot only with permission; uncertain positions appear in Full Text.")
+            }
+            Section {
+                Picker("Translation Engine", selection: $settings.translationEngine) {
+                    ForEach(TranslationEngine.allCases) { Text($0.name).tag($0) }
+                }
+                Picker("Target Language", selection: $settings.target) {
                     ForEach(AppLanguage.targetLanguages) { Text($0.name).tag($0) }
                 }
+                Picker("Priority", selection: $settings.preference) {
+                    ForEach(TranslationPreference.allCases) { Text($0.name).tag($0) }
+                }.pickerStyle(.segmented)
+                NavigationLink("Configure AI Translation") { AIProviderSettingsView(profile: .translation) }
+            } header: { Text("Translation") } footer: {
+                Text("Apple Translation is free and uses downloaded on-device models. Speed favors low latency; Quality keeps longer paragraphs together and gives AI more output space and screen context.")
             }
-
-            Section {
-                Picker("Translation Appearance", selection: $settings.appearance) {
+            Section("Display") {
+                Picker("Overlay Appearance", selection: $settings.appearance) {
                     ForEach(TranslationAppearance.allCases) { Text($0.rawValue).tag($0) }
                 }
-                VStack(alignment: .leading, spacing: 4) {
-                    Text(settings.appearance.rawValue).font(.subheadline.weight(.medium))
-                    Text(settings.appearance.detail).font(.caption).foregroundStyle(.secondary)
-                }
-            } header: {
-                Text("Appearance")
+                LabeledContent("Text Size", value: settings.overlayTextScale.formatted(.percent.precision(.fractionLength(0))))
+                Slider(value: $settings.overlayTextScale, in: 0.8...1.8, step: 0.1).accessibilityLabel("Translation text size")
+                Text("Pinch to zoom, drag to pan, or tap any region to read and copy the complete translation. Long text is truncated visibly instead of shrinking to unreadable sizes.")
+                    .font(.footnote).foregroundStyle(.secondary)
             }
-
+            Section("Quick Actions") {
+                Button { showsShortcutSetup = true } label: { Label("Action Button & Shortcuts", systemImage: "button.programmable") }
+            }
             Section {
                 Toggle("Save Translation History", isOn: $settings.savesHistory)
-                if settings.savesHistory, !history.items.isEmpty {
-                    Button("Clear Saved History", role: .destructive) { history.clear() }
-                }
-            } header: {
-                Text("History")
-            } footer: {
-                Text(settings.savesHistory
-                     ? "Up to 20 recent translations are stored only on this device."
-                     : "History is off. Screenshots are not kept after you close a translation.")
+                    .onChange(of: settings.savesHistory) { _, enabled in if !enabled { history.clear() } }
+                if !history.items.isEmpty { Button("Clear Saved History", role: .destructive) { history.clear() } }
+                Button("Revoke Cloud Sharing Permission") { settings.revokeCloudConsent(); permissionsCleared = true }
+                Button { showsPrivacy = true } label: { Label("Privacy Details", systemImage: "hand.raised") }
+            } header: { Text("Privacy") } footer: {
+                Text("History is off by default. Turning it off deletes saved history. No account or ads. AI providers may charge fees; their API keys are stored only in this device’s Keychain.")
             }
-
-            Section("Action Button") {
-                Button {
-                    showsShortcutSetup = true
-                } label: {
-                    Label("Shortcut Setup", systemImage: "button.programmable")
-                }
-            }
-
             Section("Information") {
-                Button {
-                    showsPrivacy = true
-                } label: {
-                    Label("Privacy", systemImage: "hand.raised")
-                }
-                Button {
-                    showsAbout = true
-                } label: {
-                    Label("About Translate Screen", systemImage: "info.circle")
-                }
+                Button { showsAbout = true } label: { Label("About Translate Screen", systemImage: "info.circle") }
             }
         }
         .navigationTitle("Settings")
         .sheet(isPresented: $showsShortcutSetup) { ShortcutSetupView() }
         .sheet(isPresented: $showsPrivacy) { PrivacyView() }
         .sheet(isPresented: $showsAbout) { AboutView() }
+        .alert("Cloud permission revoked", isPresented: $permissionsCleared) { Button("OK", role: .cancel) {} } message: {
+            Text("The next AI operation will ask before sending data. Requests already in progress are not recalled.")
+        }
     }
 }
 
@@ -84,11 +83,15 @@ private struct PrivacyView: View {
 
                     privacySection(
                         "On-device processing",
-                        "Text recognition and translation use Apple frameworks on your iPhone. Translate Screen does not upload screenshots to its own servers."
+                        "Apple Vision and Apple Translation are the defaults and need no API key. Their language models may need a one-time system download. The app has no screenshot-upload server, analytics, account or ads."
                     )
                     privacySection(
                         "Temporary by default",
-                        "When history is off, the selected screenshot is held only while you view the translation and is released when you close it."
+                        "When history is off, imported screenshots stay in memory until Close. Shortcuts uses a protected, temporary handoff file, deleted when consumed or expired. No image is added to Photos."
+                    )
+                    privacySection(
+                        "Optional cloud processing",
+                        "Only selecting an AI engine and granting permission sends data to your configured HTTPS provider: an image for AI OCR, or recognized text for AI translation. Permission is tied to the endpoint and model. Provider retention policies and fees apply. API keys are kept in the device Keychain and never written to logs or history."
                     )
                     privacySection(
                         "History is your choice",

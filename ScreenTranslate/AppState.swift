@@ -1,6 +1,5 @@
 import Combine
 import Foundation
-import OSLog
 import SwiftUI
 import Translation
 import UIKit
@@ -8,209 +7,222 @@ import UIKit
 @MainActor
 final class AppState: ObservableObject {
     enum Phase: Equatable {
-        case idle
-        case reading
-        case translating
-        case preparing
-        case ready
+        case idle, awaitingConsent, reading, translating, preparing, ready
         case failed(String)
     }
 
-    @Published var phase: Phase = .idle
-    @Published var document: TranslationDocument?
-    @Published var translationConfiguration: TranslationSession.Configuration?
+    @Published private(set) var phase: Phase = .idle
+    @Published private(set) var document: TranslationDocument?
+    @Published private(set) var translationConfiguration: TranslationSession.Configuration?
     @Published var presentsResult = false
     @Published private(set) var translatedBlockCount = 0
     @Published private(set) var totalBlockCount = 0
+    @Published private(set) var notice: String?
+    @Published private(set) var consentDestinations: [String] = []
+    @Published private(set) var appleRequestID: UUID?
 
     let settings: AppSettings
     let history: HistoryStore
+    var hasSourceImage: Bool { sourceImage != nil }
 
-    private let logger = Logger(
-        subsystem: Bundle.main.bundleIdentifier ?? "ScreenTranslate",
-        category: "TranslationPerformance"
-    )
+    private let services: ProcessingServices
+    private var sourceImage: UIImage?
     private var activeProcessID: UUID?
-    private var recognitionTask: Task<Void, Never>?
+    private var processingTask: Task<Void, Never>?
+    private var pendingConsentIDs: [AIProfile: String] = [:]
+    private var cachedAppleConfiguration: TranslationSession.Configuration?
+    private var cachedAppleLanguages = ""
 
-    init(settings: AppSettings, history: HistoryStore) {
+    init(settings: AppSettings, history: HistoryStore, services: ProcessingServices = .live) {
         self.settings = settings
         self.history = history
+        self.services = services
     }
 
     func process(_ image: UIImage) {
         cancelCurrentWork()
-
         let processID = UUID()
-        let source = settings.source
-        let target = settings.target
-        let startedAt = ContinuousClock.now
-
         activeProcessID = processID
-        phase = .reading
+        sourceImage = image // Retain for OCR failure/retry; released on Close.
         document = nil
-        translationConfiguration = nil
+        notice = nil
         translatedBlockCount = 0
         totalBlockCount = 0
         presentsResult = true
 
-        logger.info(
-            "Processing started; source: \(source.rawValue), target: \(target.rawValue)"
-        )
-
-        recognitionTask = Task { [weak self] in
-            guard let self else { return }
-            defer {
-                if activeProcessID == processID {
-                    recognitionTask = nil
-                }
+        let ocrEngine = settings.ocrEngine
+        let translator = settings.translationEngine
+        let source = settings.source
+        let target = settings.target
+        let preference = settings.preference
+        let ocrConfiguration = settings.aiOCR
+        let translationConfiguration = settings.aiTranslation
+        let profiles: [AIProfile] = (ocrEngine == .ai ? [.ocr] : []) + (translator == .ai ? [.translation] : [])
+        pendingConsentIDs = [:]
+        do {
+            for profile in profiles { try settings.configuration(for: profile).validate() }
+        } catch {
+            phase = .failed(error.localizedDescription)
+            return
+        }
+        let missingConsent = profiles.filter { !settings.hasConsent(for: $0) }
+        if !missingConsent.isEmpty {
+            pendingConsentIDs = Dictionary(uniqueKeysWithValues: profiles.map { ($0, settings.configuration(for: $0).consentID) })
+            consentDestinations = missingConsent.map { profile in
+                let host = (try? settings.configuration(for: profile).endpoint().host) ?? "selected provider"
+                return profile == .ocr ? "Screenshot → \(host)" : "Recognized text → \(host)"
             }
-
+            phase = .awaitingConsent
+            return
+        }
+        consentDestinations = []
+        phase = .reading
+        processingTask = Task { [weak self] in
+            guard let self else { return }
+            defer { if activeProcessID == processID { processingTask = nil } }
             do {
-                let ocrStartedAt = ContinuousClock.now
-                let blocks = try await ScreenReader.recognize(in: image, source: source)
-                guard !Task.isCancelled, activeProcessID == processID else {
-                    logger.info("Discarded stale OCR result")
-                    return
+                let result: OCRResult
+                if ocrEngine == .appleVision {
+                    result = OCRResult(blocks: try await services.vision(image, source))
+                } else {
+                    // Local anchors validate AI positions. A failed AI request can
+                    // fall back locally; the reverse never uploads without consent.
+                    var anchors: [RecognizedBlock] = []
+                    do { anchors = try await services.vision(image, source) }
+                    catch { try Task.checkCancellation() }
+                    try Task.checkCancellation()
+                    let key = try settings.keyStore.read(.ocr)
+                    do {
+                        result = try await services.aiOCR(image, anchors, ocrConfiguration, key)
+                    } catch {
+                        try Task.checkCancellation()
+                        guard !anchors.isEmpty else { throw error }
+                        result = OCRResult(blocks: anchors, notice: "AI OCR was unavailable. Apple Vision was used locally; you can retry with another engine.")
+                    }
                 }
-
-                let ocrMilliseconds = Self.milliseconds(
-                    from: ocrStartedAt.duration(to: .now)
-                )
-                logger.info(
-                    "OCR finished in \(ocrMilliseconds) ms; blocks: \(blocks.count)"
-                )
-
-                document = TranslationDocument(
-                    id: processID,
-                    image: image,
-                    blocks: blocks,
-                    source: source,
-                    target: target,
-                    createdAt: Date()
-                )
+                guard isActive(processID) else { return }
+                guard !result.blocks.isEmpty else { throw ScreenReadingError.noText }
+                let blocks = TranslationPlanner.paragraphs(result.blocks, preference: preference)
+                notice = result.notice
+                document = TranslationDocument(id: processID, image: image, blocks: blocks, source: source, target: target, createdAt: Date())
                 totalBlockCount = blocks.count
-                phase = .translating
-                translationConfiguration = TranslationSession.Configuration(
-                    source: source.localeLanguage,
-                    target: target.localeLanguage,
-                    preferredStrategy: .lowLatency
-                )
+                if source != .automatic && source == target {
+                    translatedBlockCount = blocks.count
+                    finish(processID)
+                } else if translator == .apple {
+                    phase = .translating
+                    appleRequestID = processID
+                    let signature = source.rawValue + ":" + target.rawValue + ":" + preference.rawValue
+                    if signature != cachedAppleLanguages || cachedAppleConfiguration == nil {
+                        cachedAppleLanguages = signature
+                        cachedAppleConfiguration = preference == .speed
+                            ? TranslationSession.Configuration(source: source.localeLanguage, target: target.localeLanguage, preferredStrategy: .lowLatency)
+                            : TranslationSession.Configuration(source: source.localeLanguage, target: target.localeLanguage)
+                    }
+                    // Repeated screenshots with the same languages must restart
+                    // the view-bound session even if SwiftUI coalesces updates.
+                    cachedAppleConfiguration?.invalidate()
+                    self.translationConfiguration = cachedAppleConfiguration
+                } else {
+                    phase = .translating
+                    let key = try settings.keyStore.read(.translation)
+                    let translations = try await services.aiTranslation(blocks, source, target, preference, translationConfiguration, key)
+                    guard isActive(processID), var current = document else { return }
+                    guard current.blocks.allSatisfy({ translations[$0.id]?.isEmpty == false }) else { throw AIServiceError.incompleteTranslation }
+                    for index in current.blocks.indices { current.blocks[index].translation = translations[current.blocks[index].id]! }
+                    document = current
+                    translatedBlockCount = current.blocks.count
+                    finish(processID)
+                }
             } catch {
-                guard !Task.isCancelled, activeProcessID == processID else { return }
-                let elapsedMilliseconds = Self.milliseconds(
-                    from: startedAt.duration(to: .now)
-                )
-                logger.error(
-                    "Processing failed after \(elapsedMilliseconds) ms: \(error.localizedDescription)"
-                )
+                guard isActive(processID) else { return }
+                // Only local, sanitized client errors reach this screen. Never log screenshots, text, keys, or provider bodies.
                 phase = .failed(error.localizedDescription)
             }
         }
     }
 
-    func translate(using session: TranslationSession) async {
-        guard phase == .translating,
-              var current = document,
-              activeProcessID == current.id else {
-            logger.info("Ignored translation session without an active document")
+    func allowCloudProcessing() {
+        guard phase == .awaitingConsent, let image = sourceImage else { return }
+        let selected: [AIProfile] = (settings.ocrEngine == .ai ? [.ocr] : []) + (settings.translationEngine == .ai ? [.translation] : [])
+        guard Set(selected) == Set(pendingConsentIDs.keys), pendingConsentIDs.allSatisfy({ settings.configuration(for: $0.key).consentID == $0.value }) else {
+            process(image) // Changed settings require a new, accurate disclosure.
             return
         }
+        if settings.ocrEngine == .ai { settings.grantConsent(for: .ocr) }
+        if settings.translationEngine == .ai { settings.grantConsent(for: .translation) }
+        process(image)
+    }
 
-        let processID = current.id
-        let startedAt = ContinuousClock.now
-        let characterCount = current.blocks.reduce(0) { $0 + $1.original.count }
+    func useAppleEngines() {
+        settings.ocrEngine = .appleVision
+        settings.translationEngine = .apple
+        retry()
+    }
 
-        let modelsReady = await session.isReady
-        guard !Task.isCancelled, activeProcessID == processID else { return }
-        logger.info(
-            "Translation started; blocks: \(current.blocks.count), characters: \(characterCount), models ready: \(modelsReady)"
-        )
-
+    func translate(using session: TranslationSession, processID: UUID?) async {
+        guard let processID, isActive(processID), appleRequestID == processID,
+              phase == .translating, var current = document else { return }
         do {
-            let requests = current.blocks.map {
-                TranslationSession.Request(
-                    sourceText: $0.original,
-                    clientIdentifier: $0.id.uuidString
-                )
-            }
-            let blockIndices = Dictionary(
-                uniqueKeysWithValues: current.blocks.indices.map {
-                    (current.blocks[$0].id.uuidString, $0)
-                }
-            )
-
+            let requests = current.blocks.map { TranslationSession.Request(sourceText: $0.original, clientIdentifier: $0.id.uuidString) }
+            let indices = Dictionary(uniqueKeysWithValues: current.blocks.indices.map { (current.blocks[$0].id.uuidString, $0) })
+            var completed = Set<String>()
             for try await response in session.translate(batch: requests) {
-                guard !Task.isCancelled, activeProcessID == processID else {
-                    session.cancel()
-                    return
-                }
-                guard let key = response.clientIdentifier,
-                      let index = blockIndices[key] else { continue }
-
+                guard isActive(processID) else { session.cancel(); return }
+                guard let key = response.clientIdentifier, let index = indices[key],
+                      !response.targetText.isEmpty, completed.insert(key).inserted else { continue }
                 current.blocks[index].translation = response.targetText
-                translatedBlockCount += 1
+                translatedBlockCount = completed.count
                 document = current
             }
-
-            guard !Task.isCancelled, activeProcessID == processID else { return }
-            document = current
-            phase = .ready
-            let translationMilliseconds = Self.milliseconds(
-                from: startedAt.duration(to: .now)
-            )
-            logger.info(
-                "Translation finished in \(translationMilliseconds) ms; translated blocks: \(self.translatedBlockCount)"
-            )
-
-            if settings.savesHistory {
-                history.add(current)
-            }
+            guard isActive(processID) else { return }
+            guard completed.count == requests.count else { throw AIServiceError.incompleteTranslation }
+            finish(processID)
         } catch {
-            guard !Task.isCancelled, activeProcessID == processID else {
-                logger.info("Translation cancelled")
-                return
-            }
-            let translationMilliseconds = Self.milliseconds(
-                from: startedAt.duration(to: .now)
-            )
-            logger.error(
-                "Translation failed after \(translationMilliseconds) ms: \(error.localizedDescription)"
-            )
-            // OCR remains useful even if individual language packs are unavailable.
-            document = current
-            phase = .failed(
-                "Translation couldn’t be completed: \(error.localizedDescription)"
-            )
+            guard isActive(processID) else { return }
+            phase = .failed("Translation couldn’t be completed: \(error.localizedDescription)")
         }
     }
 
-    func retry() {
-        guard let image = document?.image else { return }
+    func retry(using engine: OCREngine? = nil) {
+        guard let image = sourceImage else { return }
+        if let engine { settings.ocrEngine = engine }
         process(image)
+    }
+
+    func viewRecognizedText() {
+        guard document != nil else { return }
+        cancelCurrentWork()
+        notice = "Showing recognized text. Translation did not complete."
+        phase = .ready
     }
 
     func closeResult() {
         cancelCurrentWork()
-        activeProcessID = nil
         presentsResult = false
-        phase = .idle
         document = nil
-        translationConfiguration = nil
+        sourceImage = nil
+        notice = nil
+        consentDestinations = []
+        pendingConsentIDs = [:]
+        phase = .idle
         translatedBlockCount = 0
         totalBlockCount = 0
     }
 
-    private func cancelCurrentWork() {
-        recognitionTask?.cancel()
-        recognitionTask = nil
-        // Changing the configuration cancels the task and its view-bound session.
-        translationConfiguration = nil
+    private func isActive(_ id: UUID) -> Bool { !Task.isCancelled && activeProcessID == id }
+
+    private func finish(_ id: UUID) {
+        guard isActive(id), let document else { return }
+        phase = .ready
+        if settings.savesHistory { history.add(document) }
     }
 
-    private static func milliseconds(from duration: Duration) -> Double {
-        let components = duration.components
-        return Double(components.seconds) * 1_000
-            + Double(components.attoseconds) / 1_000_000_000_000_000
+    private func cancelCurrentWork() {
+        activeProcessID = nil
+        processingTask?.cancel()
+        processingTask = nil
+        translationConfiguration = nil
+        appleRequestID = nil
     }
 }
