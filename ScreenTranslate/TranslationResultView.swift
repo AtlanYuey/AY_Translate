@@ -58,6 +58,7 @@ struct TranslationResultView: View {
         .task(id: appState.document?.id) {
             guard let document = appState.document else { return }
             palette = ScreenshotRendering.palette(for: document)
+            imageZoom = 1
             mode = document.blocks.contains(where: { $0.placement == .overlay }) ? settings.defaultResultMode : .text
         }
     }
@@ -239,6 +240,7 @@ private struct ZoomableScreenshot: View {
             })
             .onChange(of: resetZoom) { _, _ in withAnimation(.snappy) { scale = 1; offset = .zero; zoomChanged(1) } }
             .onChange(of: proxy.size) { _, _ in scale = 1; offset = .zero; zoomChanged(1) }
+            .onAppear { zoomChanged(scale) }
         }
     }
 }

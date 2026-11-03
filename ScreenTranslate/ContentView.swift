@@ -86,6 +86,8 @@ struct ContentView: View {
 
     private func loadPendingShortcutImage() {
         if let image = PendingScreenshotStore.take() {
+            if let session = activeShortcutSession { session.state.closeResult() }
+            activeShortcutSession = nil
             appState.process(image)
         }
     }

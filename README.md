@@ -63,7 +63,7 @@ Instead of reducing a screen to a plain list of sentences, the app preserves the
 - **Full-text mode** — Read and copy all recognized content outside the image layout.
 - **Manual import** — Choose an existing screenshot from Photos.
 - **Optional history** — Save up to 20 recent translations locally, with history disabled by default.
-- **Appearance controls** — Choose Natural, Readable, or Minimal overlays.
+- **Appearance controls** — Choose background matching, high contrast, or text-only overlays in Settings.
 - **Native design** — Built with SwiftUI and supports Light and Dark Mode.
 
 ## How It Works
@@ -183,7 +183,7 @@ git push origin v1.0.0
 
 The tag version becomes the app's `CFBundleShortVersionString`. GitHub automatically generates release notes and uploads the IPA after a successful build.
 
-To test IPA creation without publishing a release, open **Actions → Build IPA → Run workflow**. Choose the runner (Intel by default). The IPA and SHA-256 file will be available under the successful workflow run's **Artifacts → TranslateScreen-<version>-unsigned**. Diagnostic logs and xcresult bundles are uploaded separately, including on test/build failure when available.
+To test IPA creation without publishing a release, open **Actions → Build IPA → Run workflow**. Choose the runner (Intel by default). The IPA and SHA-256 file will be available under the successful workflow run's **Artifacts → TranslateScreen-<version>-unsigned**. Diagnostic logs, xcresult bundles and exported interface screenshots are uploaded separately, including on test/build failure when available.
 
 > [!WARNING]
 > Never commit Apple signing certificates, private keys, provisioning profiles, or App Store Connect credentials. A future signed distribution workflow should store them as encrypted GitHub Actions secrets.
@@ -209,7 +209,7 @@ Privacy is a core design constraint:
 - Screenshots are recognized and translated using Apple frameworks on the device by default; cloud AI is opt-in and destination-specific.
 - Translate Screen does not include analytics, advertising SDKs, or its own screenshot-upload service.
 - Translation history is disabled by default.
-- When history is off, completed translations stay in memory until Close. Shortcuts uses a protected temporary handoff file, removed on consumption or expiry; nothing is added to Photos.
+- When history is off, translations stay in memory until Close (system previews expire after ten minutes). Only the alternative foreground shortcut uses a protected temporary handoff file, removed on consumption or expiry; nothing is added to Photos.
 - Optional provider keys stay in the device-only Keychain. Cloud requests use ephemeral sessions and refuse redirects; provider error bodies and credentials are never logged.
 - When history is enabled, screenshots and text are stored in the app's private local container.
 - Saved history can be removed from the History or Settings screen.
@@ -218,7 +218,7 @@ Review all privacy behavior before distributing a modified build, especially if 
 
 ## Known Limitations
 
-- Overlay backgrounds are adaptive materials; they do not reconstruct pixels hidden by the original text.
+- Overlay backgrounds sample the surrounding color; they cannot reconstruct gradients or photo textures hidden by the original text.
 - Vision may split or combine text differently depending on typography and screen complexity.
 - Translation quality and supported language pairs depend on Apple's installed translation models.
 - Highly stylized, curved, handwritten, very small, or low-contrast text may not be recognized accurately.
@@ -232,7 +232,7 @@ Review all privacy behavior before distributing a modified build, especially if 
 - [ ] Smarter paragraph and interface-element grouping
 - [ ] Improved background sampling and overlay blending
 - [ ] More supported languages
-- [ ] App localization
+- [x] Simplified Chinese, Traditional Chinese, English and follow-system interface languages
 - [x] Core OCR alignment/context regression tests and iOS workflow/Keychain tests
 - [ ] Accessibility audit
 - [ ] Performance profiling on older supported devices

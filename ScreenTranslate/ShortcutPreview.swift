@@ -114,8 +114,13 @@ final class ShortcutSessionStore {
 
     func takeForegroundRequest() -> ShortcutSession? {
         defer { foregroundRequest = nil }
-        guard let id = foregroundRequest else { return nil }
-        return session(id: id)
+        guard let id = foregroundRequest, let session = session(id: id) else { return nil }
+        // Ownership passes to the full editor. A later background screenshot
+        // must not clear the document currently displayed by that editor.
+        expirationTask?.cancel()
+        expirationTask = nil
+        current = nil
+        return session
     }
 
     func clear(state: AppState) {

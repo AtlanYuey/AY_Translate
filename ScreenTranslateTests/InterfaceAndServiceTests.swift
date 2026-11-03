@@ -168,7 +168,11 @@ final class InterfaceAndServiceTests: XCTestCase {
         XCTAssertTrue(session.state.hasSourceImage)
         store.requestForeground(id: id)
         XCTAssertTrue(store.takeForegroundRequest() === session)
-        store.clear(id: id)
+        XCTAssertNil(store.session(id: id))
+        let next = try await store.start(image())
+        XCTAssertTrue(session.state.hasSourceImage, "A new preview must not close the editor that took ownership")
+        session.state.closeResult()
+        store.clear(id: next)
     }
 
     func testOldSnippetCannotCloseOrExposeANewerScreenshot() async throws {
@@ -183,23 +187,76 @@ final class InterfaceAndServiceTests: XCTestCase {
     }
 
     func testChineseFullScreenAndSettingsSnapshots() async throws {
-        settings.source = .english; settings.target = .english
-        let state = AppState(settings: settings, history: HistoryStore(), services: services([region()]))
-        state.process(image())
+        settings.source = .english; settings.target = .chinese
+        let fixture = snapshotFixture()
+        let provider = service("本地测试替身")
+        try settings.saveService(provider, keyReplacement: nil)
+        try settings.selectService(provider.id, for: .translation)
+        settings.grantConsent(for: .translation)
+        var injected = services(fixture.blocks)
+        injected.aiTranslation = { blocks, _, _, _, _, _ in
+            Dictionary(uniqueKeysWithValues: blocks.map { ($0.id, fixture.translations[$0.id]!) })
+        }
+        let state = AppState(settings: settings, history: HistoryStore(), services: injected)
+        state.process(fixture.image)
         for _ in 0..<100 where state.phase != .ready { try await Task.sleep(for: .milliseconds(10)) }
         XCTAssertEqual(state.phase, .ready)
-        attach(TranslationResultView().environmentObject(state).environmentObject(settings).environmentObject(state.history), name: "中文-全屏结果-无导航栏与底栏")
-        attach(NavigationStack { SettingsView() }.environmentObject(settings).environmentObject(state.history).environment(\.locale, settings.interfaceLocale), name: "中文-设置")
+        XCTAssertEqual(state.document?.blocks.count, fixture.blocks.count)
+        try settings.removeService(provider.id)
+        await attach(TranslationResultView().environmentObject(state).environmentObject(settings).environmentObject(state.history), name: "中文-全屏结果-无导航栏与底栏")
+        await attach(NavigationStack { SettingsView() }.environmentObject(settings).environmentObject(state.history).environment(\.locale, settings.interfaceLocale), name: "中文-设置")
         let a = service("DeepSeek 日常翻译"), b = service("Gemini 图像识别")
         try settings.saveService(a, keyReplacement: nil); try settings.saveService(b, keyReplacement: nil)
-        attach(NavigationStack { AIServicesView() }.environmentObject(settings).environment(\.locale, settings.interfaceLocale), name: "中文-多服务管理")
+        await attach(NavigationStack { AIServicesView() }.environmentObject(settings).environment(\.locale, settings.interfaceLocale), name: "中文-多服务管理")
         state.closeResult()
     }
 
-    private func attach<Content: View>(_ content: Content, name: String) {
-        let renderer = ImageRenderer(content: content.frame(width: 390, height: 844))
-        renderer.scale = 2
-        guard let image = renderer.uiImage else { XCTFail("Snapshot rendering failed"); return }
+    private func snapshotFixture() -> (image: UIImage, blocks: [RecognizedBlock], translations: [UUID: String]) {
+        let lines: [(String, String, CGFloat, CGFloat)] = [
+            ("A clearer view", "看见，即理解", 110, 30),
+            ("Translate with context, keep the layout.", "理解上下文，保留原有布局。", 178, 16),
+            ("On-device by default:", "默认在设备本地处理", 290, 23),
+            ("Free. No account. No ads.", "免费使用，无需账号，没有广告。", 344, 16),
+            ("Your providers, your choice:", "服务由你自由选择", 592, 24),
+            ("Keep multiple AI services ready.", "保存多个 AI 服务，随点随用。", 650, 16)
+        ]
+        var blocks: [RecognizedBlock] = [], translations: [UUID: String] = [:]
+        let image = UIGraphicsImageRenderer(size: CGSize(width: 390, height: 844)).image { renderer in
+            UIColor.white.setFill(); renderer.fill(CGRect(x: 0, y: 0, width: 390, height: 844))
+            UIColor(red: 0.05, green: 0.12, blue: 0.22, alpha: 1).setFill()
+            renderer.fill(CGRect(x: 0, y: 480, width: 390, height: 364))
+            for (original, translated, y, size) in lines {
+                let rect = CGRect(x: 24, y: y, width: 342, height: size * 1.5)
+                (original as NSString).draw(in: rect, withAttributes: [
+                    .font: UIFont.systemFont(ofSize: size, weight: .medium),
+                    .foregroundColor: y < 480 ? UIColor.black : UIColor.white
+                ])
+                let block = RecognizedBlock(id: UUID(), original: original, translation: original,
+                    boundingBox: CGRect(x: rect.minX / 390, y: 1 - rect.maxY / 844, width: rect.width / 390, height: rect.height / 844), confidence: 1)
+                blocks.append(block); translations[block.id] = translated
+            }
+        }
+        return (image, blocks, translations)
+    }
+
+    private func attach<Content: View>(_ content: Content, name: String) async {
+        // Hosting in a real window also captures List/Form/NavigationStack, whose
+        // UIKit-backed views aren't drawn by SwiftUI's ImageRenderer.
+        let previousWindow = UIApplication.shared.connectedScenes.compactMap { $0 as? UIWindowScene }
+            .flatMap(\.windows).first(where: \.isKeyWindow)
+        let window: UIWindow
+        if let scene = previousWindow?.windowScene { window = UIWindow(windowScene: scene) }
+        else { window = UIWindow(frame: CGRect(x: 0, y: 0, width: 390, height: 844)) }
+        window.frame = CGRect(x: 0, y: 0, width: 390, height: 844)
+        let host = UIHostingController(rootView: content)
+        window.rootViewController = host
+        window.makeKeyAndVisible()
+        defer { window.isHidden = true; previousWindow?.makeKeyAndVisible() }
+        host.view.setNeedsLayout()
+        host.view.layoutIfNeeded()
+        try? await Task.sleep(for: .milliseconds(250))
+        let renderer = UIGraphicsImageRenderer(bounds: window.bounds)
+        let image = renderer.image { _ in window.drawHierarchy(in: window.bounds, afterScreenUpdates: true) }
         let attachment = XCTAttachment(image: image)
         attachment.name = name; attachment.lifetime = .keepAlways
         add(attachment)
