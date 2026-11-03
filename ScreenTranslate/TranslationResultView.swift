@@ -257,7 +257,7 @@ private struct OverlayTextView: View {
 
     var body: some View {
         let rect = CGRect(x: block.boundingBox.minX * canvasSize.width, y: (1 - block.boundingBox.maxY) * canvasSize.height, width: max(block.boundingBox.width * canvasSize.width, 24), height: max(block.boundingBox.height * canvasSize.height, 16))
-        let fontSize = max(12, min(rect.height / 1.15, max(12, min(rect.height * 0.65, 28)) * textScale))
+        let fontSize = ScreenshotRendering.fittedFontSize(for: revealsOriginal ? block.original : block.translation, in: rect, textScale: textScale)
         Text(revealsOriginal ? block.original : block.translation)
             .font(.system(size: fontSize, weight: .medium))
             .lineLimit(max(1, Int(rect.height / (fontSize * 1.15))))

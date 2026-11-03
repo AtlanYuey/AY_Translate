@@ -160,6 +160,15 @@ final class InterfaceAndServiceTests: XCTestCase {
         XCTAssertNil(session.renderedImage)
     }
 
+    func testLongOverlayTextFitsBeforeTruncatingAndKeepsReadableMinimum() {
+        let rect = CGRect(x: 0, y: 0, width: 180, height: 60)
+        let short = ScreenshotRendering.fittedFontSize(for: "你好", in: rect, textScale: 1)
+        let long = ScreenshotRendering.fittedFontSize(for: String(repeating: "这段译文保留上下文。", count: 5), in: rect, textScale: 1)
+        XCTAssertLessThan(long, short)
+        XCTAssertGreaterThanOrEqual(long, 12)
+        XCTAssertGreaterThanOrEqual(ScreenshotRendering.fittedFontSize(for: "很长的译文", in: CGRect(x: 0, y: 0, width: 20, height: 10), textScale: 0.8), 12)
+    }
+
     func testMissingLanguageModelsOffersAppContinuationWithoutDiscardingScreenshot() async throws {
         let store = ShortcutSessionStore(settings: settings, services: services([region()]), installedTranslator: { _ in false })
         let id = try await store.start(image())
@@ -205,9 +214,12 @@ final class InterfaceAndServiceTests: XCTestCase {
         try settings.removeService(provider.id)
         await attach(TranslationResultView().environmentObject(state).environmentObject(settings).environmentObject(state.history), name: "中文-全屏结果-无导航栏与底栏")
         await attach(NavigationStack { SettingsView() }.environmentObject(settings).environmentObject(state.history).environment(\.locale, settings.interfaceLocale), name: "中文-设置")
-        let a = service("DeepSeek 日常翻译"), b = service("Gemini 图像识别")
+        await attach(NavigationStack { SettingsView() }.environmentObject(settings).environmentObject(state.history).environment(\.locale, settings.interfaceLocale).preferredColorScheme(.dark), name: "中文-深色设置")
+        let a = SavedAIService(name: "DeepSeek 日常翻译", preset: .deepSeek, configuration: .init(baseURL: AIProviderPreset.deepSeek.baseURL, model: "deepseek-chat"))
+        let b = SavedAIService(name: "Gemini 图像识别", preset: .gemini, configuration: .init(baseURL: AIProviderPreset.gemini.baseURL, model: "gemini-2.5-flash"))
         try settings.saveService(a, keyReplacement: nil); try settings.saveService(b, keyReplacement: nil)
-        await attach(NavigationStack { AIServicesView() }.environmentObject(settings).environment(\.locale, settings.interfaceLocale), name: "中文-多服务管理")
+        await attach(NavigationStack { AIServicesView() }.environmentObject(settings).environment(\.locale, settings.interfaceLocale).preferredColorScheme(.dark), name: "中文-多服务管理")
+        await attach(NavigationStack { AIServiceEditor(service: b) }.environmentObject(settings).environment(\.locale, settings.interfaceLocale).preferredColorScheme(.dark), name: "中文-自定义服务名称与接口")
         state.closeResult()
     }
 

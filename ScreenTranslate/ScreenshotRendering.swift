@@ -6,6 +6,26 @@ import UIKit
 enum ScreenshotRendering {
     private static let context = CIContext(options: [.cacheIntermediates: false])
 
+    /// Fit longer translations before truncating, with a readable lower bound.
+    /// The full editor still offers the complete text on tap at that bound.
+    static func fittedFontSize(for text: String, in rect: CGRect, textScale: Double) -> CGFloat {
+        let preferred = max(12, min(rect.height / 1.15, min(28, max(12, rect.height * 0.65)) * textScale))
+        func fits(_ size: CGFloat) -> Bool {
+            let bounds = (text as NSString).boundingRect(
+                with: CGSize(width: max(1, rect.width - 4), height: .greatestFiniteMagnitude),
+                options: [.usesLineFragmentOrigin, .usesFontLeading],
+                attributes: [.font: UIFont.systemFont(ofSize: size, weight: .medium)], context: nil)
+            return ceil(bounds.height) <= rect.height && ceil(bounds.width) <= max(1, rect.width - 4)
+        }
+        if fits(preferred) { return preferred }
+        var lower: CGFloat = 12, upper = preferred
+        for _ in 0..<5 {
+            let middle = (lower + upper) / 2
+            if fits(middle) { lower = middle } else { upper = middle }
+        }
+        return max(12, floor(lower))
+    }
+
     static func palette(for document: TranslationDocument) -> [UUID: SampledColor] {
         guard document.image.size.width > 0, document.image.size.height > 0 else { return [:] }
         let factor = min(1, 640 / max(document.image.size.width, document.image.size.height))
@@ -49,7 +69,7 @@ enum ScreenshotRendering {
                 let paragraph = NSMutableParagraphStyle()
                 paragraph.alignment = document.target.isRightToLeft ? .right : .left
                 paragraph.lineBreakMode = .byTruncatingTail
-                let fontSize = max(12, min(rect.height / 1.15, min(28, max(12, rect.height * 0.65)) * textScale))
+                let fontSize = fittedFontSize(for: block.translation, in: rect, textScale: textScale)
                 (block.translation as NSString).draw(in: rect.insetBy(dx: 2, dy: 0), withAttributes: [
                     .font: UIFont.systemFont(ofSize: fontSize, weight: .medium),
                     .foregroundColor: color.usesDarkText ? UIColor.black : UIColor.white,
