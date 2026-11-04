@@ -162,7 +162,25 @@ private nonisolated struct ChatRequest: Encodable {
     let stream = false
 }
 
-private nonisolated struct Message: Encodable { let role: String; let content: [ContentPart] }
+private nonisolated struct Message: Encodable {
+    let role: String
+    let content: [ContentPart]
+    private enum CodingKeys: CodingKey { case role, content }
+
+    func encode(to encoder: Encoder) throws {
+        var values = encoder.container(keyedBy: CodingKeys.self)
+        try values.encode(role, forKey: .role)
+        let text = content.compactMap { part -> String? in
+            if case .text(let value) = part { return value }
+            return nil
+        }
+        // DeepSeek and other compatible providers require a string for system
+        // messages. Plain-text users are also most portable as strings; keep
+        // the content-parts array only when an image actually needs it.
+        if text.count == content.count { try values.encode(text.joined(separator: "\n"), forKey: .content) }
+        else { try values.encode(content, forKey: .content) }
+    }
+}
 
 private nonisolated enum ContentPart: Encodable {
     case text(String), image(String)
