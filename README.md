@@ -72,7 +72,7 @@ Instead of reducing a screen to a plain list of sentences, the app preserves the
 Take Screenshot
       │
       ▼
-Translate Screenshot
+Share with Translate Screen
       │
       ▼
 Vision text recognition
@@ -85,10 +85,10 @@ Layout-preserving overlays
 ```
 
 1. Shortcuts captures the current screen.
-2. The `TranslateScreenshotIntent` receives the screenshot as an `IntentFile`.
+2. The full-screen Action extension receives the screenshot through `NSItemProvider`, above the invoking app.
 3. Vision recognizes text and returns normalized bounding boxes.
 4. Apple's Translation framework translates the recognized blocks in a batch.
-5. SwiftUI renders the translated blocks over the original image using their detected positions.
+5. SwiftUI renders the translated blocks over the original image using their detected positions. Close or swipe up to finish the extension and return to its host.
 
 ## Action Button Setup
 
@@ -195,7 +195,8 @@ To test IPA creation without publishing a release, open **Actions → Build IPA 
 | `ScreenTranslateApp.swift` | App entry point and shared dependency setup |
 | `ContentView.swift` | Home screen, screenshot import, processing, and translation result UI |
 | `OnboardingView.swift` | First-run onboarding and Action Button setup guide |
-| `TranslateScreenshotIntent.swift` | App Intent used by Shortcuts and the Action Button workflow |
+| `ScreenTranslateShare/ShareViewController.swift` | Full-screen Action extension used by the screenshot sharing workflow |
+| `TranslateScreenshotIntent.swift` | Alternative foreground App Intent for older shortcuts |
 | `TranslationEngine.swift` | Vision text recognition and bounding-box extraction |
 | `AppState.swift` | Translation workflow and UI state coordination |
 | `Models.swift` | Languages, recognized blocks, settings, and history models |
@@ -209,7 +210,7 @@ Privacy is a core design constraint:
 - Screenshots are recognized and translated using Apple frameworks on the device by default; cloud AI is opt-in and destination-specific.
 - Translate Screen does not include analytics, advertising SDKs, or its own screenshot-upload service.
 - Translation history is disabled by default.
-- When history is off, translations stay in memory until Close (system previews expire after ten minutes). The shared-screen extension keeps its input in memory. Only the alternative foreground shortcut uses a protected temporary handoff file, removed on consumption or expiry; nothing is added to Photos.
+- When history is off, the shared-screen extension keeps its input and results in memory until Close. Only the alternative foreground shortcut uses a protected temporary handoff file, removed on consumption or expiry; nothing is added to Photos.
 - Optional provider keys stay in the device-only Keychain. Cloud requests use ephemeral sessions and refuse redirects; provider error bodies and credentials are never logged.
 - When history is enabled, screenshots and text are stored in the app's private local container.
 - Saved history can be removed from the History or Settings screen.

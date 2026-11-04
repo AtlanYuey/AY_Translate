@@ -50,8 +50,7 @@ enum ScreenshotRendering {
         })
     }
 
-    /// Pre-rendering makes the system snippet lightweight; it never starts OCR or
-    /// network requests again when the system asks the snippet to redraw.
+    /// Render an already processed document without repeating OCR or translation.
     static func translatedImage(_ document: TranslationDocument, palette: [UUID: SampledColor], textScale: Double) -> UIImage {
         let width: CGFloat = 390
         let size = CGSize(width: width, height: width * document.image.size.height / max(1, document.image.size.width))
