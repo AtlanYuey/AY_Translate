@@ -126,6 +126,50 @@ struct HistoryItem: Identifiable, Codable {
 @MainActor
 final class AppSettings: ObservableObject {
     static let shared = AppSettings()
+    @Published var iCloudSyncEnabled: Bool = false {
+        didSet {
+            defaults.set(iCloudSyncEnabled, forKey: "iCloudSyncEnabled")
+            configureCloudSync()
+        }
+    }
+    @Published private(set) var iCloudSyncMessage: String?
+    private var cloudSync: CloudSettingsSync?
+    private var applyingCloudSettings = false
+
+    private func configureCloudSync() {
+        cloudSync?.stop(); cloudSync = nil
+        #if !SCREEN_TRANSLATE_SHARE_EXTENSION
+        guard iCloudSyncEnabled, syncThroughKeychain else { return }
+        let sync = CloudSettingsSync(defaults: defaults, apply: { [weak self] changes in
+            guard let self else { return false }
+            // A synced endpoint change must never send the old device's key to
+            // a different host. Credentials and permissions remain device-local.
+            if let data = changes["ai.services.v1"] as? Data,
+               let catalog = try? JSONDecoder().decode(AIServiceCatalog.self, from: data) {
+                do {
+                    for old in serviceCatalog.services {
+                        let replacement = catalog.services.first { $0.id == old.id }
+                        if replacement == nil || (try? old.configuration.endpoint()) != (try? replacement?.configuration.endpoint()) {
+                            try deleteAPIKey(forService: old.id)
+                        }
+                    }
+                } catch { iCloudSyncMessage = error.localizedDescription; return false }
+            }
+            applyingCloudSettings = true
+            for (key, value) in changes { persist(value, forKey: key) }
+            refreshSharedPreferences()
+            applyingCloudSettings = false
+            return true
+        }, status: { [weak self] message in
+            guard let self else { return }
+            iCloudSyncMessage = message
+            if iCloudSyncEnabled && !defaults.bool(forKey: "iCloudSyncEnabled") { iCloudSyncEnabled = false }
+        })
+        cloudSync = sync
+        sync.start()
+        #endif
+    }
+
     @Published var source: AppLanguage {
         didSet { persist(source.rawValue, forKey: Keys.source) }
     }
@@ -193,6 +237,8 @@ final class AppSettings: ObservableObject {
         interfaceLanguage = InterfaceLanguage(rawValue: defaults.string(forKey: "interfaceLanguage") ?? "") ?? .system
         synchronizationError = syncMessage
         migrateLegacyServices()
+        iCloudSyncEnabled = defaults.bool(forKey: "iCloudSyncEnabled")
+        configureCloudSync()
     }
 
     func text(_ key: String) -> String { AppLocalization.text(key, language: interfaceLanguage) }
@@ -203,6 +249,9 @@ final class AppSettings: ObservableObject {
             do { try PreferencesBridge.synchronize(defaults, store: keyStore); synchronizationError = nil }
             catch { synchronizationError = error.localizedDescription }
         }
+        let wasApplying = applyingCloudSettings
+        applyingCloudSettings = true
+        defer { applyingCloudSettings = wasApplying }
         let saved = AppSettings(defaults: defaults, keyStore: keyStore, syncThroughKeychain: false)
         source = saved.source; target = saved.target; appearance = saved.appearance
         savesHistory = saved.savesHistory; ocrEngine = saved.ocrEngine; translationEngine = saved.translationEngine
@@ -344,6 +393,7 @@ final class AppSettings: ObservableObject {
 
     private func persist(_ value: Any, forKey key: String) {
         defaults.set(value, forKey: key)
+        if !applyingCloudSettings { cloudSync?.changed(value, key: key) }
         guard syncThroughKeychain else { return }
         do { try PreferencesBridge.update(value, key: key, defaults: defaults, store: keyStore); synchronizationError = nil }
         catch { synchronizationError = error.localizedDescription }

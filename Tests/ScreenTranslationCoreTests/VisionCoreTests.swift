@@ -49,6 +49,30 @@ final class VisionCoreTests: XCTestCase {
         XCTAssertFalse(blocks.contains { $0.flow == .vertical }, blocks.map(\.original).joined(separator: "\n"))
     }
 
+    func testNativeDocumentRecognitionReadsCompleteVerticalTextAndRecordsLatency() async throws {
+        guard #available(macOS 26.0, iOS 26.0, *) else { return }
+        let context = try canvas()
+        for (column, text) in ["これは何ですか", "一口だけ食べて", "とても甘いです"].enumerated() {
+            for (row, glyph) in text.enumerated() {
+                draw(String(glyph), x: CGFloat(640 - column * 44), y: CGFloat(180 + row * 34), font: "HiraginoSans-W3", size: 28, context: context)
+            }
+        }
+        let image = try XCTUnwrap(context.makeImage())
+        let start = ContinuousClock.now
+        let native = try await VisionTextRecognizer.readDocument(image, language: "ja")
+        let nativeTime = start.duration(to: .now)
+        let oldStart = ContinuousClock.now
+        let legacy = try await VisionTextRecognizer.recognizeLegacy(image, language: "ja")
+        let legacyTime = oldStart.duration(to: .now)
+        let text = native.map(\.original).joined()
+        XCTAssertTrue(text.contains("一口だけ"), text)
+        XCTAssertTrue(text.contains("甘い"), text)
+        XCTAssertTrue(native.contains { $0.flow == .vertical })
+        XCTAssertTrue(native.contains { !($0.sourceGlyphBoxes ?? []).isEmpty })
+        try record(image, blocks: native, name: "native-document-vertical")
+        print("Synthetic OCR comparison, native: \(nativeTime), legacy: \(legacyTime), native regions: \(native.count), legacy regions: \(legacy.count)")
+    }
+
     private func canvas() throws -> CGContext {
         let context = try XCTUnwrap(CGContext(data: nil, width: 900, height: 1600, bitsPerComponent: 8, bytesPerRow: 0,
             space: CGColorSpaceCreateDeviceRGB(), bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue))

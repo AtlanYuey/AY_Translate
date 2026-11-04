@@ -12,7 +12,9 @@ struct TranslationResultView: View {
     @State private var showsSettings = false
     @State private var showsNotice = false
     @State private var resetZoom = UUID()
+    @State private var showsTiming = false
     @State private var palette: [UUID: SampledColor] = [:]
+    @State private var restorations: [UUID: ScreenshotRendering.RestoredRegion] = [:]
     @State private var imageZoom: CGFloat = 1
     @State private var isClosing = false
     @State private var showsRecovery = false
@@ -72,20 +74,27 @@ struct TranslationResultView: View {
                 failureView(message).presentationDetents([.medium, .large])
             }
         }
+        .alert("Processing Time", isPresented: $showsTiming) { Button("OK", role: .cancel) {} } message: {
+            Text(AppLocalization.formatted("OCR %.2f s · Translation %.2f s", appState.recognitionSeconds, appState.translationSeconds, language: settings.interfaceLanguage))
+        }
         .alert("Recognition Note", isPresented: $showsNotice) { Button("OK", role: .cancel) {} } message: {
             Text(settings.text(appState.notice ?? ""))
         }
         .onChange(of: appState.document?.id, initial: true) { _, _ in
             palette = [:]
+            restorations = [:]
             imageZoom = 1
             guard let document = appState.document else { return }
             mode = settings.defaultResultMode
         }
         .task(id: appState.document?.id) {
             guard let document = appState.document else { return }
-            let colors = await ScreenshotRendering.paletteAsync(for: document)
+            async let colors = ScreenshotRendering.paletteAsync(for: document)
+            async let patches = ScreenshotRendering.restorationsAsync(for: document)
+            let (sampled, restored) = await (colors, patches)
             guard !Task.isCancelled, appState.document?.id == document.id else { return }
-            palette = colors
+            palette = sampled
+            restorations = restored
         }
     }
 
@@ -96,7 +105,7 @@ struct TranslationResultView: View {
                     FullTextContent(document: document).contentMargins(.bottom, 90)
                 } else {
                     ZoomableScreenshot(document: document, showsOriginal: mode == .original, appearance: settings.appearance,
-                                       textScale: settings.overlayTextScale, palette: palette, resetZoom: resetZoom,
+                                       textScale: settings.overlayTextScale, palette: palette, restorations: restorations, resetZoom: resetZoom,
                                        zoomChanged: { imageZoom = $0 }, dismissAction: close) { selectedBlock = $0 }
                         .id(document.id)
                 }
@@ -160,6 +169,7 @@ struct TranslationResultView: View {
                 }
                 engineMenu(.ocr)
                 engineMenu(.translation)
+                Button("Processing Time", systemImage: "stopwatch") { showsTiming = true }
                 Button("Settings", systemImage: "slider.horizontal.3") { showsSettings = true }
                 if case .failed = appState.phase {
                     Button("Translation Details", systemImage: "exclamationmark.circle") { showsRecovery = true }
@@ -253,6 +263,7 @@ private struct ZoomableScreenshot: View {
     let appearance: TranslationAppearance
     let textScale: Double
     let palette: [UUID: SampledColor]
+    let restorations: [UUID: ScreenshotRendering.RestoredRegion]
     let resetZoom: UUID
     let zoomChanged: (CGFloat) -> Void
     let dismissAction: () -> Void
@@ -273,7 +284,7 @@ private struct ZoomableScreenshot: View {
                     Image(uiImage: document.image).resizable().frame(width: fitted.width, height: fitted.height)
                     if !showsOriginal {
                         ForEach(document.blocks.filter { $0.placement == .overlay && $0.translation != $0.original }) { block in
-                            OverlayTextView(block: block, canvasSize: fitted, appearance: appearance, isRTL: document.target.isRightToLeft, textScale: textScale, color: palette[block.id] ?? SampledColor(red: 1, green: 1, blue: 1)) { select(block) }
+                            OverlayTextView(block: block, canvasSize: fitted, appearance: appearance, isRTL: document.target.isRightToLeft, textScale: textScale, color: palette[block.id] ?? SampledColor(red: 1, green: 1, blue: 1), restoration: restorations[block.id]) { select(block) }
                         }
                     }
                 }
@@ -314,22 +325,25 @@ private struct OverlayTextView: View {
     let isRTL: Bool
     let textScale: Double
     let color: SampledColor
+    let restoration: ScreenshotRendering.RestoredRegion?
     let onTap: () -> Void
     @State private var revealsOriginal = false
 
     var body: some View {
         let layout = ScreenshotRendering.textLayout(for: block, canvasSize: canvasSize, textScale: textScale,
                                                    text: revealsOriginal ? block.original : block.translation)
-        let drawingRect = layout.textRect.union(layout.sourceRect.insetBy(dx: -layout.coverPadding, dy: -layout.coverPadding))
+        let patchRect = restoration.map { CGRect(x: $0.rect.minX * canvasSize.width, y: $0.rect.minY * canvasSize.height, width: $0.rect.width * canvasSize.width, height: $0.rect.height * canvasSize.height) } ?? layout.sourceRect
+        let drawingRect = layout.textRect.union(patchRect)
         Canvas { context, _ in
             guard layout.canRender, !revealsOriginal else { return }
             let local = ScreenshotRendering.textLayout(for: block, canvasSize: canvasSize, textScale: textScale)
             context.withCGContext { cg in
                 cg.translateBy(x: -drawingRect.minX, y: -drawingRect.minY)
-                if appearance != .minimal {
-                    let fill = appearance == .readable ? UIColor.black : UIColor(red: color.red, green: color.green, blue: color.blue, alpha: 1)
-                    cg.setFillColor(fill.cgColor)
+                if appearance == .readable {
+                    cg.setFillColor(UIColor.black.cgColor)
                     cg.fill(local.sourceRect.insetBy(dx: -local.coverPadding, dy: -local.coverPadding))
+                } else if appearance == .natural {
+                    ScreenshotRendering.drawRestoration(restoration, canvas: canvasSize, in: cg)
                 }
                 ScreenshotRendering.drawText(block.translation, layout: local,
                     color: appearance == .readable || !color.usesDarkText ? .white : .black, isRTL: isRTL, in: cg)

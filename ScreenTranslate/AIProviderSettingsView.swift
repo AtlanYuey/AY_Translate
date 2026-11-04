@@ -63,8 +63,7 @@ private struct ServicePresetPicker: View {
                         AIServiceEditor(service: SavedAIService(preset: preset)) { dismiss() }
                     } label: {
                         HStack(spacing: 14) {
-                            Image(systemName: preset == .other ? "slider.horizontal.3" : "sparkles")
-                                .foregroundStyle(.blue).frame(width: 28)
+                            ProviderIcon(preset: preset).frame(width: 28, height: 28)
                             Text(LocalizedStringKey(preset.name))
                             Spacer()
                             if preset == .deepSeek { Text("Text Only").font(.caption).foregroundStyle(.secondary) }
@@ -84,9 +83,7 @@ struct ServiceRow: View {
     let service: SavedAIService
     var body: some View {
         HStack(spacing: 13) {
-            Image(systemName: service.supportsVision ? "eye.square" : "text.bubble")
-                .font(.title3).foregroundStyle(.blue)
-                .frame(width: 38, height: 38).background(.blue.opacity(0.08), in: RoundedRectangle(cornerRadius: 11))
+            ProviderIcon(preset: service.preset).frame(width: 32, height: 32)
             VStack(alignment: .leading, spacing: 4) {
                 Text(service.name).font(.body.weight(.medium))
                 Text(service.configuration.model).font(.caption).foregroundStyle(.secondary).lineLimit(1)
@@ -301,5 +298,18 @@ struct EngineSelectionView: View {
     private func select(_ id: UUID?) {
         do { try settings.selectService(id, for: profile) }
         catch { self.error = error.localizedDescription }
+    }
+}
+
+struct ProviderIcon: View {
+    let preset: AIProviderPreset
+    var body: some View {
+        Group {
+            if preset == .other {
+                Image(systemName: "slider.horizontal.3").resizable().scaledToFit().foregroundStyle(.blue).padding(5)
+            } else {
+                Image("provider-" + preset.rawValue).resizable().scaledToFit().padding(3)
+            }
+        }.background(.white, in: RoundedRectangle(cornerRadius: 8)).accessibilityHidden(true)
     }
 }

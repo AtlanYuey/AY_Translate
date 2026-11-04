@@ -40,6 +40,25 @@ final class InterfaceAndServiceTests: XCTestCase {
         ProcessingServices(vision: { _, _ in regions }, aiOCR: { _, _, _, _ in XCTFail("Unexpected cloud OCR"); throw AIServiceError.transport }, aiTranslation: { _, _, _, _, _, _ in XCTFail("Unexpected cloud translation"); throw AIServiceError.transport })
     }
 
+    func testChangingTranslationServiceReusesLocalRecognitionAndClosingClearsTheCache() async throws {
+        settings.source = .english; settings.target = .english
+        var calls = 0
+        let state = AppState(settings: settings, history: HistoryStore(fileURL: FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)),
+            services: ProcessingServices(vision: { _, _ in calls += 1; return [self.region()] },
+                aiOCR: { _, _, _, _ in throw AIServiceError.transport }, aiTranslation: { _, _, _, _, _, _ in throw AIServiceError.transport }))
+        let original = image()
+        state.process(original)
+        for _ in 0..<100 where state.phase != .ready { try await Task.sleep(for: .milliseconds(10)) }
+        state.retry()
+        for _ in 0..<100 where state.phase != .ready { try await Task.sleep(for: .milliseconds(10)) }
+        XCTAssertEqual(calls, 1)
+        state.closeResult()
+        state.process(original)
+        for _ in 0..<100 where state.phase != .ready { try await Task.sleep(for: .milliseconds(10)) }
+        XCTAssertEqual(calls, 2, "Closing must release the screenshot and its recognition cache")
+        state.closeResult()
+    }
+
     func testOCRFailureStillDisplaysTheOriginalScreenshotInDarkMode() async throws {
         let state = AppState(settings: settings, history: HistoryStore(fileURL: FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)),
             services: ProcessingServices(vision: { _, _ in throw ScreenReadingError.noText }, aiOCR: { _, _, _, _ in throw AIServiceError.transport }, aiTranslation: { _, _, _, _, _, _ in throw AIServiceError.transport }))

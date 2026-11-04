@@ -3,7 +3,7 @@
 <plist version="1.0">
 <dict>
 	<key>CFBundleDisplayName</key>
-	<string>Translate Screen</string>
+	<string>AY Translate</string>
 	<key>ContainingAppBundleIdentifier</key>
 	<string>com.bahaanajjar.ScreenTranslate</string>
 	<key>NSExtension</key>

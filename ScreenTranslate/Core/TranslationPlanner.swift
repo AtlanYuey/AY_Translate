@@ -24,7 +24,7 @@ nonisolated enum TranslationPlanner {
                 let prefix = previous.original.hasSuffix("-") ? String(group.original.dropLast()) : group.original
                 let text = prefix + joiner + block.original
                 let lineHeight = (group.originalLineHeight * CGFloat(lineCount) + block.originalLineHeight) / CGFloat(lineCount + 1)
-                result[result.count - 1] = RecognizedBlock(id: group.id, original: text, translation: text, boundingBox: group.boundingBox.union(block.boundingBox), confidence: min(group.confidence, block.confidence), sourceLineHeight: lineHeight)
+                result[result.count - 1] = RecognizedBlock(id: group.id, original: text, translation: text, boundingBox: group.boundingBox.union(block.boundingBox), confidence: min(group.confidence, block.confidence), sourceLineHeight: lineHeight, sourceGlyphBoxes: (group.sourceGlyphBoxes ?? [group.boundingBox]) + (block.sourceGlyphBoxes ?? [block.boundingBox]))
                 lineCount += 1
             } else {
                 result.append(block)
@@ -56,7 +56,7 @@ nonisolated enum TranslationPlanner {
                 let next = remaining.remove(at: index)
                 let text = group.original + "\n" + next.original
                 let columnWidth = (group.originalColumnWidth * count + next.originalColumnWidth) / (count + 1)
-                group = RecognizedBlock(id: group.id, original: text, translation: text, boundingBox: group.boundingBox.union(next.boundingBox), confidence: min(group.confidence, next.confidence), sourceLineHeight: min(group.originalLineHeight, next.originalLineHeight), flow: .vertical, sourceColumnWidth: columnWidth)
+                group = RecognizedBlock(id: group.id, original: text, translation: text, boundingBox: group.boundingBox.union(next.boundingBox), confidence: min(group.confidence, next.confidence), sourceLineHeight: min(group.originalLineHeight, next.originalLineHeight), flow: .vertical, sourceColumnWidth: columnWidth, sourceGlyphBoxes: (group.sourceGlyphBoxes ?? [group.boundingBox]) + (next.sourceGlyphBoxes ?? [next.boundingBox]))
                 previous = next; count += 1
             }
             result.append(group)

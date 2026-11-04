@@ -130,14 +130,14 @@ struct ShortcutSetupView: View {
                     VStack(spacing: 0) {
                         SetupStep(
                             number: 1,
-                            title: ShortcutInstaller.bundledFile == nil ? "Create “Translate Screen”" : "Add the prepared shortcut",
+                            title: ShortcutInstaller.bundledFile == nil ? "Create “AY Translate”" : "Add the prepared shortcut",
                             detail: ShortcutInstaller.bundledFile == nil ? "In Shortcuts, add the two actions shown above in that order." : "Tap Add Screenshot Shortcut below and confirm the system import. No manual action assembly is needed."
                         )
                         Divider().padding(.leading, 58)
                         SetupStep(
                             number: 2,
                             title: "Choose it for Action Button",
-                            detail: "Open Settings › Action Button › Shortcut, then select “Translate Screen”."
+                            detail: "Open Settings › Action Button › Shortcut, then select “AY Translate”."
                         )
                     }
                     .background(.background, in: RoundedRectangle(cornerRadius: 20, style: .continuous))
@@ -209,14 +209,14 @@ private struct ShortcutRecipeView: View {
             ShortcutActionRow(
                 icon: "character.bubble.fill",
                 color: .blue,
-                title: "Share with Translate Screen",
+                title: "Share with AY Translate",
                 detail: "Screenshot"
             )
         }
         .padding(12)
         .background(Color.black.opacity(0.88), in: RoundedRectangle(cornerRadius: 22, style: .continuous))
         .accessibilityElement(children: .combine)
-        .accessibilityLabel("Shortcut recipe: Take Screenshot, then Share with Translate Screen")
+        .accessibilityLabel("Shortcut recipe: Take Screenshot, then Share with AY Translate")
     }
 }
 

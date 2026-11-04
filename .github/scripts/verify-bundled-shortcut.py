@@ -90,7 +90,7 @@ with tempfile.TemporaryDirectory(prefix="shortcut-verification-") as folder:
     if len(workflows) != 1:
         raise SystemExit("Expected one workflow in the signed archive")
     workflow = plistlib.loads(workflows[0].read_bytes())
-    for field in ["WFWorkflowActions", "WFWorkflowImportQuestions", "WFWorkflowTypes"]:
+    for field in ["WFWorkflowActions", "WFWorkflowImportQuestions", "WFWorkflowTypes", "WFWorkflowIcon"]:
         if workflow.get(field) != source.get(field):
             raise SystemExit(f"Signed Shortcut differs from its reviewed source: {field}")
     actions = workflow["WFWorkflowActions"]

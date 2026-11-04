@@ -4,6 +4,7 @@ import SwiftUI
 import Translation
 import UIKit
 import NaturalLanguage
+import os
 
 @MainActor
 final class AppState: ObservableObject {
@@ -42,6 +43,24 @@ final class AppState: ObservableObject {
     private var cachedAppleLanguages = ""
     private var pendingAppleIDs = Set<UUID>()
     private var appleResolvedSource: Locale.Language?
+    private var visionCache: (image: UIImage, source: AppLanguage, blocks: [RecognizedBlock])?
+    private var startedAt = ContinuousClock.now
+    private var translationStartedAt = ContinuousClock.now
+    @Published private(set) var recognitionSeconds: Double = 0
+    @Published private(set) var translationSeconds: Double = 0
+
+    private func localRecognition(_ image: UIImage, source: AppLanguage) async throws -> [RecognizedBlock] {
+        if let cache = visionCache, cache.image === image, cache.source == source { return cache.blocks }
+        let blocks = try await services.vision(image, source)
+        try Task.checkCancellation()
+        visionCache = (image, source, blocks)
+        return blocks
+    }
+
+    private func seconds(since instant: ContinuousClock.Instant) -> Double {
+        let duration = instant.duration(to: .now).components
+        return Double(duration.seconds) + Double(duration.attoseconds) / 1e18
+    }
 
     init(settings: AppSettings, history: HistoryStore, services: ProcessingServices? = nil) {
         self.settings = settings
@@ -54,6 +73,9 @@ final class AppState: ObservableObject {
         let processID = UUID()
         previewID = processID
         activeProcessID = processID
+        if sourceImage !== image { visionCache = nil }
+        startedAt = .now
+        recognitionSeconds = 0; translationSeconds = 0
         sourceImage = image // Retain for OCR failure/retry; released on Close.
         document = nil
         notice = nil
@@ -106,12 +128,12 @@ final class AppState: ObservableObject {
             do {
                 let result: OCRResult
                 if ocrEngine == .appleVision {
-                    result = OCRResult(blocks: try await services.vision(image, source))
+                    result = OCRResult(blocks: try await localRecognition(image, source: source))
                 } else {
                     // Local anchors validate AI positions. A failed AI request can
                     // fall back locally; the reverse never uploads without consent.
                     var anchors: [RecognizedBlock] = []
-                    do { anchors = try await services.vision(image, source) }
+                    do { anchors = try await localRecognition(image, source: source) }
                     catch { try Task.checkCancellation() }
                     try Task.checkCancellation()
                     do {
@@ -124,6 +146,8 @@ final class AppState: ObservableObject {
                 }
                 guard isActive(processID) else { return }
                 guard !result.blocks.isEmpty else { throw ScreenReadingError.noText }
+                recognitionSeconds = seconds(since: startedAt)
+                translationStartedAt = .now
                 let blocks = TranslationPlanner.paragraphs(result.blocks, preference: preference)
                 notice = result.notice
                 document = TranslationDocument(id: processID, image: image, blocks: blocks, source: source, target: target, createdAt: Date())
@@ -199,7 +223,8 @@ final class AppState: ObservableObject {
         do {
             // prepareTranslation throws when source is nil. Resolve it locally
             // first when possible, then let the system request model downloads.
-            if appleResolvedSource != nil {
+            if let source = appleResolvedSource, let target = current.target.localeLanguage,
+               await LanguageAvailability().status(from: source, to: target) != .installed {
                 phase = .preparing
                 try await session.prepareTranslation()
                 guard isActive(processID) else { session.cancel(); return }
@@ -284,6 +309,7 @@ final class AppState: ObservableObject {
         presentsResult = false
         document = nil
         sourceImage = nil
+        visionCache = nil
         notice = nil
         consentDestinations = []
         pendingConsentIDs = [:]
@@ -296,6 +322,8 @@ final class AppState: ObservableObject {
 
     private func finish(_ id: UUID) {
         guard isActive(id), let document else { return }
+        translationSeconds = seconds(since: translationStartedAt)
+        Logger(subsystem: "AYTranslate", category: "Performance").info("OCR seconds: \(self.recognitionSeconds); translation seconds: \(self.translationSeconds)")
         phase = .ready
         if settings.savesHistory { history.add(document) }
     }

@@ -65,6 +65,10 @@ final class ScreenTranslateUITests: XCTestCase {
         XCTAssertTrue(app.tabBars.buttons["Settings"].waitForExistence(timeout: 20))
         XCTAssertFalse(app.tabBars.buttons["History"].exists)
         app.tabBars.buttons["Settings"].tap()
+        let historySettings = app.buttons["Translation History"]
+        for _ in 0..<5 where !historySettings.isHittable { app.swipeUp() }
+        XCTAssertTrue(historySettings.waitForExistence(timeout: 10))
+        historySettings.tap()
         let toggle = app.switches["settings.history"]
         for _ in 0..<8 where !toggle.isHittable { app.swipeUp() }
         XCTAssertTrue(toggle.isHittable)
@@ -116,7 +120,7 @@ final class ScreenTranslateUITests: XCTestCase {
         // iOS 26 gives title labels the identifier "cellTitleLabel". Match the
         // activity cell's accessibility label, rather than treating its title
         // as an identifier or searching for an unrelated navigation button.
-        let shareCell = app.cells.matching(NSPredicate(format: "label == %@", "Translate Screen")).firstMatch
+        let shareCell = app.cells.matching(NSPredicate(format: "label == %@", "AY Translate")).firstMatch
         // The first system sharing process can display an entirely empty
         // RemoteContainerView while launching on a cold hosted simulator.
         // Swiping that placeholder does not test extension discovery. Require

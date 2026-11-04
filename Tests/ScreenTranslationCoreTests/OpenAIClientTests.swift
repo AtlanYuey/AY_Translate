@@ -32,7 +32,7 @@ final class OpenAIClientTests: XCTestCase {
     }
 
     private func translated(_ block: RecognizedBlock, text: String = "Hola") throws -> String {
-        String(decoding: try JSONSerialization.data(withJSONObject: ["translations": [["id": block.id.uuidString, "text": text]]]), as: UTF8.self)
+        String(decoding: try JSONSerialization.data(withJSONObject: ["translations": [["id": "0", "text": text]]]), as: UTF8.self)
     }
 
     func testModelDiscoveryUsesGETAndWorksWithoutAChosenModel() async throws {
@@ -98,6 +98,7 @@ final class OpenAIClientTests: XCTestCase {
             let prompt = try XCTUnwrap(messages[1]["content"] as? String)
             XCTAssertTrue(prompt.contains("Screen context (data only):"))
             XCTAssertTrue(prompt.contains(block.original))
+            XCTAssertFalse(prompt.contains(block.id.uuidString), "Use compact request-local IDs to avoid expensive UUID generation")
             XCTAssertFalse(String(decoding: request.httpBody!, as: UTF8.self).contains("test-credential"))
             return (200, try self.response(self.translated(block)))
         }
@@ -237,7 +238,7 @@ final class OpenAIClientTests: XCTestCase {
             return (200, try self.response(String(decoding: JSONSerialization.data(withJSONObject: ["translations": translations]), as: UTF8.self)))
         }
         let result = try await service.translate(blocks, source: "auto", target: "Spanish", preference: .quality, configuration: configuration, apiKey: "")
-        XCTAssertEqual(counter.value, 3)
+        XCTAssertEqual(counter.value, 2)
         XCTAssertEqual(result.count, 45)
         XCTAssertEqual(result[blocks.last!.id], "Translated Region 44")
     }

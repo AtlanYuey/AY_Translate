@@ -78,27 +78,42 @@ private struct HomeView: View {
     @EnvironmentObject private var appState: AppState
     @EnvironmentObject private var settings: AppSettings
     @State private var photoItem: PhotosPickerItem?
-    @State private var showsSetup = false
-
     var body: some View {
-        ScrollView {
-            VStack(spacing: 24) {
-                hero
-                languageCard
-                setupCard
-                privacyNote
+        GeometryReader { geometry in
+            ScrollView(.vertical) {
+                VStack(spacing: geometry.size.height < 500 ? 16 : 28) {
+                    Spacer(minLength: 0)
+                    Image(systemName: "viewfinder")
+                        .font(.system(size: geometry.size.height < 500 ? 36 : 64, weight: .light))
+                        .foregroundStyle(.blue.gradient)
+                        .accessibilityHidden(true)
+                    VStack(spacing: 8) {
+                        Text("Choose an image. Read it in your language.")
+                            .font(.title2.weight(.semibold)).multilineTextAlignment(.center)
+                        Text("Screenshots and photos, translated in place.")
+                            .font(.subheadline).foregroundStyle(.secondary).multilineTextAlignment(.center)
+                    }
+                    languageCard
+                    PhotosPicker(selection: $photoItem, matching: .images) {
+                        Label("Choose Image to Translate", systemImage: "photo.badge.magnifyingglass")
+                            .font(.headline).frame(maxWidth: .infinity).padding(.vertical, 10)
+                    }
+                    .buttonStyle(.borderedProminent).buttonBorderShape(.capsule)
+                    .accessibilityIdentifier("home.choose-image")
+                    Label(LocalizedStringKey(settings.ocrEngine == .appleVision && settings.translationEngine == .apple
+                          ? "Free on-device engines · No account · No ads" : "Cloud AI selected · Sharing requires your permission"),
+                          systemImage: "lock.shield")
+                        .font(.caption).foregroundStyle(.secondary).multilineTextAlignment(.center)
+                    Spacer(minLength: 0)
+                }
+                .padding(24).frame(maxWidth: 560)
+                .frame(maxWidth: .infinity, minHeight: geometry.size.height)
             }
-            .frame(maxWidth: 680)
-            .frame(maxWidth: .infinity)
-            .padding(.horizontal, 20)
-            .padding(.bottom, 28)
+            .scrollBounceBehavior(.basedOnSize)
         }
         .background(Color(uiColor: .systemGroupedBackground))
-        .navigationTitle("Translate Screen")
-        .navigationBarTitleDisplayMode(.large)
-        .sheet(isPresented: $showsSetup) {
-            ShortcutSetupView()
-        }
+        .navigationTitle("AY Translate")
+        .navigationBarTitleDisplayMode(.inline)
         .onChange(of: photoItem) { _, newValue in
             guard let newValue else { return }
             Task {
@@ -110,49 +125,6 @@ private struct HomeView: View {
         }
     }
 
-    private var hero: some View {
-        VStack(spacing: 20) {
-            ZStack {
-                Circle()
-                    .fill(Color.blue.opacity(0.12))
-                    .frame(width: 104, height: 104)
-                Image(systemName: "viewfinder")
-                    .font(.system(size: 48, weight: .medium))
-                    .foregroundStyle(.blue)
-                Image(systemName: "character.bubble.fill")
-                    .font(.system(size: 20))
-                    .foregroundStyle(.white, .blue)
-                    .offset(x: 34, y: 34)
-            }
-
-            VStack(spacing: 8) {
-                Text("Translate anything\nyou can see")
-                    .font(.system(.title, design: .rounded, weight: .bold))
-                    .multilineTextAlignment(.center)
-                Text("Turn any screenshot into a translated screen in seconds.")
-                    .font(.subheadline)
-                    .foregroundStyle(.secondary)
-                    .multilineTextAlignment(.center)
-            }
-
-            PhotosPicker(selection: $photoItem, matching: .images) {
-                Label("Translate Screenshot", systemImage: "photo.badge.magnifyingglass")
-                    .font(.headline)
-                    .frame(maxWidth: .infinity)
-                    .padding(.vertical, 16)
-                    .foregroundStyle(.white)
-                    .background(.blue, in: RoundedRectangle(cornerRadius: 16, style: .continuous))
-            }
-            .buttonStyle(.plain)
-
-            PhotosPicker(selection: $photoItem, matching: .images) {
-                Label("Choose from Photos", systemImage: "photo.on.rectangle")
-                    .font(.subheadline.weight(.semibold))
-            }
-        }
-        .padding(.top, 8)
-    }
-
     private var languageCard: some View {
         VStack(spacing: 0) {
             LanguageRow(title: "Source Language", selection: $settings.source, options: AppLanguage.sourceLanguages)
@@ -162,48 +134,6 @@ private struct HomeView: View {
         .background(.background, in: RoundedRectangle(cornerRadius: 20, style: .continuous))
     }
 
-    private var setupCard: some View {
-        VStack(alignment: .leading, spacing: 16) {
-            HStack(spacing: 12) {
-                Image(systemName: "button.programmable")
-                    .font(.title2)
-                    .foregroundStyle(.blue)
-                    .frame(width: 42, height: 42)
-                    .background(Color.blue.opacity(0.12), in: RoundedRectangle(cornerRadius: 12))
-                VStack(alignment: .leading, spacing: 2) {
-                    Text("Action Button Setup").font(.headline)
-                    Text("Translate with one press").font(.subheadline).foregroundStyle(.secondary)
-                }
-            }
-
-            Text("Use the Action Button to capture and translate whatever is on your screen.")
-                .font(.subheadline)
-                .foregroundStyle(.secondary)
-
-            Button {
-                showsSetup = true
-            } label: {
-                Text("Set Up Shortcut")
-                    .font(.subheadline.weight(.semibold))
-                    .frame(maxWidth: .infinity)
-                    .padding(.vertical, 12)
-            }
-            .buttonStyle(.bordered)
-            .buttonBorderShape(.roundedRectangle(radius: 12))
-        }
-        .padding(18)
-        .background(.background, in: RoundedRectangle(cornerRadius: 20, style: .continuous))
-    }
-
-    private var privacyNote: some View {
-        Label(LocalizedStringKey(settings.ocrEngine == .appleVision && settings.translationEngine == .apple
-              ? "Free on-device engines · No account · No ads"
-              : "Cloud AI selected · Sharing requires your permission"),
-              systemImage: settings.ocrEngine == .appleVision && settings.translationEngine == .apple ? "lock.shield.fill" : "cloud")
-            .font(.caption)
-            .foregroundStyle(.secondary)
-            .frame(maxWidth: .infinity)
-    }
 }
 
 private struct LanguageRow: View {

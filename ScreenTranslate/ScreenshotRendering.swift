@@ -148,6 +148,75 @@ enum ScreenshotRendering {
         })
     }
 
+    struct RestoredRegion {
+        let image: CGImage
+        /// Normalized top-left image coordinates, including sampling margin.
+        let rect: CGRect
+    }
+
+    static func restorationsAsync(for document: TranslationDocument) async -> [UUID: RestoredRegion] {
+        guard let image = restorationImage(document.image) else { return [:] }
+        let blocks = document.blocks
+        return await Task.detached(priority: .userInitiated) { restore(image, blocks: blocks) }.value
+    }
+
+    private static func restorationImage(_ image: UIImage) -> CGImage? {
+        let factor = min(image.scale, 2048 / max(1, max(image.size.width, image.size.height)))
+        let size = CGSize(width: image.size.width * factor, height: image.size.height * factor)
+        let format = UIGraphicsImageRendererFormat(); format.scale = 1; format.opaque = true
+        return UIGraphicsImageRenderer(size: size, format: format).image { _ in image.draw(in: CGRect(origin: .zero, size: size)) }.cgImage
+    }
+
+    private nonisolated static func restore(_ image: CGImage, blocks: [RecognizedBlock]) -> [UUID: RestoredRegion] {
+        var result: [UUID: RestoredRegion] = [:]
+        let width = CGFloat(image.width), height = CGFloat(image.height)
+        for block in blocks where block.placement == .overlay {
+            if Task.isCancelled { break }
+            let font = block.flow == .vertical ? block.originalColumnWidth * width : block.originalLineHeight * height
+            let source = CGRect(x: block.boundingBox.minX * width, y: (1 - block.boundingBox.maxY) * height,
+                                width: block.boundingBox.width * width, height: block.boundingBox.height * height)
+            let rect = source.insetBy(dx: -font, dy: -font).integral.intersection(CGRect(x: 0, y: 0, width: width, height: height))
+            guard let crop = image.cropping(to: rect), crop.width * crop.height <= 1_000_000 else { continue }
+            var bytes = [UInt8](repeating: 0, count: crop.width * crop.height * 4)
+            let rendered = bytes.withUnsafeMutableBytes { buffer -> Bool in
+                guard let cg = CGContext(data: buffer.baseAddress, width: crop.width, height: crop.height, bitsPerComponent: 8, bytesPerRow: crop.width * 4,
+                    space: CGColorSpaceCreateDeviceRGB(), bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue) else { return false }
+                // Explicit top-left rows; restoration and glyph boxes share this origin.
+                cg.translateBy(x: 0, y: CGFloat(crop.height)); cg.scaleBy(x: 1, y: -1)
+                cg.draw(crop, in: CGRect(x: 0, y: 0, width: crop.width, height: crop.height))
+                return true
+            }
+            guard rendered else { continue }
+            let glyphs = (block.sourceGlyphBoxes ?? [block.boundingBox]).map {
+                CGRect(x: $0.minX * width - rect.minX, y: (1 - $0.maxY) * height - rect.minY,
+                       width: $0.width * width, height: $0.height * height).insetBy(dx: -1, dy: -1)
+            }
+            let patch = TextInkRestoration.restore(pixels: bytes, width: crop.width, height: crop.height, glyphs: glyphs, glyphSize: font)
+            var transparent = patch.pixels
+            // Overlapping sampling margins must never paint original pixels
+            // over another region's already restored background/translation.
+            for i in stride(from: 0, to: transparent.count, by: 4) where transparent[i..<i+3] == bytes[i..<i+3] {
+                transparent[i] = 0; transparent[i+1] = 0; transparent[i+2] = 0; transparent[i+3] = 0
+            }
+            guard patch.changedPixels > 0, let provider = CGDataProvider(data: Data(transparent) as CFData),
+                  let restored = CGImage(width: crop.width, height: crop.height, bitsPerComponent: 8, bitsPerPixel: 32, bytesPerRow: crop.width * 4,
+                    space: CGColorSpaceCreateDeviceRGB(), bitmapInfo: CGBitmapInfo(rawValue: CGImageAlphaInfo.premultipliedLast.rawValue), provider: provider,
+                    decode: nil, shouldInterpolate: true, intent: .defaultIntent) else { continue }
+            result[block.id] = RestoredRegion(image: restored, rect: CGRect(x: rect.minX / width, y: rect.minY / height, width: rect.width / width, height: rect.height / height))
+        }
+        return result
+    }
+
+    static func drawRestoration(_ restored: RestoredRegion?, canvas: CGSize, in context: CGContext) {
+        guard let restored else { return }
+        let r = restored.rect
+        let rect = CGRect(x: r.minX * canvas.width, y: r.minY * canvas.height, width: r.width * canvas.width, height: r.height * canvas.height)
+        context.saveGState()
+        context.translateBy(x: rect.minX, y: rect.maxY); context.scaleBy(x: 1, y: -1)
+        context.draw(restored.image, in: CGRect(origin: .zero, size: rect.size))
+        context.restoreGState()
+    }
+
     /// Render an already processed document without repeating OCR or translation.
     static func translatedImage(_ document: TranslationDocument, palette: [UUID: SampledColor], textScale: Double) -> UIImage {
         let width: CGFloat = 390
@@ -155,14 +224,14 @@ enum ScreenshotRendering {
         let format = UIGraphicsImageRendererFormat()
         format.scale = min(3, 2560 / max(size.width, size.height))
         format.opaque = true
+        let restorations = restorationImage(document.image).map { restore($0, blocks: document.blocks) } ?? [:]
         return UIGraphicsImageRenderer(size: size, format: format).image { renderer in
             document.image.draw(in: CGRect(origin: .zero, size: size))
             for block in document.blocks where block.placement == .overlay && block.translation != block.original {
                 let layout = textLayout(for: block, canvasSize: size, textScale: textScale)
                 guard layout.canRender else { continue } // Keep the original intact rather than paint a fragment/ellipsis.
                 let color = palette[block.id] ?? SampledColor(red: 1, green: 1, blue: 1)
-                UIColor(red: color.red, green: color.green, blue: color.blue, alpha: 1).setFill()
-                renderer.fill(layout.sourceRect.insetBy(dx: -layout.coverPadding, dy: -layout.coverPadding))
+                drawRestoration(restorations[block.id], canvas: size, in: renderer.cgContext)
                 drawText(block.translation, layout: layout, color: color.usesDarkText ? .black : .white,
                          isRTL: document.target.isRightToLeft, in: renderer.cgContext)
             }
@@ -177,9 +246,11 @@ enum ScreenshotRendering {
         context.clip(to: layout.textRect)
         UIGraphicsPushContext(context)
         let font = UIFont.systemFont(ofSize: layout.fontSize, weight: .medium)
+        let outline: UIColor = color == .white ? .black : .white
+        let ink: [NSAttributedString.Key: Any] = [.font: font, .foregroundColor: color, .strokeColor: outline, .strokeWidth: -3]
         if let vertical = layout.vertical {
             for glyph in vertical.glyphs {
-                let attributes: [NSAttributedString.Key: Any] = [.font: font, .foregroundColor: color]
+                let attributes = ink
                 let size = (glyph.text as NSString).size(withAttributes: attributes)
                 (glyph.text as NSString).draw(at: CGPoint(x: layout.textRect.minX + glyph.center.x - size.width / 2,
                     y: layout.textRect.minY + glyph.center.y - size.height / 2), withAttributes: attributes)
@@ -189,7 +260,7 @@ enum ScreenshotRendering {
             paragraph.alignment = isRTL ? .right : .left
             paragraph.lineBreakMode = .byWordWrapping
             (text as NSString).draw(with: layout.textRect, options: [.usesLineFragmentOrigin, .usesFontLeading],
-                attributes: [.font: font, .foregroundColor: color, .paragraphStyle: paragraph], context: nil)
+                attributes: ink.merging([.paragraphStyle: paragraph]) { _, new in new }, context: nil)
         }
         UIGraphicsPopContext()
         context.restoreGState()

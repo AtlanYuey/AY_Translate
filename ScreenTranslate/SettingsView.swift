@@ -6,10 +6,7 @@ struct SettingsView: View {
     @EnvironmentObject private var settings: AppSettings
     @EnvironmentObject private var history: HistoryStore
     @State private var showsShortcutSetup = false
-    @State private var showsPrivacy = false
     @State private var showsAbout = false
-    @State private var permissionsCleared = false
-    @State private var transferMessage: String?
 
     var body: some View {
         Form {
@@ -46,46 +43,16 @@ struct SettingsView: View {
             }
             Section {
                 NavigationLink { AIServicesView() } label: {
-                    LabeledContent("AI Services", value: String(settings.serviceCatalog.services.count))
+                    Label("AI Services", systemImage: "sparkles")
                 }
-                if SharedAppContainer.url == nil {
-                    Text("Settings also sync through the shared Keychain. If your signing tool removes both sharing permissions, copy configuration from the main app and paste it here.")
-                        .font(.footnote).foregroundStyle(.secondary)
+                NavigationLink { ConfigurationSyncView() } label: {
+                    Label("Configuration Sync", systemImage: "icloud")
                 }
-                Button { settings.refreshSharedPreferences() } label: { Label("Refresh Shared Settings", systemImage: "arrow.clockwise") }
-                #if !SCREEN_TRANSLATE_SHARE_EXTENSION
-                Button {
-                    do {
-                        let token = try settings.configurationTransfer()
-                        UIPasteboard.general.setItems([[UTType.utf8PlainText.identifier: token]], options: [.localOnly: true, .expirationDate: Date().addingTimeInterval(60)])
-                        transferMessage = "Configuration copied for 60 seconds. It includes API keys, stays on this device, and can be pasted in the translation sheet’s settings."
-                    } catch { transferMessage = error.localizedDescription }
-                } label: { Label("Copy Configuration & API Keys", systemImage: "doc.on.clipboard") }
-                #endif
-                HStack {
-                    Text("Import Configuration")
-                    Spacer()
-                    PasteButton(payloadType: String.self) { tokens in
-                        do {
-                            guard let token = tokens.first else { return }
-                            try settings.importConfiguration(token)
-                            transferMessage = "Configuration imported. Your saved AI services are now available here."
-                        } catch { transferMessage = error.localizedDescription }
-                    }
-                }
-                if let message = settings.synchronizationError { Text(settings.text(message)).font(.footnote).foregroundStyle(.orange) }
-            } footer: { Text("Save multiple named providers and switch instantly. Each API key stays in its own Keychain entry.") }
-            Section("Display") {
-                Picker("Default Result View", selection: $settings.defaultResultMode) {
-                    ForEach(ResultDisplayMode.allCases) { Text(LocalizedStringKey($0.name)).tag($0) }
-                }
-                Picker("Overlay Appearance", selection: $settings.appearance) {
-                    ForEach(TranslationAppearance.allCases) { Text(LocalizedStringKey($0.name)).tag($0) }
-                }
-                LabeledContent("Text Size", value: settings.overlayTextScale.formatted(.percent.precision(.fractionLength(0))))
-                Slider(value: $settings.overlayTextScale, in: 0.8...1.8, step: 0.1).accessibilityLabel("Translation text size")
-                Text("Tap the original icon to compare. Touch and hold it for copy, full text, engines and settings.")
-                    .font(.footnote).foregroundStyle(.secondary)
+            }
+            Section {
+                NavigationLink { DisplaySettingsView() } label: { Label("Display", systemImage: "textformat.size") }
+                NavigationLink { HistorySettingsView() } label: { Label("Translation History", systemImage: "clock.arrow.circlepath") }
+                NavigationLink { PrivacySettingsView() } label: { Label("Privacy", systemImage: "hand.raised") }
             }
             #if !SCREEN_TRANSLATE_SHARE_EXTENSION
             Section("Quick Actions") {
@@ -94,32 +61,16 @@ struct SettingsView: View {
                     .font(.footnote).foregroundStyle(.secondary)
             }
             #endif
-            Section {
-                Toggle("Save Translation History", isOn: $settings.savesHistory)
-                    .accessibilityIdentifier("settings.history")
-                    .onChange(of: settings.savesHistory) { _, enabled in if !enabled { history.clear() } }
-                if !history.items.isEmpty { Button("Clear Saved History", role: .destructive) { history.clear() } }
-                Button("Revoke Cloud Sharing Permission") { settings.revokeCloudConsent(); permissionsCleared = true }
-                Button { showsPrivacy = true } label: { Label("Privacy Details", systemImage: "hand.raised") }
-            } header: { Text("Privacy") } footer: {
-                Text("History is off by default. Turning it off deletes saved history. No account or ads. AI providers may charge fees; their API keys are stored only in this device’s Keychain.")
-            }
             Section("Information") {
-                Button { showsAbout = true } label: { Label("About Translate Screen", systemImage: "info.circle") }
+                Button { showsAbout = true } label: { Label("About AY Translate", systemImage: "info.circle") }
             }
         }
         .navigationTitle("Settings")
         #if !SCREEN_TRANSLATE_SHARE_EXTENSION
         .sheet(isPresented: $showsShortcutSetup) { ShortcutSetupView() }
         #endif
-        .sheet(isPresented: $showsPrivacy) { PrivacyView() }
         .sheet(isPresented: $showsAbout) { AboutView() }
-        .alert("Cloud permission revoked", isPresented: $permissionsCleared) { Button("OK", role: .cancel) {} } message: {
-            Text("The next AI operation will ask before sending data. Requests already in progress are not recalled.")
-        }
-        .alert("Configuration Sync", isPresented: Binding(get: { transferMessage != nil }, set: { if !$0 { transferMessage = nil } })) {
-            Button("OK", role: .cancel) { transferMessage = nil }
-        } message: { Text(settings.text(transferMessage ?? "")) }
+
     }
 
     private func engineName(_ profile: AIProfile) -> String {
@@ -190,7 +141,7 @@ private struct AboutView: View {
                         .font(.system(size: 50, weight: .medium))
                         .foregroundStyle(.white)
                 }
-                Text("Translate Screen").font(.title2.bold())
+                Text("AY Translate").font(.title2.bold())
                 Text("See it. Press. Understand.")
                     .foregroundStyle(.secondary)
                 Text("Version \(Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "1.2")")
@@ -207,5 +158,108 @@ private struct AboutView: View {
                 }
             }
         }
+    }
+}
+
+private struct DisplaySettingsView: View {
+    @EnvironmentObject private var settings: AppSettings
+    var body: some View {
+        Form {
+            Section("Display") {
+                Picker("Default Result View", selection: $settings.defaultResultMode) {
+                    ForEach(ResultDisplayMode.allCases) { Text(LocalizedStringKey($0.name)).tag($0) }
+                }
+                Picker("Overlay Appearance", selection: $settings.appearance) {
+                    ForEach(TranslationAppearance.allCases) { Text(LocalizedStringKey($0.name)).tag($0) }
+                }
+                LabeledContent("Text Size", value: settings.overlayTextScale.formatted(.percent.precision(.fractionLength(0))))
+                Slider(value: $settings.overlayTextScale, in: 0.8...1.8, step: 0.1).accessibilityLabel("Translation text size")
+                Text("Tap the original icon to compare. Touch and hold it for copy, full text, engines and settings.")
+                    .font(.footnote).foregroundStyle(.secondary)
+            }
+
+        }.navigationTitle("Display").navigationBarTitleDisplayMode(.inline)
+    }
+}
+
+private struct HistorySettingsView: View {
+    @EnvironmentObject private var settings: AppSettings
+    @EnvironmentObject private var history: HistoryStore
+    var body: some View {
+        Form {
+            Section {
+                Toggle("Save Translation History", isOn: $settings.savesHistory)
+                    .accessibilityIdentifier("settings.history")
+                    .onChange(of: settings.savesHistory) { _, enabled in if !enabled { history.clear() } }
+                if !history.items.isEmpty { Button("Clear Saved History", role: .destructive) { history.clear() } }
+            } footer: { Text("History is off by default. Turning it off deletes saved history. Screenshots and history are never included in iCloud settings sync.") }
+        }.navigationTitle("Translation History").navigationBarTitleDisplayMode(.inline)
+    }
+}
+
+private struct PrivacySettingsView: View {
+    @EnvironmentObject private var settings: AppSettings
+    @State private var showsDetails = false
+    @State private var revoked = false
+    var body: some View {
+        Form {
+            Section {
+                Button("Revoke Cloud Sharing Permission") { settings.revokeCloudConsent(); revoked = true }
+                Button("Privacy Details") { showsDetails = true }
+            } footer: { Text("Screenshots stay on your device unless you select an AI engine and approve sharing. No account or ads.") }
+        }.navigationTitle("Privacy").navigationBarTitleDisplayMode(.inline)
+        .sheet(isPresented: $showsDetails) { PrivacyView() }
+        .alert("Cloud permission revoked", isPresented: $revoked) { Button("OK", role: .cancel) {} } message: {
+            Text("The next AI operation will ask before sending data. Requests already in progress are not recalled.")
+        }
+    }
+}
+
+private struct ConfigurationSyncView: View {
+    @EnvironmentObject private var settings: AppSettings
+    @State private var transferMessage: String?
+    var body: some View {
+        Form {
+            #if !SCREEN_TRANSLATE_SHARE_EXTENSION
+            Section("iCloud") {
+                Toggle("Sync Settings with iCloud", isOn: $settings.iCloudSyncEnabled)
+                Text("Sync languages, display preferences and AI service details across your devices. API keys, screenshots, history and cloud permissions stay on this device.")
+                    .font(.footnote).foregroundStyle(.secondary)
+                if let message = settings.iCloudSyncMessage { Text(settings.text(message)).font(.footnote).foregroundStyle(.secondary) }
+            }
+            #endif
+            Section("On This Device") {
+                if SharedAppContainer.url == nil {
+                    Text("Settings also sync through the shared Keychain. If your signing tool removes both sharing permissions, copy configuration from the main app and paste it here.")
+                        .font(.footnote).foregroundStyle(.secondary)
+                }
+                Button { settings.refreshSharedPreferences() } label: { Label("Refresh Shared Settings", systemImage: "arrow.clockwise") }
+                #if !SCREEN_TRANSLATE_SHARE_EXTENSION
+                Button {
+                    do {
+                        let token = try settings.configurationTransfer()
+                        UIPasteboard.general.setItems([[UTType.utf8PlainText.identifier: token]], options: [.localOnly: true, .expirationDate: Date().addingTimeInterval(60)])
+                        transferMessage = "Configuration copied for 60 seconds. It includes API keys, stays on this device, and can be pasted in the translation sheet’s settings."
+                    } catch { transferMessage = error.localizedDescription }
+                } label: { Label("Copy Configuration & API Keys", systemImage: "doc.on.clipboard") }
+                #endif
+                HStack {
+                    Text("Import Configuration")
+                    Spacer()
+                    PasteButton(payloadType: String.self) { tokens in
+                        do {
+                            guard let token = tokens.first else { return }
+                            try settings.importConfiguration(token)
+                            transferMessage = "Configuration imported. Your saved AI services are now available here."
+                        } catch { transferMessage = error.localizedDescription }
+                    }
+                }
+                if let message = settings.synchronizationError { Text(settings.text(message)).font(.footnote).foregroundStyle(.orange) }
+
+            }
+        }.navigationTitle("Configuration Sync").navigationBarTitleDisplayMode(.inline)
+        .alert("Configuration Sync", isPresented: Binding(get: { transferMessage != nil }, set: { if !$0 { transferMessage = nil } })) {
+            Button("OK", role: .cancel) { transferMessage = nil }
+        } message: { Text(settings.text(transferMessage ?? "")) }
     }
 }

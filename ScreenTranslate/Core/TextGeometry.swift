@@ -20,6 +20,8 @@ nonisolated struct RecognizedBlock: Identifiable, Hashable, Sendable {
     var flow: TextFlow = .horizontal
     /// One vertical column's glyph width, normalized to image width.
     var sourceColumnWidth: CGFloat? = nil
+    /// Local glyph guidance only; actual ink is segmented before restoration.
+    var sourceGlyphBoxes: [CGRect]? = nil
 
     var originalColumnWidth: CGFloat {
         sourceColumnWidth ?? boundingBox.width / CGFloat(max(1, original.split(separator: "\n").count))
@@ -84,7 +86,7 @@ nonisolated enum OCRAlignment {
             if let index, !used.contains(anchors[index].id), similarity(text, anchors[index].original) >= 0.65 {
                 used.insert(anchors[index].id)
                 let anchor = anchors[index]
-                blocks[index] = RecognizedBlock(id: anchor.id, original: text, translation: text, boundingBox: anchor.boundingBox, confidence: anchor.confidence, sourceLineHeight: anchor.originalLineHeight, flow: anchor.flow, sourceColumnWidth: anchor.sourceColumnWidth)
+                blocks[index] = RecognizedBlock(id: anchor.id, original: text, translation: text, boundingBox: anchor.boundingBox, confidence: anchor.confidence, sourceLineHeight: anchor.originalLineHeight, flow: anchor.flow, sourceColumnWidth: anchor.sourceColumnWidth, sourceGlyphBoxes: anchor.sourceGlyphBoxes)
             } else {
                 unmatched.append(RecognizedBlock(id: UUID(), original: text, translation: text, boundingBox: .zero, confidence: 0, placement: .textOnly))
             }

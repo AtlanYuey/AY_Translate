@@ -188,7 +188,7 @@ jobs:
         run: |
           set -euo pipefail
           xcodebuild build-for-testing -project "$PROJECT" -scheme "$SCHEME" \
-            -configuration Debug -destination "$TEST_DESTINATION" \
+            -configuration Debug -destination "$TEST_DESTINATION" -destination-timeout 180 \
             -parallel-testing-enabled NO -jobs 3 \
             -derivedDataPath "$RUNNER_TEMP/DerivedData" \
             -resultBundlePath "$RUNNER_TEMP/TestBuild.xcresult" \
@@ -214,7 +214,7 @@ jobs:
         run: |
           set -euo pipefail
           xcodebuild test-without-building -project "$PROJECT" -scheme "$SCHEME" \
-            -configuration Debug -destination "$TEST_DESTINATION" \
+            -configuration Debug -destination "$TEST_DESTINATION" -destination-timeout 180 \
             -parallel-testing-enabled NO -jobs 3 \
             -derivedDataPath "$RUNNER_TEMP/DerivedData" \
             -resultBundlePath "$RUNNER_TEMP/HostedResults.xcresult" \
@@ -233,7 +233,7 @@ jobs:
         run: |
           set -euo pipefail
           xcodebuild test-without-building -project "$PROJECT" -scheme "$SCHEME" \
-            -configuration Debug -destination "$TEST_DESTINATION" \
+            -configuration Debug -destination "$TEST_DESTINATION" -destination-timeout 180 \
             -parallel-testing-enabled NO -jobs 3 \
             -derivedDataPath "$RUNNER_TEMP/DerivedData" \
             -resultBundlePath "$RUNNER_TEMP/TestResults.xcresult" \
@@ -438,5 +438,5 @@ jobs:
           if gh release view "$RELEASE_TAG" > /dev/null 2>&1; then
             gh release upload "$RELEASE_TAG" "$IPA_NAME" "$IPA_NAME.sha256" --clobber
           else
-            gh release create "$RELEASE_TAG" "$IPA_NAME" "$IPA_NAME.sha256" --verify-tag --generate-notes --title "Translate Screen $RELEASE_TAG"
+            gh release create "$RELEASE_TAG" "$IPA_NAME" "$IPA_NAME.sha256" --verify-tag --generate-notes --title "AY Translate $RELEASE_TAG"
           fi

@@ -6,7 +6,7 @@ import UIKit
 final class ShortcutInstaller: NSObject, UIDocumentInteractionControllerDelegate {
     private static let shared = ShortcutInstaller()
     private var controller: UIDocumentInteractionController?
-    static let name = "Translate Screen"
+    static let name = "AY Translate"
     static var bundledFile: URL? {
         Bundle.main.url(forResource: "TranslateScreen", withExtension: "shortcut")
             ?? Bundle.main.url(forResource: "TranslateScreen", withExtension: "shortcut", subdirectory: "Resources")
@@ -22,7 +22,7 @@ final class ShortcutInstaller: NSObject, UIDocumentInteractionControllerDelegate
         guard let source = bundledFile,
               let header = try? Data(contentsOf: source).prefix(4), header == Data("AEA1".utf8) else { return nil }
         // Both import routes must use the same visible filename. Otherwise
-        // Shortcuts may create “TranslateScreen” while Run looks for “Translate Screen”.
+        // Shortcuts may create “TranslateScreen” while Run looks for “AY Translate”.
         let destination = FileManager.default.temporaryDirectory.appendingPathComponent(name + ".shortcut")
         do {
             if FileManager.default.fileExists(atPath: destination.path) { try FileManager.default.removeItem(at: destination) }

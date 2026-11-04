@@ -1,12 +1,30 @@
 #if canImport(Vision) && canImport(CoreGraphics)
 import Foundation
 import CoreGraphics
+import os
 @preconcurrency import Vision
 
 /// The same local recognizer runs in the app, Share extension and native macOS
 /// regression tests. Callers normalize image orientation before this boundary.
 nonisolated enum VisionTextRecognizer {
     static func recognize(_ cgImage: CGImage, language: String?) async throws -> [RecognizedBlock] {
+        // The document recognizer understands native vertical writing. Avoid a
+        // full-image pass, four tiles and a separate request for every column.
+        if #available(iOS 26.0, macOS 26.0, *) {
+            do {
+                let start = ContinuousClock.now
+                let blocks = try await readDocument(cgImage, language: language)
+                Logger(subsystem: "AYTranslate", category: "Performance").info("Native OCR seconds: \(String(describing: start.duration(to: .now)), privacy: .public); regions: \(blocks.count)")
+                if !blocks.isEmpty { return blocks }
+            } catch {
+                try Task.checkCancellation()
+                // Older hardware/runtime failures retain the tested local route.
+            }
+        }
+        return try await recognizeLegacy(cgImage, language: language)
+    }
+
+    static func recognizeLegacy(_ cgImage: CGImage, language: String?) async throws -> [RecognizedBlock] {
         let size = CGSize(width: cgImage.width, height: cgImage.height)
         let task = Task.detached(priority: .userInitiated) {
             var blocks = try read(cgImage, language: language)
@@ -62,13 +80,49 @@ nonisolated enum VisionTextRecognizer {
                     // of the same column exists; never erase unknown text.
                     blocks.removeAll { conflicts.fragmentedRows.contains($0.id) || (overlap($0.boundingBox, box) > 0.7 && $0.boundingBox.width < box.width * 1.5) }
                     blocks.append(RecognizedBlock(id: UUID(), original: text, translation: text, boundingBox: box,
-                        confidence: recognized.map(\.confidence).min() ?? 0, sourceLineHeight: height, flow: .vertical, sourceColumnWidth: width))
+                        confidence: recognized.map(\.confidence).min() ?? 0, sourceLineHeight: height, flow: .vertical, sourceColumnWidth: width, sourceGlyphBoxes: column))
                 }
             }
             guard !blocks.isEmpty else { throw ScreenReadingError.noText }
             return blocks
         }
         return try await withTaskCancellationHandler(operation: { try await task.value }, onCancel: { task.cancel() })
+    }
+
+    @available(iOS 26.0, macOS 26.0, *)
+    static func readDocument(_ image: CGImage, language: String?) async throws -> [RecognizedBlock] {
+        var request = RecognizeDocumentsRequest()
+        request.textRecognitionOptions.minimumTextHeightFraction = 0.0025
+        request.textRecognitionOptions.useLanguageCorrection = true
+        request.textRecognitionOptions.automaticallyDetectLanguage = language == nil
+        if let language {
+            request.textRecognitionOptions.recognitionLanguages = [Locale.Language(identifier: language)]
+        }
+        let observations = try await request.perform(on: image)
+        try Task.checkCancellation()
+        return observations.flatMap { observation in
+            observation.document.text.lines.compactMap { line -> RecognizedBlock? in
+                guard let candidate = line.topCandidates(1).first,
+                      !candidate.string.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else { return nil }
+                let box = line.boundingRegion.boundingBox.cgRect
+                let vertical = line.textDirection == .topToBottom
+                // These are guidance boxes. Background restoration still segments
+                // the actual ink within them instead of erasing the rectangles.
+                let glyphs = candidate.string.indices.prefix(256).compactMap { index -> CGRect? in
+                    guard !candidate.string[index].isWhitespace else { return nil }
+                    let end = candidate.string.index(after: index)
+                    return candidate.boundingBox(for: index..<end)?.boundingBox.cgRect
+                }
+                let widths = glyphs.map(\.width).filter { $0 > 0 }.sorted()
+                let heights = glyphs.map(\.height).filter { $0 > 0 }.sorted()
+                let width = widths.isEmpty ? box.width : widths[widths.count / 2]
+                let height = heights.isEmpty ? box.height : heights[heights.count / 2]
+                return RecognizedBlock(id: UUID(), original: candidate.string, translation: candidate.string,
+                    boundingBox: box, confidence: candidate.confidence, sourceLineHeight: vertical ? height : box.height,
+                    flow: vertical ? .vertical : .horizontal, sourceColumnWidth: vertical ? width : nil,
+                    sourceGlyphBoxes: glyphs.isEmpty ? nil : glyphs)
+            }
+        }
     }
 
     private nonisolated static func read(_ image: CGImage, language: String?, region: CGRect = CGRect(x: 0, y: 0, width: 1, height: 1), originalSize: CGSize? = nil) throws -> [RecognizedBlock] {

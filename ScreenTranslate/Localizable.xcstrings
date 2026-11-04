@@ -1,83 +1,6 @@
 {
   "sourceLanguage": "en",
   "strings": {
-    "Translate Screen": {
-      "extractionState": "manual",
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Translate Screen"
-          }
-        },
-        "zh-Hans": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "屏幕翻译"
-          }
-        },
-        "zh-Hant": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "螢幕翻譯"
-          }
-        },
-        "ja": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "画面翻訳"
-          }
-        },
-        "fr": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Traduction d’écran"
-          }
-        },
-        "es": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Traduce Pantalla"
-          }
-        },
-        "ko": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "화면 번역"
-          }
-        },
-        "pt": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Tradução de tela"
-          }
-        },
-        "it": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Traduci schermo"
-          }
-        },
-        "de": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Bildschirmübersetzer"
-          }
-        },
-        "ar": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "ترجمة الشاشة"
-          }
-        },
-        "ru": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Перевод экрана"
-          }
-        }
-      }
-    },
     "Translate": {
       "extractionState": "manual",
       "localizations": {
@@ -921,160 +844,6 @@
           "stringUnit": {
             "state": "translated",
             "value": "Переводите снимки экрана за считанные секунды."
-          }
-        }
-      }
-    },
-    "Translate Screenshot": {
-      "extractionState": "manual",
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Translate Screenshot"
-          }
-        },
-        "zh-Hans": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "翻译截图"
-          }
-        },
-        "zh-Hant": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "翻譯截圖"
-          }
-        },
-        "ja": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "スクリーンショットを翻訳"
-          }
-        },
-        "fr": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Traduire une capture"
-          }
-        },
-        "es": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Traducir captura"
-          }
-        },
-        "ko": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "스크린샷 번역"
-          }
-        },
-        "pt": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Traduzir captura"
-          }
-        },
-        "it": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Traduci screenshot"
-          }
-        },
-        "de": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Screenshot übersetzen"
-          }
-        },
-        "ar": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "ترجمة لقطة الشاشة"
-          }
-        },
-        "ru": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Перевести снимок"
-          }
-        }
-      }
-    },
-    "Translate Screenshot in App": {
-      "extractionState": "manual",
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Translate Screenshot in App"
-          }
-        },
-        "zh-Hans": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "在 App 中翻译截图"
-          }
-        },
-        "zh-Hant": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "在 App 中翻譯截圖"
-          }
-        },
-        "ja": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "アプリでスクリーンショットを翻訳"
-          }
-        },
-        "fr": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Traduire dans l’app"
-          }
-        },
-        "es": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Traducir captura en la app"
-          }
-        },
-        "ko": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "앱에서 스크린샷 번역"
-          }
-        },
-        "pt": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Traduzir no app"
-          }
-        },
-        "it": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Traduci nell’app"
-          }
-        },
-        "de": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "In der App übersetzen"
-          }
-        },
-        "ar": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "الترجمة في التطبيق"
-          }
-        },
-        "ru": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Перевести в приложении"
           }
         }
       }
@@ -9241,83 +9010,6 @@
         }
       }
     },
-    "About Translate Screen": {
-      "extractionState": "manual",
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "About Translate Screen"
-          }
-        },
-        "zh-Hans": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "关于屏幕翻译"
-          }
-        },
-        "zh-Hant": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "關於螢幕翻譯"
-          }
-        },
-        "ja": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "画面翻訳について"
-          }
-        },
-        "fr": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "À propos de Traduction d’écran"
-          }
-        },
-        "es": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Acerca de Traduce Pantalla"
-          }
-        },
-        "ko": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "화면 번역 정보"
-          }
-        },
-        "pt": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Sobre Tradução de tela"
-          }
-        },
-        "it": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Informazioni su Traduci schermo"
-          }
-        },
-        "de": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Über Bildschirmübersetzer"
-          }
-        },
-        "ar": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "حول ترجمة الشاشة"
-          }
-        },
-        "ru": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "О переводчике экрана"
-          }
-        }
-      }
-    },
     "About": {
       "extractionState": "manual",
       "localizations": {
@@ -14323,83 +14015,6 @@
         }
       }
     },
-    "Create “Translate Screen”": {
-      "extractionState": "manual",
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Create “Translate Screen”"
-          }
-        },
-        "zh-Hans": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "创建“Translate Screen”快捷指令"
-          }
-        },
-        "zh-Hant": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "建立“Translate Screen”快捷指令"
-          }
-        },
-        "ja": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "「Translate Screen」を作成"
-          }
-        },
-        "fr": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Créer « Translate Screen »"
-          }
-        },
-        "es": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Crear «Translate Screen»"
-          }
-        },
-        "ko": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "“Translate Screen” 만들기"
-          }
-        },
-        "pt": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Criar «Translate Screen»"
-          }
-        },
-        "it": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Crea “Translate Screen”"
-          }
-        },
-        "de": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "„Translate Screen“ erstellen"
-          }
-        },
-        "ar": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "إنشاء «Translate Screen»"
-          }
-        },
-        "ru": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Создать «Translate Screen»"
-          }
-        }
-      }
-    },
     "In Shortcuts, add the two actions shown above in that order.": {
       "extractionState": "manual",
       "localizations": {
@@ -14554,83 +14169,6 @@
         }
       }
     },
-    "Open Settings › Action Button › Shortcut, then select “Translate Screen”.": {
-      "extractionState": "manual",
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Open Settings › Action Button › Shortcut, then select “Translate Screen”."
-          }
-        },
-        "zh-Hans": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "打开“设置 › 操作按钮 › 快捷指令”，选择“Translate Screen”。"
-          }
-        },
-        "zh-Hant": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "開啟“設定 › 操作按鈕 › 快捷指令”，選擇“Translate Screen”。"
-          }
-        },
-        "ja": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "「設定」›「アクションボタン」›「ショートカット」で「Translate Screen」を選択します。"
-          }
-        },
-        "fr": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Dans Réglages › Bouton Action › Raccourci, sélectionnez « Translate Screen »."
-          }
-        },
-        "es": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Abre Ajustes › Botón de acción › Atajo y selecciona «Translate Screen»."
-          }
-        },
-        "ko": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "설정 › 동작 버튼 › 단축어에서 “Translate Screen”을 선택하세요."
-          }
-        },
-        "pt": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Abre Definições › Botão Ação › Atalho e escolhe «Translate Screen»."
-          }
-        },
-        "it": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Apri Impostazioni › Tasto Azione › Comando rapido e scegli “Translate Screen”."
-          }
-        },
-        "de": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Öffne Einstellungen › Aktionstaste › Kurzbefehl und wähle „Translate Screen“."
-          }
-        },
-        "ar": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "افتح الإعدادات › زر الإجراءات › الاختصار، ثم اختر «Translate Screen»."
-          }
-        },
-        "ru": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Откройте «Настройки» › «Кнопка действия» › «Быстрая команда» и выберите «Translate Screen»."
-          }
-        }
-      }
-    },
     "Create Screenshot Shortcut": {
       "extractionState": "manual",
       "localizations": {
@@ -14704,83 +14242,6 @@
           "stringUnit": {
             "state": "translated",
             "value": "Создание Screenshot Shortcut"
-          }
-        }
-      }
-    },
-    "No photo picker or separate Open action is needed. Use Translate Screenshot in App instead if you prefer the full editor.": {
-      "extractionState": "manual",
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "No photo picker or separate Open action is needed. Use Translate Screenshot in App instead if you prefer the full editor."
-          }
-        },
-        "zh-Hans": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "无需照片选择器或额外的打开操作。若更喜欢完整编辑界面，可将第二步改为“在 App 中翻译截图”。"
-          }
-        },
-        "zh-Hant": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "無需照片選擇器或額外的開啟操作。若更喜歡完整編輯介面，可將第二步改為“在 App 中翻譯截圖”。"
-          }
-        },
-        "ja": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "写真ピッカーやOpenアクションを別々にする必要はありません。 フルエディタを好む場合は、代わりにAppでスクリーンショットを翻訳します。"
-          }
-        },
-        "fr": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Pas de sélection de photo ou d'action ouverte séparée est nécessaire. Utilisez Traduire Capture d'écran dans l'application à la place si vous préférez l'éditeur complet."
-          }
-        },
-        "es": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "No hay fotocopiadora o acción abierta independiente es necesario. Use Translate Captura de Pantalla en la aplicación en lugar de si usted prefiere el editor completo."
-          }
-        },
-        "ko": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "사진 선택기 또는 별도의 오픈 액션이 필요합니다. 풀 편집기를 선호하는 경우 대신 앱에서 스크린 샷을 번역하십시오."
-          }
-        },
-        "pt": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Nenhum selecionador de fotos ou ação aberta separada é necessária. Use Traduzir Captura de tela na App, em vez disso, se você preferir o editor completo."
-          }
-        },
-        "it": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Non è necessario alcun raccoglitore di foto o un'azione aperta separata. Utilizzare Tradurre Screenshot in App invece se si preferisce l'editor completo."
-          }
-        },
-        "de": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Es ist kein Foto-Picker oder eine separate Open-Aktion erforderlich.Verwenden Sie stattdessen Translate Screenshot in App, wenn Sie den vollständigen Editor bevorzugen."
-          }
-        },
-        "ar": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "لا يوجد ملتقط للصور أو عمل مفتوح منفصل، استعملي \"ترابل سترينشوت\" في \"آب\" بدلاً من ذلك إذا كنت تفضلين المحرّر الكامل."
-          }
-        },
-        "ru": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Нет необходимости в сборщике фотографий или отдельном открытом действии.Вместо этого используйте Translate Screenshot в приложении, если вы предпочитаете полный редактор."
           }
         }
       }
@@ -14935,83 +14396,6 @@
           "stringUnit": {
             "state": "translated",
             "value": "Снимок текущего экрана"
-          }
-        }
-      }
-    },
-    "Shortcut recipe: Take Screenshot, then Translate Screenshot": {
-      "extractionState": "manual",
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Shortcut recipe: Take Screenshot, then Translate Screenshot"
-          }
-        },
-        "zh-Hans": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "快捷指令：先截屏，再翻译截图"
-          }
-        },
-        "zh-Hant": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "快捷指令：先截圖，再翻譯截圖"
-          }
-        },
-        "ja": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "ショートカットのレシピ:スクリーンショットを取り、スクリーンショットを翻訳する"
-          }
-        },
-        "fr": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Raccourci recette: Prendre Capture d'écran, puis Traduire Capture d'écran"
-          }
-        },
-        "es": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Shortcut receta: Take Captura de Pantalla, then Translate Captura de Pantalla"
-          }
-        },
-        "ko": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Shortcut 조리법: 스크린 샷을 가져 가라, 다음 스크린 샷을 번역"
-          }
-        },
-        "pt": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Receita de atalho: Tirar Imagem, em seguida, Traduzir Imagem"
-          }
-        },
-        "it": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Ricetta di scorciatoia: Prendere Screenshot, quindi Tradurre Screenshot"
-          }
-        },
-        "de": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Shortcut-Rezept: Nehmen Sie Screenshot, dann übersetzen Sie Screenshot"
-          }
-        },
-        "ar": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "وصفة قصيرة، خذ (سكرينشوت)، ثمّ تَحَوّلُ Screenshot"
-          }
-        },
-        "ru": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Рецепт ярлыка: сделайте снимок экрана, затем переведите снимок экрана"
           }
         }
       }
@@ -18007,158 +17391,6 @@
         }
       }
     },
-    "Share with Translate Screen": {
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Share with Translate Screen"
-          }
-        },
-        "zh-Hans": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "与屏幕翻译共享"
-          }
-        },
-        "zh-Hant": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "與螢幕翻譯共享"
-          }
-        },
-        "ja": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "画面翻訳と共有"
-          }
-        },
-        "fr": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Partager avec Traduction d’écran"
-          }
-        },
-        "es": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Compartir con Traduce Pantalla"
-          }
-        },
-        "ko": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "화면 번역에 공유"
-          }
-        },
-        "pt": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Compartilhar com Tradução de tela"
-          }
-        },
-        "it": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Condividi con Traduci schermo"
-          }
-        },
-        "de": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Mit Bildschirmübersetzer teilen"
-          }
-        },
-        "ar": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "مشاركة مع ترجمة الشاشة"
-          }
-        },
-        "ru": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Поделиться с Переводом экрана"
-          }
-        }
-      }
-    },
-    "Shortcut recipe: Take Screenshot, then Share with Translate Screen": {
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Shortcut recipe: Take Screenshot, then Share with Translate Screen"
-          }
-        },
-        "zh-Hans": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "快捷指令：截屏，然后与屏幕翻译共享"
-          }
-        },
-        "zh-Hant": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "快捷指令：截圖，然後與螢幕翻譯共享"
-          }
-        },
-        "ja": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "ショートカットのレシピ:スクリーンショットを撮って、翻訳画面で共有します"
-          }
-        },
-        "fr": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Raccourci recette: Prendre la capture d'écran, puis Partager avec l'écran Traduire"
-          }
-        },
-        "es": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Receta de acceso directo: Take Captura de Pantalla, entonces Compartir con Traducir Pantalla"
-          }
-        },
-        "ko": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Shortcut 요리법: 스크린 샷을 가져 가라, 다음 스크린 샷을 번역으로 공유"
-          }
-        },
-        "pt": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Receita de atalho: Tirar Imagem e, em seguida, Compartilhar com Traduzir Tela"
-          }
-        },
-        "it": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Ricetta di scorciatoia: Prendere Screenshot, quindi Condividi con Traduttore Schermo"
-          }
-        },
-        "de": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Shortcut-Rezept: Nehmen Sie Screenshot, dann teilen Sie mit Translate Screen"
-          }
-        },
-        "ar": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "وصفة قصيرة: خذ سكرينشوت، ثم شارك في ترانسليت سكرين"
-          }
-        },
-        "ru": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Рецепт ярлыка: сделайте снимок экрана, а затем поделитесь с помощью экрана перевода"
-          }
-        }
-      }
-    },
     "The screenshot shortcut opens the full-screen translator above your current app. Close or swipe up to continue where you were.": {
       "localizations": {
         "en": {
@@ -19671,6 +18903,1406 @@
           "stringUnit": {
             "state": "translated",
             "value": "截圖捷徑會在目前 App 上方展示譯圖。關閉或從靠近底部的位置上滑，即可返回先前的介面。"
+          }
+        }
+      }
+    },
+    "AY Translate": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "AY Translate"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "AY Translate"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "AY Translate"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "AY Translate"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "AY Translate"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "AY Translate"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "AY Translate"
+          }
+        },
+        "pt": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "AY Translate"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "AY Translate"
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "AY Translate"
+          }
+        },
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "AY Translate"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "AY Translate"
+          }
+        }
+      }
+    },
+    "AY Translateshot": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "AY Translateshot"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "翻译截图"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "翻譯截圖"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "スクリーンショットを翻訳"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Traduire une capture"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Traducir captura"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "스크린샷 번역"
+          }
+        },
+        "pt": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Traduzir captura"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Traduci screenshot"
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Screenshot übersetzen"
+          }
+        },
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ترجمة لقطة الشاشة"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Перевести снимок"
+          }
+        }
+      }
+    },
+    "AY Translateshot in App": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "AY Translateshot in App"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "在 App 中翻译截图"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "在 App 中翻譯截圖"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "アプリでスクリーンショットを翻訳"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Traduire dans l’app"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Traducir captura en la app"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "앱에서 스크린샷 번역"
+          }
+        },
+        "pt": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Traduzir no app"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Traduci nell’app"
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "In der App übersetzen"
+          }
+        },
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "الترجمة في التطبيق"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Перевести в приложении"
+          }
+        }
+      }
+    },
+    "About AY Translate": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "About AY Translate"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "关于AY Translate"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "關於AY Translate"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "AY Translateについて"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "À propos de AY Translate"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Acerca de AY Translate"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "AY Translate 정보"
+          }
+        },
+        "pt": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Sobre AY Translate"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Informazioni su AY Translate"
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Über AY Translate"
+          }
+        },
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "حول AY Translate"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "О переводчике экрана"
+          }
+        }
+      }
+    },
+    "Create “AY Translate”": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Create “AY Translate”"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "创建“AY Translate”快捷指令"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "建立“AY Translate”快捷指令"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "「AY Translate」を作成"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Créer « AY Translate »"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Crear «AY Translate»"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "“AY Translate” 만들기"
+          }
+        },
+        "pt": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Criar «AY Translate»"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Crea “AY Translate”"
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "„AY Translate“ erstellen"
+          }
+        },
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "إنشاء «AY Translate»"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Создать «AY Translate»"
+          }
+        }
+      }
+    },
+    "Open Settings › Action Button › Shortcut, then select “AY Translate”.": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Open Settings › Action Button › Shortcut, then select “AY Translate”."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "打开“设置 › 操作按钮 › 快捷指令”，选择“AY Translate”。"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "開啟“設定 › 操作按鈕 › 快捷指令”，選擇“AY Translate”。"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "「設定」›「アクションボタン」›「ショートカット」で「AY Translate」を選択します。"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Dans Réglages › Bouton Action › Raccourci, sélectionnez « AY Translate »."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Abre Ajustes › Botón de acción › Atajo y selecciona «AY Translate»."
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "설정 › 동작 버튼 › 단축어에서 “AY Translate”을 선택하세요."
+          }
+        },
+        "pt": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Abre Definições › Botão Ação › Atalho e escolhe «AY Translate»."
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Apri Impostazioni › Tasto Azione › Comando rapido e scegli “AY Translate”."
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Öffne Einstellungen › Aktionstaste › Kurzbefehl und wähle „AY Translate“."
+          }
+        },
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "افتح الإعدادات › زر الإجراءات › الاختصار، ثم اختر «AY Translate»."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Откройте «Настройки» › «Кнопка действия» › «Быстрая команда» и выберите «AY Translate»."
+          }
+        }
+      }
+    },
+    "No photo picker or separate Open action is needed. Use AY Translateshot in App instead if you prefer the full editor.": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "No photo picker or separate Open action is needed. Use AY Translateshot in App instead if you prefer the full editor."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "无需照片选择器或额外的打开操作。若更喜欢完整编辑界面，可将第二步改为“在 App 中翻译截图”。"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "無需照片選擇器或額外的開啟操作。若更喜歡完整編輯介面，可將第二步改為“在 App 中翻譯截圖”。"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "写真ピッカーやOpenアクションを別々にする必要はありません。 フルエディタを好む場合は、代わりにAppでスクリーンショットを翻訳します。"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Pas de sélection de photo ou d'action ouverte séparée est nécessaire. Utilisez Traduire Capture d'écran dans l'application à la place si vous préférez l'éditeur complet."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "No hay fotocopiadora o acción abierta independiente es necesario. Use Translate Captura de Pantalla en la aplicación en lugar de si usted prefiere el editor completo."
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "사진 선택기 또는 별도의 오픈 액션이 필요합니다. 풀 편집기를 선호하는 경우 대신 앱에서 스크린 샷을 번역하십시오."
+          }
+        },
+        "pt": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Nenhum selecionador de fotos ou ação aberta separada é necessária. Use Traduzir Captura de tela na App, em vez disso, se você preferir o editor completo."
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Non è necessario alcun raccoglitore di foto o un'azione aperta separata. Utilizzare Tradurre Screenshot in App invece se si preferisce l'editor completo."
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Es ist kein Foto-Picker oder eine separate Open-Aktion erforderlich.Verwenden Sie stattdessen AY Translateshot in App, wenn Sie den vollständigen Editor bevorzugen."
+          }
+        },
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "لا يوجد ملتقط للصور أو عمل مفتوح منفصل، استعملي \"ترابل سترينشوت\" في \"آب\" بدلاً من ذلك إذا كنت تفضلين المحرّر الكامل."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Нет необходимости в сборщике фотографий или отдельном открытом действии.Вместо этого используйте AY Translateshot в приложении, если вы предпочитаете полный редактор."
+          }
+        }
+      }
+    },
+    "Shortcut recipe: Take Screenshot, then AY Translateshot": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Shortcut recipe: Take Screenshot, then AY Translateshot"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "快捷指令：先截屏，再翻译截图"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "快捷指令：先截圖，再翻譯截圖"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ショートカットのレシピ:スクリーンショットを取り、スクリーンショットを翻訳する"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Raccourci recette: Prendre Capture d'écran, puis Traduire Capture d'écran"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Shortcut receta: Take Captura de Pantalla, then Translate Captura de Pantalla"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Shortcut 조리법: 스크린 샷을 가져 가라, 다음 스크린 샷을 번역"
+          }
+        },
+        "pt": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Receita de atalho: Tirar Imagem, em seguida, Traduzir Imagem"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ricetta di scorciatoia: Prendere Screenshot, quindi Tradurre Screenshot"
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Shortcut-Rezept: Nehmen Sie Screenshot, dann übersetzen Sie Screenshot"
+          }
+        },
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "وصفة قصيرة، خذ (سكرينشوت)، ثمّ تَحَوّلُ Screenshot"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Рецепт ярлыка: сделайте снимок экрана, затем переведите снимок экрана"
+          }
+        }
+      }
+    },
+    "Share with AY Translate": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Share with AY Translate"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "与AY Translate共享"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "與AY Translate共享"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "AY Translateと共有"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Partager avec AY Translate"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Compartir con AY Translate"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "AY Translate에 공유"
+          }
+        },
+        "pt": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Compartilhar com AY Translate"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Condividi con AY Translate"
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Mit AY Translate teilen"
+          }
+        },
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "مشاركة مع AY Translate"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Поделиться с Переводом экрана"
+          }
+        }
+      }
+    },
+    "Shortcut recipe: Take Screenshot, then Share with AY Translate": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Shortcut recipe: Take Screenshot, then Share with AY Translate"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "快捷指令：截屏，然后与AY Translate共享"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "快捷指令：截圖，然後與AY Translate共享"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ショートカットのレシピ:スクリーンショットを撮って、翻訳画面で共有します"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Raccourci recette: Prendre la capture d'écran, puis Partager avec l'écran Traduire"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Receta de acceso directo: Take Captura de Pantalla, entonces Compartir con Traducir Pantalla"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Shortcut 요리법: 스크린 샷을 가져 가라, 다음 스크린 샷을 번역으로 공유"
+          }
+        },
+        "pt": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Receita de atalho: Tirar Imagem e, em seguida, Compartilhar com Traduzir Tela"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ricetta di scorciatoia: Prendere Screenshot, quindi Condividi con Traduttore Schermo"
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Shortcut-Rezept: Nehmen Sie Screenshot, dann teilen Sie mit AY Translate"
+          }
+        },
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "وصفة قصيرة: خذ سكرينشوت، ثم شارك في ترانسليت سكرين"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Рецепт ярлыка: сделайте снимок экрана, а затем поделитесь с помощью экрана перевода"
+          }
+        }
+      }
+    },
+    "Choose an image. Read it in your language.": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Choose an image. Read it in your language."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "选一张图，用你的语言阅读"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Elige una imagen. Léela en tu idioma."
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "画像を選んで、自分の言語で読もう"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "이미지를 선택하고 내 언어로 읽으세요"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "選一張圖，用你的語言閱讀"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Choisissez une image. Lisez-la dans votre langue."
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Bild auswählen. In deiner Sprache lesen."
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Scegli un’immagine. Leggila nella tua lingua."
+          }
+        },
+        "pt": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Escolha uma imagem. Leia no seu idioma."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Выберите изображение. Читайте на своём языке."
+          }
+        },
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "اختر صورة واقرأها بلغتك"
+          }
+        }
+      }
+    },
+    "Screenshots and photos, translated in place.": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Screenshots and photos, translated in place."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "截图与照片，原位呈现译文"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Capturas y fotos traducidas en su lugar."
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "スクリーンショットや写真をその場で翻訳"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "스크린샷과 사진의 원래 위치에 번역합니다"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "截圖與照片，原位呈現譯文"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Captures et photos traduites sur place."
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Screenshots und Fotos direkt übersetzen."
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Screenshot e foto tradotti sul posto."
+          }
+        },
+        "pt": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Capturas e fotos traduzidas no local."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Перевод снимков экрана и фотографий на месте."
+          }
+        },
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ترجمة لقطات الشاشة والصور في مكانها"
+          }
+        }
+      }
+    },
+    "Choose Image to Translate": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Choose Image to Translate"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "选择图片翻译"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Elegir imagen para traducir"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "画像を選んで翻訳"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "번역할 이미지 선택"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "選擇圖片翻譯"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Choisir une image à traduire"
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Bild zum Übersetzen wählen"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Scegli un’immagine da tradurre"
+          }
+        },
+        "pt": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Escolher imagem para traduzir"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Выбрать изображение для перевода"
+          }
+        },
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "اختيار صورة للترجمة"
+          }
+        }
+      }
+    },
+    "Translation History": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Translation History"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "翻译历史"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Historial de traducción"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "翻訳履歴"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "번역 기록"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "翻譯歷史"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Historique des traductions"
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Übersetzungsverlauf"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Cronologia delle traduzioni"
+          }
+        },
+        "pt": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Histórico de traduções"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "История переводов"
+          }
+        },
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "سجل الترجمة"
+          }
+        }
+      }
+    },
+    "iCloud": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "iCloud"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "iCloud"
+          }
+        }
+      }
+    },
+    "Sync Settings with iCloud": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Sync Settings with iCloud"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "通过 iCloud 同步设置"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Sincronizar ajustes con iCloud"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "iCloudで設定を同期"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "iCloud로 설정 동기화"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "透過 iCloud 同步設定"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Synchroniser les réglages avec iCloud"
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Einstellungen mit iCloud synchronisieren"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Sincronizza impostazioni con iCloud"
+          }
+        },
+        "pt": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Sincronizar ajustes com iCloud"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Синхронизировать настройки через iCloud"
+          }
+        },
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "مزامنة الإعدادات عبر iCloud"
+          }
+        }
+      }
+    },
+    "On This Device": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "On This Device"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "本机配置共享"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "En este dispositivo"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "このデバイス内"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "이 기기"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "本機設定共享"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Sur cet appareil"
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Auf diesem Gerät"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Su questo dispositivo"
+          }
+        },
+        "pt": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Neste dispositivo"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "На этом устройстве"
+          }
+        },
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "على هذا الجهاز"
+          }
+        }
+      }
+    },
+    "History is off by default. Turning it off deletes saved history. Screenshots and history are never included in iCloud settings sync.": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "History is off by default. Turning it off deletes saved history. Screenshots and history are never included in iCloud settings sync."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "历史默认关闭。关闭后会删除已保存的历史。截图和历史不会参与 iCloud 设置同步。"
+          }
+        }
+      }
+    },
+    "Screenshots stay on your device unless you select an AI engine and approve sharing. No account or ads.": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Screenshots stay on your device unless you select an AI engine and approve sharing. No account or ads."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "除非选择 AI 引擎并许可发送，截图始终留在本机。无需账号，无广告。"
+          }
+        }
+      }
+    },
+    "Sync languages, display preferences and AI service details across your devices. API keys, screenshots, history and cloud permissions stay on this device.": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Sync languages, display preferences and AI service details across your devices. API keys, screenshots, history and cloud permissions stay on this device."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "在你的设备间同步语言、显示偏好和 AI 服务配置。API Key、截图、历史和云端授权保留在本机。"
+          }
+        }
+      }
+    },
+    "iCloud settings sync requested. Other devices update when the app opens.": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "iCloud settings sync requested. Other devices update when the app opens."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "已请求 iCloud 设置同步，其他设备打开应用后更新。"
+          }
+        }
+      }
+    },
+    "iCloud sync is unavailable. Check your iCloud account and signing profile.": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "iCloud sync is unavailable. Check your iCloud account and signing profile."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "iCloud 同步暂不可用，请检查 iCloud 账号和签名是否支持此权限。"
+          }
+        }
+      }
+    },
+    "iCloud account changed. Enable sync again to choose this account.": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "iCloud account changed. Enable sync again to choose this account."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "iCloud 账号已改变，请重新开启同步以使用此账号。"
+          }
+        }
+      }
+    },
+    "iCloud storage quota exceeded. Local settings are still available.": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "iCloud storage quota exceeded. Local settings are still available."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "iCloud 存储配额不足，本机设置仍可正常使用。"
+          }
+        }
+      }
+    },
+    "Processing Time": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Processing Time"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "处理耗时"
+          }
+        }
+      }
+    },
+    "OCR %.2f s · Translation %.2f s": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "OCR %.2f s · Translation %.2f s"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "识别 %.2f 秒 · 翻译 %.2f 秒"
           }
         }
       }

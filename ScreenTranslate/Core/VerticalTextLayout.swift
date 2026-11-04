@@ -34,16 +34,23 @@ nonisolated struct VerticalTextLayout: Sendable {
         while capacity(base) < chars.count && base > preferred * 0.75 { base = max(preferred * 0.75, base * 0.97) }
         let finalSize = base * max(0.1, scale)
         fontSize = finalSize
-        let rows = max(1, Int(size.height / (finalSize * 1.05)))
+        let maximumRows = max(1, Int(size.height / (finalSize * 1.05)))
+        // Keep the source area's column rhythm, distributing shorter Chinese
+        // evenly instead of leaving a tall empty tail or a lone final character.
+        let sourceColumns = max(1, Int((size.width + preferred * 0.08) / (preferred * 1.08)))
+        let balancedColumns = min(sourceColumns, max(1, Int(ceil(Double(chars.count) / 3))))
+        let rows = min(maximumRows, max(1, Int(ceil(Double(chars.count) / Double(balancedColumns)))))
         let columns = max(1, Int(ceil(Double(chars.count) / Double(rows))))
         fits = capacity(finalSize) >= chars.count && !chars.isEmpty
         let gridWidth = CGFloat(columns) * finalSize * 1.08
         let startX = (size.width + gridWidth) / 2 - finalSize * 0.54
+        let usedRows = min(rows, chars.count)
+        let startY = max(0, (size.height - CGFloat(usedRows) * finalSize * 1.05) / 2)
         let punctuation: [Character: String] = ["。": "︒", "、": "︑", "，": "︐", "！": "！", "？": "？", "…": "︙", "（": "︵", "）": "︶", "「": "﹁", "」": "﹂", "『": "﹃", "』": "﹄", "ー": "丨", "—": "丨"]
         glyphs = chars.enumerated().map { index, character in
             VerticalGlyph(text: punctuation[character] ?? String(character), center: CGPoint(
                 x: startX - CGFloat(index / rows) * finalSize * 1.08,
-                y: finalSize * 0.525 + CGFloat(index % rows) * finalSize * 1.05))
+                y: startY + finalSize * 0.525 + CGFloat(index % rows) * finalSize * 1.05))
         }
     }
 }
