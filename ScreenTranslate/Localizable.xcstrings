@@ -20661,6 +20661,22 @@
           }
         }
       }
+    },
+    "Use only one of max_tokens and max_completion_tokens.": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Use only one of max_tokens and max_completion_tokens."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "max_tokens 与 max_completion_tokens 请只设置其中一个。"
+          }
+        }
+      }
     }
   },
   "version": "1.0"

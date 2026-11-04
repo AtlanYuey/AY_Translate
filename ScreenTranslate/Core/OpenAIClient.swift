@@ -169,6 +169,11 @@ nonisolated struct OpenAIClient: Sendable {
         ], max_tokens: maxTokens))
         var body = try JSONSerialization.jsonObject(with: encoded) as! [String: Any]
         let parameters = try configuration.requestOptions?.parameters() ?? [:]
+        let modelID = configuration.model.lowercased().split(separator: "/").last.map(String.init) ?? ""
+        let modernOpenAI = modelID.hasPrefix("gpt-5") || ["o1", "o3", "o4"].contains { modelID == $0 || modelID.hasPrefix($0 + "-") }
+        if modernOpenAI && parameters["max_tokens"] == nil && parameters["max_completion_tokens"] == nil {
+            body["max_completion_tokens"] = body.removeValue(forKey: "max_tokens")
+        }
         // Modern reasoning models use max_completion_tokens; never send both.
         if parameters["max_completion_tokens"] != nil { body.removeValue(forKey: "max_tokens") }
         body.merge(parameters) { _, custom in custom }

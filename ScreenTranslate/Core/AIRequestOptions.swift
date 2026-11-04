@@ -17,6 +17,7 @@ nonisolated struct AIRequestOptions: Codable, Equatable, Sendable {
             guard object.keys.allSatisfy({ !reserved.contains($0.lowercased()) }) else { throw AIParameterError.reservedField }
             result.merge(object) { _, custom in custom }
         }
+        guard result["max_tokens"] == nil || result["max_completion_tokens"] == nil else { throw AIParameterError.conflictingTokenLimits }
         return result
     }
 }
@@ -52,11 +53,12 @@ nonisolated enum AIParameterPreset: String, CaseIterable, Codable, Identifiable,
 }
 
 nonisolated enum AIParameterError: LocalizedError {
-    case invalidJSON, reservedField
+    case invalidJSON, reservedField, conflictingTokenLimits
     var errorDescription: String? {
         switch self {
         case .invalidJSON: "Enter a JSON object of at most 16 KB."
         case .reservedField: "Model, messages, stream, tools, credentials and response count are managed by the app."
+        case .conflictingTokenLimits: "Use only one of max_tokens and max_completion_tokens."
         }
     }
 }

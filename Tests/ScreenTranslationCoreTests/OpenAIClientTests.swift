@@ -35,6 +35,21 @@ final class OpenAIClientTests: XCTestCase {
         String(decoding: try JSONSerialization.data(withJSONObject: ["translations": [["id": "0", "text": text]]]), as: UTF8.self)
     }
 
+    func testReasoningModelsUseTheirSupportedTokenBudgetField() async throws {
+        for model in ["gpt-5.1", "o3-mini", "openai/o4-mini"] {
+            let region = block()
+            let service = client { request in
+                let body = try XCTUnwrap(JSONSerialization.jsonObject(with: XCTUnwrap(request.httpBody)) as? [String: Any])
+                XCTAssertNil(body["max_tokens"])
+                XCTAssertEqual(body["max_completion_tokens"] as? Int, 4096)
+                return (200, try self.response(self.translated(region)))
+            }
+            _ = try await service.translate([region], source: "English", target: "Spanish", preference: .speed,
+                configuration: AIServiceConfiguration(baseURL: configuration.baseURL, model: model), apiKey: "")
+        }
+        XCTAssertThrowsError(try AIRequestOptions(bodyJSON: #"{"max_tokens":100,"max_completion_tokens":200}"#).parameters())
+    }
+
     func testConfiguredBodyOptionsReachOCRAndTranslationRequests() async throws {
         var config = configuration
         config.requestOptions = AIRequestOptions(preset: .deepSeekFast, bodyJSON: #"{"temperature":0.2,"max_completion_tokens":2048}"#)
