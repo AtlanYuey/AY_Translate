@@ -12,12 +12,16 @@ on:
         type: choice
         default: macos-26-intel
         options: [macos-26-intel, macos-26]
+      inspect_run_id:
+        description: "Optional: export diagnostics from an existing validation artifact instead of rebuilding"
+        type: string
+        required: false
 
 permissions:
   contents: read
 
 concurrency:
-  group: ipa-${{ github.event.pull_request.number || github.ref }}
+  group: ipa-${{ github.event.pull_request.number || github.ref }}-${{ inputs.inspect_run_id || 'build' }}
   cancel-in-progress: true
 
 env:
@@ -27,7 +31,48 @@ env:
   DEVELOPER_DIR: /Applications/Xcode_26.6.app/Contents/Developer
 
 jobs:
+  inspect:
+    if: inputs.inspect_run_id != ''
+    name: Inspect existing iOS test diagnostics
+    runs-on: ${{ inputs.runner || 'macos-26-intel' }}
+    timeout-minutes: 10
+    permissions:
+      contents: read
+      actions: read
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          github-token: ${{ github.token }}
+          run-id: ${{ inputs.inspect_run_id }}
+          pattern: validation-${{ inputs.inspect_run_id }}-*
+          merge-multiple: true
+          path: ${{ runner.temp }}/previous-validation
+      - name: Export diagnostics and test summary
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 - <<'PYTHON'
+          import os, subprocess
+          from pathlib import Path
+          root = Path(os.environ['RUNNER_TEMP'])
+          bundle = next((root / 'previous-validation').rglob('TestResults.xcresult'))
+          subprocess.run(['xcrun', 'xcresulttool', 'export', 'diagnostics', '--path', str(bundle), '--output-path', str(root / 'exported-diagnostics')], check=True)
+          for kind in ['summary', 'tests']:
+              output = subprocess.check_output(['xcrun', 'xcresulttool', 'get', 'test-results', kind, '--path', str(bundle)])
+              (root / ('inspection-' + kind + '.json')).write_bytes(output)
+          PYTHON
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: inspection-${{ inputs.inspect_run_id }}-${{ github.run_id }}
+          path: |
+            ${{ runner.temp }}/exported-diagnostics
+            ${{ runner.temp }}/inspection-*.json
+          if-no-files-found: error
+          retention-days: 7
+
   build:
+    if: inputs.inspect_run_id == ''
     name: Test and build unsigned IPA
     runs-on: ${{ inputs.runner || 'macos-26-intel' }}
     timeout-minutes: 45
