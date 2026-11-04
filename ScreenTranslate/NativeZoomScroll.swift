@@ -28,7 +28,7 @@ final class ZoomScrollController<Content: View>: UIViewController, UIScrollViewD
     var onDismiss: () -> Void = {}
     private var fitted = CGSize.zero
     private var resetID: UUID?
-    private var lastZoom: CGFloat = 1
+    private var reportedZoomed = false
     private var swipeStart = CGPoint.zero
     private var edgeSwipe: UIPanGestureRecognizer!
 
@@ -87,8 +87,11 @@ final class ZoomScrollController<Content: View>: UIViewController, UIScrollViewD
     func scrollViewDidZoom(_ scrollView: UIScrollView) {
         centerContent()
         let zoom = scrollView.zoomScale
-        if abs(zoom - lastZoom) > 0.01 {
-            lastZoom = zoom
+        // The parent only needs to know whether dismissal is safe. Publishing
+        // every pinch frame would rebuild all SwiftUI text canvases mid-gesture.
+        let zoomed = zoom > 1.01
+        if zoomed != reportedZoomed {
+            reportedZoomed = zoomed
             Task { @MainActor [weak self] in self?.onZoom(zoom) }
         }
     }
