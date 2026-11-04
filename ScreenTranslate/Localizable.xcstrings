@@ -3798,55 +3798,55 @@
         "ja": {
           "stringUnit": {
             "state": "translated",
-            "value": "Apple Visionは、正確な認識、言語の補正、自動検出を使用します。AI OCRは、スクリーンショットを権限でのみ送信します。 不確実な位置は、完全なテキストに表示されます。"
+            "value": "Apple Visionは端末内で高精度に文字を認識します。AIへの画像送信には許可が必要です。位置を確認できない文字は全文表示に回します。"
           }
         },
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Apple Vision utilise la reconnaissance précise, la correction de langue et la détection automatique. AI OCR envoie une capture d'écran seulement avec la permission; des positions incertaines apparaissent dans le texte intégral."
+            "value": "Apple Vision reconnaît le texte sur l’appareil. L’IA n’envoie l’image qu’avec votre accord ; le texte sans position vérifiée reste en lecture intégrale."
           }
         },
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "Apple Vision utiliza reconocimiento preciso, corrección de idiomas y detección automática. AI OCR envía una captura de pantalla sólo con permiso; posiciones inciertas aparecen en texto completo."
+            "value": "Apple Vision reconoce texto con precisión en el dispositivo. La IA envía la imagen solo con permiso; el texto sin posición verificada se muestra en Texto completo."
           }
         },
         "ko": {
           "stringUnit": {
             "state": "translated",
-            "value": "Apple Vision은 정확한 인식, 언어 보정 및 자동 감지를 사용합니다. AI OCR은 사용 권한을 가진 스크린 샷을 보냅니다. uncertain 위치는 전체 텍스트에 나타납니다."
+            "value": "Apple Vision은 기기에서 텍스트를 정확하게 인식합니다. AI로 이미지를 보내려면 동의가 필요하며, 위치가 확인되지 않은 텍스트는 전체 보기로 표시합니다."
           }
         },
         "pt": {
           "stringUnit": {
             "state": "translated",
-            "value": "A Apple Vision usa reconhecimento preciso, correção de linguagem e detecção automática. O AI OCR envia uma captura de tela apenas com permissão; posições incertas aparecem em Texto Completo."
+            "value": "O Apple Vision reconhece texto no dispositivo. A IA só envia a imagem com permissão; texto sem posição confirmada aparece na leitura completa."
           }
         },
         "it": {
           "stringUnit": {
             "state": "translated",
-            "value": "Apple Vision utilizza il riconoscimento accurato, la correzione della lingua e il rilevamento automatico. AI OCR invia uno screenshot solo con il permesso; posizioni incerte appaiono in Testo completo."
+            "value": "Apple Vision riconosce il testo sul dispositivo. L’IA invia l’immagine solo con consenso; il testo senza posizione verificata resta nel testo completo."
           }
         },
         "de": {
           "stringUnit": {
             "state": "translated",
-            "value": "Apple Vision verwendet eine genaue Erkennung, Sprachkorrektur und automatische Erkennung. AI OCR sendet einen Screenshot nur mit Erlaubnis; unsichere Positionen erscheinen im Volltext."
+            "value": "Apple Vision erkennt Text lokal. KI-OCR sendet das Bild nur mit Zustimmung. Text ohne bestätigte Position erscheint im Volltext."
           }
         },
         "ar": {
           "stringUnit": {
             "state": "translated",
-            "value": "وتستخدم الرؤية التطبيقية اعترافاً دقيقاً، وتصحيحاً لغوياً، وكشفاً آلياً."
+            "value": "يتعرف Apple Vision على النص على الجهاز. لا تُرسل الصورة للذكاء الاصطناعي إلا بإذنك، ويُعرض النص غير المحدد الموقع في النص الكامل."
           }
         },
         "ru": {
           "stringUnit": {
             "state": "translated",
-            "value": "Apple Vision использует точное распознавание, коррекцию языка и автоматическое обнаружение. AI OCR отправляет скриншот только с разрешения; неопределенные позиции появляются в Full Text."
+            "value": "Apple Vision распознаёт текст на устройстве. ИИ отправляет изображение только с согласия; текст без проверенного положения доступен в полном виде."
           }
         }
       }
@@ -3875,55 +3875,55 @@
         "ja": {
           "stringUnit": {
             "state": "translated",
-            "value": "Appleの翻訳は無料で、ダウンロードされたオンデバイスモデルを使用します。 速度は低いレイテンシを支持します。 品質は長い段落を一緒に保ち、AIにより多くの出力スペースおよびスクリーンのコンテキストを与えます。"
+            "value": "Apple翻訳はダウンロード済みのモデルを使う無料の端末内翻訳です。速度優先は待ち時間を減らし、品質優先は長い文脈を保ちます。"
           }
         },
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Apple Translation est gratuit et utilise des modèles téléchargés sur l'appareil. La vitesse favorise une faible latence; Qualité maintient des paragraphes plus longs ensemble et donne à l'IA plus d'espace de sortie et de contexte d'écran."
+            "value": "Apple traduit gratuitement avec des modèles locaux téléchargés. Vitesse réduit l’attente ; Qualité utilise davantage de contexte."
           }
         },
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "Apple Translation es gratis y utiliza los modelos descargados en el dispositivo. La velocidad favorece la baja latencia; la calidad mantiene párrafos más largos juntos y da a AI más espacio de salida y contexto de pantalla."
+            "value": "Apple traduce gratis con modelos locales descargados. Velocidad reduce la espera; Calidad utiliza más contexto."
           }
         },
         "ko": {
           "stringUnit": {
             "state": "translated",
-            "value": "Apple Translation는 무료이며 On-device 모델을 다운로드했습니다. 속도는 낮은 대기 시간; 품질은 더 긴 단락을 함께 유지하고 AI를 더 많은 출력 공간과 화면 상황에 제공합니다."
+            "value": "Apple 번역은 다운로드한 기기 내 모델로 무료로 작동합니다. 속도 우선은 대기 시간을 줄이고, 품질 우선은 더 많은 문맥을 활용합니다."
           }
         },
         "pt": {
           "stringUnit": {
             "state": "translated",
-            "value": "A Apple Translation é gratuita e utiliza modelos no dispositivo baixados. A velocidade favorece a baixa latência; a qualidade mantém parágrafos mais longos juntos e dá a IA mais espaço de saída e contexto de tela."
+            "value": "A Apple traduz grátis com modelos locais baixados. Velocidade reduz a espera; Qualidade usa mais contexto."
           }
         },
         "it": {
           "stringUnit": {
             "state": "translated",
-            "value": "La velocità favorisce la bassa latenza; la qualità mantiene i paragrafi più lunghi insieme e dà all'IA più spazio di uscita e contesto dello schermo."
+            "value": "Apple traduce gratis con modelli locali scaricati. Velocità riduce l’attesa; Qualità usa più contesto."
           }
         },
         "de": {
           "stringUnit": {
             "state": "translated",
-            "value": "Apple Translation ist kostenlos und verwendet heruntergeladene On-Device-Modelle. Geschwindigkeit begünstigt geringe Latenz; Qualität hält längere Absätze zusammen und gibt KI mehr Ausgabeplatz und Bildschirmkontext."
+            "value": "Apple übersetzt kostenlos mit heruntergeladenen lokalen Modellen. Geschwindigkeit verkürzt die Wartezeit, Qualität nutzt mehr Kontext."
           }
         },
         "ar": {
           "stringUnit": {
             "state": "translated",
-            "value": "والترجمة التحريرية متاحة مجاناً وتستخدم نماذج محملة على الأقدام، وتُستخدم خدمة سريعة منخفضة، وتُبقي النوعية فقرات أطول معاً، وتُعطي شركة AI مزيداً من حيز الإنتاج والسياق الشاشة."
+            "value": "تترجم Apple مجاناً بنماذج محلية محمّلة. تقلل أولوية السرعة الانتظار، وتستخدم أولوية الجودة سياقاً أوسع."
           }
         },
         "ru": {
           "stringUnit": {
             "state": "translated",
-            "value": "Apple Translation бесплатен и использует загруженные модели на устройстве. Скорость способствует низкой задержке; Качество сохраняет более длинные абзацы вместе и дает ИИ больше пространства вывода и контекста экрана."
+            "value": "Apple бесплатно переводит локальными моделями. Скорость сокращает ожидание, качество использует больше контекста."
           }
         }
       }
@@ -4183,55 +4183,55 @@
         "ja": {
           "stringUnit": {
             "state": "translated",
-            "value": "プロバイダーを保存し、ワンタップでプロバイダー間で切り替えます。"
+            "value": "サービスを保存して、ワンタップで切り替えられます。"
           }
         },
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Enregistrez vos fournisseurs ici, puis basculez entre eux avec un seul clic."
+            "value": "Enregistrez vos services et changez-en d’un toucher."
           }
         },
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "Guarda a tus proveedores aquí, y luego cambia entre ellos con un solo toque."
+            "value": "Guarda tus servicios y cambia entre ellos con un toque."
           }
         },
         "ko": {
           "stringUnit": {
             "state": "translated",
-            "value": "공급자를 여기에서 저장하고, 그(것)들 사이에서 1개의 꼭지를 전환하십시오."
+            "value": "서비스를 저장하고 한 번 눌러 전환하세요."
           }
         },
         "pt": {
           "stringUnit": {
             "state": "translated",
-            "value": "Salve seus provedores aqui e, em seguida, mude entre eles com um toque."
+            "value": "Salve seus serviços e alterne com um toque."
           }
         },
         "it": {
           "stringUnit": {
             "state": "translated",
-            "value": "Salva i tuoi fornitori qui, quindi passare tra di loro con un solo tocco."
+            "value": "Salva i servizi e passa da uno all’altro con un tocco."
           }
         },
         "de": {
           "stringUnit": {
             "state": "translated",
-            "value": "Speichern Sie Ihre Anbieter hier und wechseln Sie mit einem Tipp zwischen ihnen."
+            "value": "Speichere Dienste und wechsle mit einem Tippen."
           }
         },
         "ar": {
           "stringUnit": {
             "state": "translated",
-            "value": "أنقذوا مُقدّميكم هنا، ثمّ التبديل بينهم مع صنبور واحد."
+            "value": "احفظ خدماتك وبدّل بينها بلمسة واحدة."
           }
         },
         "ru": {
           "stringUnit": {
             "state": "translated",
-            "value": "Сохраните своих поставщиков здесь, а затем переключитесь между ними одним нажатием."
+            "value": "Сохраните сервисы и переключайтесь одним нажатием."
           }
         }
       }
@@ -4260,55 +4260,55 @@
         "ja": {
           "stringUnit": {
             "state": "translated",
-            "value": "各サービスは、独自の名前、モデル、安全なキーを保持します。 OCR と翻訳は、異なるサービスを使用することができます。"
+            "value": "サービスごとに名前・モデル・キーを保持します。文字認識と翻訳で別のサービスを選べます。"
           }
         },
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Chaque service conserve son nom, son modèle et sa clé sécurisée. L'OCR et la traduction peuvent utiliser différents services."
+            "value": "Chaque service conserve son nom, son modèle et sa clé. OCR et traduction peuvent utiliser des services différents."
           }
         },
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "Cada servicio mantiene su propio nombre, modelo y clave segura. OCR y traducción pueden utilizar diferentes servicios."
+            "value": "Cada servicio conserva su nombre, modelo y clave. OCR y traducción pueden usar servicios diferentes."
           }
         },
         "ko": {
           "stringUnit": {
             "state": "translated",
-            "value": "각 서비스는 자신의 이름, 모형 및 안전한 열쇠를 지킵니다. OCR와 번역은 다른 서비스를 이용할 수 있습니다."
+            "value": "서비스별 이름, 모델, 키를 보관합니다. 문자 인식과 번역에 다른 서비스를 선택할 수 있습니다."
           }
         },
         "pt": {
           "stringUnit": {
             "state": "translated",
-            "value": "Cada serviço mantém seu próprio nome, modelo e chave segura. OCR e tradução podem usar serviços diferentes."
+            "value": "Cada serviço mantém nome, modelo e chave. OCR e tradução podem usar serviços diferentes."
           }
         },
         "it": {
           "stringUnit": {
             "state": "translated",
-            "value": "Ogni servizio mantiene il proprio nome, modello e chiave sicura. OCR e traduzione possono utilizzare servizi diversi."
+            "value": "Ogni servizio mantiene nome, modello e chiave. OCR e traduzione possono usare servizi diversi."
           }
         },
         "de": {
           "stringUnit": {
             "state": "translated",
-            "value": "Jeder Dienst behält seinen eigenen Namen, Modell und sicheren Schlüssel. OCR und Übersetzung können unterschiedliche Dienste nutzen."
+            "value": "Jeder Dienst behält Name, Modell und Schlüssel. OCR und Übersetzung können verschiedene Dienste nutzen."
           }
         },
         "ar": {
           "stringUnit": {
             "state": "translated",
-            "value": "وتحتفظ كل خدمة باسمها ونموذجها ومفتاحها المأمون، ويمكن أن يستخدم المكتب والترجمة مختلف الخدمات."
+            "value": "تحتفظ كل خدمة باسمها ونموذجها ومفتاحها. يمكن اختيار خدمتين مختلفتين للتعرف والترجمة."
           }
         },
         "ru": {
           "stringUnit": {
             "state": "translated",
-            "value": "Каждая служба сохраняет свое имя, модель и защищенный ключ. OCR и перевод могут использовать разные сервисы."
+            "value": "У каждого сервиса свои имя, модель и ключ. OCR и перевод могут использовать разные сервисы."
           }
         }
       }
@@ -4337,55 +4337,55 @@
         "ja": {
           "stringUnit": {
             "state": "translated",
-            "value": "複数の名前付きプロバイダーを保存し、即座に切り替えます。各 API キーは、独自の Keychain エントリにとどまります。"
+            "value": "名前付きのサービスを複数保存でき、キーはそれぞれキーチェーンに保管します。"
           }
         },
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Enregistrer plusieurs fournisseurs nommés et basculer instantanément. Chaque clé API reste dans sa propre entrée Keychain."
+            "value": "Enregistrez plusieurs services nommés avec des clés distinctes dans le trousseau."
           }
         },
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "Guardar múltiples proveedores nombrados y cambiar al instante. Cada clave de API permanece en su propia entrada de Keychain."
+            "value": "Guarda varios servicios con nombre y claves separadas en el llavero."
           }
         },
         "ko": {
           "stringUnit": {
             "state": "translated",
-            "value": "여러 이름의 공급자와 스위치를 즉시 저장하십시오. 각 API 열쇠는 그것의 자신의 Keychain 입장에서 체재합니다."
+            "value": "이름을 지정한 서비스를 여러 개 저장하고, 각 키를 키체인에 따로 보관합니다."
           }
         },
         "pt": {
           "stringUnit": {
             "state": "translated",
-            "value": "Salve vários provedores nomeados e mude instantaneamente. Cada chave API permanece em sua própria entrada Keychain."
+            "value": "Salve vários serviços com nome e chaves separadas no dispositivo."
           }
         },
         "it": {
           "stringUnit": {
             "state": "translated",
-            "value": "Salvare più fornitori di nome e passare istantaneamente. Ogni chiave API rimane nella propria voce Keychain."
+            "value": "Salva più servizi con nome e chiavi separate nel portachiavi."
           }
         },
         "de": {
           "stringUnit": {
             "state": "translated",
-            "value": "Speichern Sie mehrere benannte Anbieter und wechseln Sie sofort. Jeder API-Schlüssel bleibt in seinem eigenen Keychain-Eintrag."
+            "value": "Speichere mehrere benannte Dienste mit getrennten Schlüsseln im Schlüsselbund."
           }
         },
         "ar": {
           "stringUnit": {
             "state": "translated",
-            "value": "وفروا العديد من المُقدّمين المُسمّين وبدلوا على الفور، كلّ مفتاح تابع للشركة يبقى في مدخلها الخاص بـ (كيشاين)."
+            "value": "احفظ عدة خدمات مسماة بمفاتيح منفصلة في سلسلة المفاتيح."
           }
         },
         "ru": {
           "stringUnit": {
             "state": "translated",
-            "value": "Сохраняйте несколько названных провайдеров и мгновенно переключайтесь. Каждый ключ API остается в своей собственной записи Keychain."
+            "value": "Сохраняйте несколько именованных сервисов с отдельными ключами."
           }
         }
       }
@@ -5723,55 +5723,55 @@
         "ja": {
           "stringUnit": {
             "state": "translated",
-            "value": "ビジョン対応モデルのみを有効にします。DeepSeekのテキストモデルはイメージOCRを実行できません。モデルの可用性はプロバイダによって異なります。"
+            "value": "画像に対応したモデルだけで有効にしてください。DeepSeekのテキストモデルでは画像認識はできません。"
           }
         },
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Activer uniquement pour un modèle capable de vision. Les modèles texte de DeepSeek ne peuvent pas effectuer l'image OCR. La disponibilité du modèle dépend de votre fournisseur."
+            "value": "Activez uniquement pour un modèle acceptant les images. Les modèles texte DeepSeek ne font pas d’OCR d’image."
           }
         },
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "Permite sólo un modelo de visión. Los modelos de texto de DeepSeek no pueden realizar la imagen OCR. La disponibilidad de modelos depende de su proveedor."
+            "value": "Activa esta opción solo para modelos que admitan imágenes. Los modelos de texto de DeepSeek no hacen OCR de imágenes."
           }
         },
         "ko": {
           "stringUnit": {
             "state": "translated",
-            "value": "Vision-capable 모델에만 사용할 수 있습니다. DeepSeek의 텍스트 모델은 이미지 OCR을 수행 할 수 없습니다. 모델 가용성은 공급자에 따라 다릅니다."
+            "value": "이미지를 지원하는 모델에만 켜세요. DeepSeek 텍스트 모델은 이미지 문자 인식을 지원하지 않습니다."
           }
         },
         "pt": {
           "stringUnit": {
             "state": "translated",
-            "value": "Habilite apenas para um modelo visionável. Os modelos de texto do DeepSeek não podem executar a imagem OCR. A disponibilidade do modelo depende do seu provedor."
+            "value": "Ative apenas para modelos que aceitam imagens. Os modelos de texto DeepSeek não fazem OCR de imagens."
           }
         },
         "it": {
           "stringUnit": {
             "state": "translated",
-            "value": "I modelli di testo di DeepSeek non possono eseguire l'immagine OCR. La disponibilità del modello dipende dal tuo fornitore."
+            "value": "Attiva solo per modelli che supportano immagini. I modelli testuali DeepSeek non eseguono OCR su immagini."
           }
         },
         "de": {
           "stringUnit": {
             "state": "translated",
-            "value": "Nur für ein visionsfähiges Modell aktivieren. Die Textmodelle von DeepSeek können keine OCR-Bildfunktionen ausführen. Die Verfügbarkeit des Modells hängt von Ihrem Provider ab."
+            "value": "Nur für bildfähige Modelle aktivieren. DeepSeeks Textmodelle können keine Bilderkennung ausführen."
           }
         },
         "ar": {
           "stringUnit": {
             "state": "translated",
-            "value": "لا يمكن أن يكون إلا لنموذج قابل للرؤية نماذج (ديب سيك) لا يمكن أن تؤدي صورة"
+            "value": "فعّل هذا الخيار للنماذج التي تدعم الصور فقط. نماذج DeepSeek النصية لا تتعرف على نص الصور."
           }
         },
         "ru": {
           "stringUnit": {
             "state": "translated",
-            "value": "Включить можно только для модели с поддержкой видения. Текстовые модели DeepSeek не могут выполнять OCR изображения. Доступность модели зависит от вашего провайдера."
+            "value": "Включайте только для моделей с поддержкой изображений. Текстовые модели DeepSeek не выполняют OCR изображений."
           }
         }
       }
@@ -6339,55 +6339,55 @@
         "ja": {
           "stringUnit": {
             "state": "translated",
-            "value": "キーは、保存されたサービスごとに保存され、iCloudに同期しません。 エンドポイントを変更すると、このサービスの古いキーが削除されます。"
+            "value": "キーは端末内に個別保存し、iCloudには同期しません。接続先を変更すると、そのサービスの旧キーは削除されます。新しいキーを同時に入力した場合は置き換えます。"
           }
         },
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Les touches sont stockées séparément pour chaque service sauvegardé et ne se synchronisent jamais avec iCloud. La modification du paramètre efface l'ancienne clé de ce service à moins d'entrer un remplacement."
+            "value": "Les clés restent sur cet appareil, sans synchronisation iCloud. Changer l’adresse efface l’ancienne clé du service, sauf si vous en saisissez une nouvelle."
           }
         },
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "Las claves se almacenan por separado para cada servicio guardado y nunca se sincronizan con iCloud. Cambiar el punto final aclara la antigua llave de este servicio a menos que entre en un reemplazo."
+            "value": "Cada clave se guarda en este dispositivo, sin sincronizar con iCloud. Cambiar la dirección borra la clave anterior de ese servicio, salvo que introduzcas otra."
           }
         },
         "ko": {
           "stringUnit": {
             "state": "translated",
-            "value": "Keys는 모든 저장된 서비스에 대해 별도로 저장되며 iCloud에 동기화 할 수 없습니다. endpoint를 변경하면이 서비스의 이전 키가 교체되지 않습니다."
+            "value": "키는 기기에 따로 저장되며 iCloud에 동기화되지 않습니다. API 주소를 바꾸면 해당 서비스의 기존 키가 삭제됩니다. 새 키를 입력한 경우에는 새 키로 교체합니다."
           }
         },
         "pt": {
           "stringUnit": {
             "state": "translated",
-            "value": "As chaves são armazenadas separadamente para cada serviço salvo e nunca sincronizam com o iCloud. A alteração do endpoint limpa a chave antiga deste serviço, a menos que você digite uma substituição."
+            "value": "As chaves ficam neste dispositivo, sem sincronização com iCloud. Mudar o endereço remove a chave antiga deste serviço, salvo se você informar outra."
           }
         },
         "it": {
           "stringUnit": {
             "state": "translated",
-            "value": "Le chiavi vengono memorizzate separatamente per ogni servizio salvato e non si sincronizzano mai con iCloud."
+            "value": "Le chiavi restano sul dispositivo, senza iCloud. Cambiare indirizzo elimina la vecchia chiave del servizio, salvo inserirne una nuova."
           }
         },
         "de": {
           "stringUnit": {
             "state": "translated",
-            "value": "Schlüssel werden für jeden gespeicherten Dienst separat gespeichert und werden nie mit iCloud synchronisiert. Durch Ändern des Endpunkts wird der alte Schlüssel dieses Dienstes gelöscht, es sei denn, Sie geben einen Ersatz ein."
+            "value": "Schlüssel bleiben ohne iCloud-Synchronisierung auf diesem Gerät. Eine neue API-Adresse löscht den alten Schlüssel dieses Dienstes, sofern du keinen Ersatz eingibst."
           }
         },
         "ar": {
           "stringUnit": {
             "state": "translated",
-            "value": "المفاتيح مخزنة بشكل منفصل لكل خدمة مدخرة ولا تتزامن أبداً مع (آي كلود)، تغيير نقطة النهاية يوضّح مفتاح هذه الخدمة القديم ما لم تدخل بديلاً"
+            "value": "تُحفظ المفاتيح على هذا الجهاز دون مزامنة iCloud. تغيير العنوان يحذف المفتاح القديم للخدمة ما لم تدخل بديلاً."
           }
         },
         "ru": {
           "stringUnit": {
             "state": "translated",
-            "value": "Ключи хранятся отдельно для каждой сохраненной службы и никогда не синхронизируются с iCloud. Изменение конечной точки очищает старый ключ этой службы, если вы не введете замену."
+            "value": "Ключи хранятся на устройстве без синхронизации iCloud. При смене адреса старый ключ сервиса удаляется, если не введён новый."
           }
         }
       }
@@ -6416,55 +6416,55 @@
         "ja": {
           "stringUnit": {
             "state": "translated",
-            "value": "保存はリクエストを送信しません。 OCRまたは翻訳のサービスを選択します。 共有には、許可が必要です。 Appleのエンジンは鍵なしで無料です。"
+            "value": "保存だけでは通信しません。AIへの共有には許可が必要です。Appleのエンジンはキーなしで無料で使えます。"
           }
         },
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Enregistrer n'envoie pas de demande. Sélectionnez un service pour OCR ou traduction; partage nécessite votre permission. Les moteurs Apple restent libres sans clé."
+            "value": "Enregistrer n’envoie aucune requête. Le partage IA exige votre accord. Les moteurs Apple sont gratuits et sans clé."
           }
         },
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "Ahorro no envía una solicitud. Seleccione un servicio para OCR o traducción; compartir requiere su permiso. Los motores de Apple permanecen libres sin llave."
+            "value": "Guardar no envía solicitudes. El uso de IA requiere tu permiso. Los motores de Apple son gratuitos y no necesitan clave."
           }
         },
         "ko": {
           "stringUnit": {
             "state": "translated",
-            "value": "저축은 요청을 보내지 않습니다. OCR 또는 번역에 대한 서비스를 선택하십시오. 공유는 허가를 필요로합니다. Apple 엔진은 키없이 무료입니다."
+            "value": "저장만으로는 요청을 보내지 않습니다. AI 공유에는 동의가 필요합니다. Apple 엔진은 키 없이 무료로 사용할 수 있습니다."
           }
         },
         "pt": {
           "stringUnit": {
             "state": "translated",
-            "value": "Salvar não envia um pedido. Selecione um serviço para OCR ou tradução; o compartilhamento requer sua permissão. Os motores Apple permanecem livres sem uma chave."
+            "value": "Salvar não envia solicitações. A IA exige sua permissão. Os mecanismos Apple são gratuitos e não precisam de chave."
           }
         },
         "it": {
           "stringUnit": {
             "state": "translated",
-            "value": "Salvataggio non invia una richiesta. Seleziona un servizio per OCR o traduzione; la condivisione richiede il tuo permesso. I motori Apple rimangono liberi senza chiave."
+            "value": "Salvare non invia richieste. L’IA richiede consenso. I motori Apple sono gratuiti e senza chiave."
           }
         },
         "de": {
           "stringUnit": {
             "state": "translated",
-            "value": "Speichern sendet keine Anfrage. Wählen Sie einen Dienst für OCR oder Übersetzung; Teilen erfordert Ihre Erlaubnis. Apple-Engines bleiben ohne Schlüssel frei."
+            "value": "Speichern sendet keine Anfrage. KI-Nutzung benötigt deine Zustimmung. Apple-Engines sind kostenlos und brauchen keinen Schlüssel."
           }
         },
         "ar": {
           "stringUnit": {
             "state": "translated",
-            "value": "الإنقاذ لا يُرسل طلباً، يُختار خدمة لغرفة العمليات أو الترجمة، ويتطلّب التشارك إذناً منك، أما محركات التفاح فلا تزال خالية بدون مفتاح."
+            "value": "الحفظ لا يرسل أي طلب. مشاركة الذكاء الاصطناعي تتطلب إذنك. محركات Apple مجانية ولا تحتاج إلى مفتاح."
           }
         },
         "ru": {
           "stringUnit": {
             "state": "translated",
-            "value": "Экономия не отправляет запрос. Выберите услугу для OCR или перевода; обмен требует вашего разрешения. Двигатели Apple остаются бесплатными без ключа."
+            "value": "Сохранение не отправляет запросы. ИИ требует согласия. Движки Apple бесплатны и не требуют ключа."
           }
         }
       }
@@ -6493,55 +6493,55 @@
         "ja": {
           "stringUnit": {
             "state": "translated",
-            "value": "プロバイダは、可用性、価格設定、データ保持を制御します。無料のアプリは、外部APIの使用を無料にしません。"
+            "value": "料金・提供状況・データ保存期間は各プロバイダーが決めます。アプリが無料でも外部APIには料金がかかる場合があります。"
           }
         },
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Votre fournisseur contrôle la disponibilité, les prix et la conservation des données. Une application gratuite ne rend pas l'utilisation externe de l'API gratuite."
+            "value": "Le fournisseur fixe les prix, la disponibilité et la conservation des données. Une app gratuite ne rend pas les API gratuites."
           }
         },
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "Su proveedor controla la disponibilidad, precios y retención de datos. Una aplicación gratuita no hace uso de API externa libre."
+            "value": "Cada proveedor decide precios, disponibilidad y conservación de datos. Una app gratuita no implica API gratuitas."
           }
         },
         "ko": {
           "stringUnit": {
             "state": "translated",
-            "value": "공급자는 가용성, 가격 및 데이터 보유를 통제합니다. 무료 앱은 외부 API 사용법을 자유롭게 만들지 않습니다."
+            "value": "요금, 서비스 제공 여부와 데이터 보관 정책은 제공업체가 정합니다. 앱이 무료여도 외부 API는 유료일 수 있습니다."
           }
         },
         "pt": {
           "stringUnit": {
             "state": "translated",
-            "value": "Seu provedor controla disponibilidade, preços e retenção de dados. Um aplicativo gratuito não torna livre o uso externo de API."
+            "value": "Preços, disponibilidade e retenção de dados dependem do provedor. Um app gratuito não torna APIs externas gratuitas."
           }
         },
         "it": {
           "stringUnit": {
             "state": "translated",
-            "value": "Il tuo fornitore controlla la disponibilità, i prezzi e la conservazione dei dati. Un'app gratuita non rende l'utilizzo delle API esterne gratuito."
+            "value": "Prezzi, disponibilità e conservazione dei dati dipendono dal fornitore. L’app gratuita non rende gratuite le API esterne."
           }
         },
         "de": {
           "stringUnit": {
             "state": "translated",
-            "value": "Ihr Provider kontrolliert Verfügbarkeit, Preisgestaltung und Datenaufbewahrung. Eine kostenlose App macht die externe API-Nutzung nicht kostenlos."
+            "value": "Preise, Verfügbarkeit und Datenspeicherung bestimmt der Anbieter. Eine kostenlose App macht externe APIs nicht kostenlos."
           }
         },
         "ar": {
           "stringUnit": {
             "state": "translated",
-            "value": "مزودك يتحكم في مدى توافره وتسعيره والاحتفاظ بالبيانات لا يجعل تطبيقه المجاني استخداماً خارجياً"
+            "value": "يحدد المزود الأسعار والتوفر والاحتفاظ بالبيانات. مجانية التطبيق لا تعني مجانية واجهات API الخارجية."
           }
         },
         "ru": {
           "stringUnit": {
             "state": "translated",
-            "value": "Ваш провайдер контролирует доступность, цены и хранение данных. Бесплатное приложение не делает использование внешних API бесплатным."
+            "value": "Цены, доступность и хранение данных определяет поставщик. Бесплатное приложение не делает внешние API бесплатными."
           }
         }
       }
@@ -6647,55 +6647,55 @@
         "ja": {
           "stringUnit": {
             "state": "translated",
-            "value": "API キーなしで、無料で、プライベートで利用可能。"
+            "value": "無料・端末内処理・APIキー不要。"
           }
         },
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Gratuit, privé et disponible sans clé API."
+            "value": "Gratuit, local et sans clé API."
           }
         },
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "Gratis, privado y disponible sin una clave de API."
+            "value": "Gratis, local y sin API Key."
           }
         },
         "ko": {
           "stringUnit": {
             "state": "translated",
-            "value": "API 키없이 무료, 개인 및 사용 가능."
+            "value": "무료 기기 내 처리, API 키 불필요."
           }
         },
         "pt": {
           "stringUnit": {
             "state": "translated",
-            "value": "Livre, privado e disponível sem uma chave API."
+            "value": "Grátis, local e sem chave API."
           }
         },
         "it": {
           "stringUnit": {
             "state": "translated",
-            "value": "Gratuito, privato e disponibile senza chiave API."
+            "value": "Gratis, locale e senza chiave API."
           }
         },
         "de": {
           "stringUnit": {
             "state": "translated",
-            "value": "Kostenlos, privat und ohne API-Schlüssel verfügbar."
+            "value": "Kostenlos, lokal und ohne API-Schlüssel."
           }
         },
         "ar": {
           "stringUnit": {
             "state": "translated",
-            "value": "مجاناً وخاصاً ومتاحاً بدون مفتاح"
+            "value": "مجاني ومحلي ولا يحتاج إلى مفتاح API."
           }
         },
         "ru": {
           "stringUnit": {
             "state": "translated",
-            "value": "Бесплатный, приватный и доступный без API-ключа."
+            "value": "Бесплатно, локально и без ключа API."
           }
         }
       }
@@ -6724,55 +6724,55 @@
         "ja": {
           "stringUnit": {
             "state": "translated",
-            "value": "OCR では画像入力を有効にしたサービスのみが提供されます。"
+            "value": "画像入力を有効にしたサービスのみ表示します。"
           }
         },
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Seuls les services avec entrée d'image activée sont offerts pour OCR."
+            "value": "Seuls les services acceptant les images sont proposés."
           }
         },
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "Solo se ofrecen servicios con entrada de imagen habilitada para OCR."
+            "value": "Solo aparecen servicios con entrada de imágenes activada."
           }
         },
         "ko": {
           "stringUnit": {
             "state": "translated",
-            "value": "이미지 입력 활성화를 가진 서비스만 OCR를 위해 제안됩니다."
+            "value": "이미지 입력을 켠 서비스만 표시됩니다."
           }
         },
         "pt": {
           "stringUnit": {
             "state": "translated",
-            "value": "Somente serviços com entrada de imagem habilitada são oferecidos para OCR."
+            "value": "Só são exibidos serviços com entrada de imagens ativada."
           }
         },
         "it": {
           "stringUnit": {
             "state": "translated",
-            "value": "Solo i servizi con ingresso immagine abilitati sono offerti per OCR."
+            "value": "Sono mostrati solo i servizi con immagini abilitate."
           }
         },
         "de": {
           "stringUnit": {
             "state": "translated",
-            "value": "Für OCR werden nur Dienste mit aktivierter Bildeingabe angeboten."
+            "value": "Nur Dienste mit aktivierter Bildeingabe werden angezeigt."
           }
         },
         "ar": {
           "stringUnit": {
             "state": "translated",
-            "value": "ولا تقدم إلا خدمات مُمكّنة من مُدخلات مُتاحة للصور إلى مكتب الممثل الخاص للأمين العام."
+            "value": "تظهر فقط الخدمات المفعّل فيها إدخال الصور."
           }
         },
         "ru": {
           "stringUnit": {
             "state": "translated",
-            "value": "Для OCR предлагаются только услуги с включенным вводом изображений."
+            "value": "Показаны только сервисы с включённым вводом изображений."
           }
         }
       }
@@ -6801,55 +6801,55 @@
         "ja": {
           "stringUnit": {
             "state": "translated",
-            "value": "保存されたサービスをタップして即座に切り替えます。キーやその他の設定は保持されます。"
+            "value": "タップで切り替えます。キーと設定は保持されます。"
           }
         },
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Appuyez sur un service sauvegardé pour basculer instantanément. Les touches et autres configurations sont conservées."
+            "value": "Touchez pour changer ; clés et réglages sont conservés."
           }
         },
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "Pulse un servicio guardado para cambiar al instante. Se mantienen las teclas y otras configuraciones."
+            "value": "Toca para cambiar; se conservan las claves y los ajustes."
           }
         },
         "ko": {
           "stringUnit": {
             "state": "translated",
-            "value": "즉시 전환 할 수있는 저장된 서비스를 탭합니다. 키 및 기타 구성이 유지됩니다."
+            "value": "눌러서 전환하세요. 키와 설정은 유지됩니다."
           }
         },
         "pt": {
           "stringUnit": {
             "state": "translated",
-            "value": "Toque num serviço salvo para alternar instantaneamente. As chaves e outras configurações são mantidas."
+            "value": "Toque para alternar; chaves e configurações são mantidas."
           }
         },
         "it": {
           "stringUnit": {
             "state": "translated",
-            "value": "Toccare un servizio salvato per passare istantaneamente. Le chiavi e altre configurazioni sono mantenute."
+            "value": "Tocca per cambiare: chiavi e impostazioni restano salvate."
           }
         },
         "de": {
           "stringUnit": {
             "state": "translated",
-            "value": "Tippen Sie auf einen gespeicherten Dienst, um sofort zu wechseln."
+            "value": "Tippen zum Wechseln; Schlüssel und Einstellungen bleiben erhalten."
           }
         },
         "ar": {
           "stringUnit": {
             "state": "translated",
-            "value": "اجمعوا خدمة منقذة للتبديل فوراً، وتحتفظ بالمفاتيح وغيرها من التشكيلات."
+            "value": "اضغط للتبديل؛ تبقى المفاتيح والإعدادات محفوظة."
           }
         },
         "ru": {
           "stringUnit": {
             "state": "translated",
-            "value": "Нажмите на сохраненный сервис, чтобы мгновенно переключиться. Ключи и другие конфигурации сохранены."
+            "value": "Нажмите для переключения; ключи и настройки сохранятся."
           }
         }
       }
@@ -7725,55 +7725,55 @@
         "ja": {
           "stringUnit": {
             "state": "translated",
-            "value": "デバイスをロック解除して、保存したAPIキーを移行します。"
+            "value": "端末のロックを解除して、APIキーの移行を完了してください。"
           }
         },
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Déverrouillez l'appareil pour terminer la migration des clés de l'API sauvegardées."
+            "value": "Déverrouillez l’appareil pour terminer le transfert des clés API."
           }
         },
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "Desbloquear el dispositivo para terminar migrando las claves de API guardadas."
+            "value": "Desbloquea el dispositivo para terminar la migración de las API Key."
           }
         },
         "ko": {
           "stringUnit": {
             "state": "translated",
-            "value": "저장된 API 키를 완료하는 장치를 잠금 해제합니다."
+            "value": "기기 잠금을 해제하여 API 키 이전을 완료하세요."
           }
         },
         "pt": {
           "stringUnit": {
             "state": "translated",
-            "value": "Desbloqueie o dispositivo para terminar migrando chaves de API salvas."
+            "value": "Desbloqueie o dispositivo para concluir a migração das chaves API."
           }
         },
         "it": {
           "stringUnit": {
             "state": "translated",
-            "value": "Sblocca il dispositivo per terminare la migrazione delle chiavi API salvate."
+            "value": "Sblocca il dispositivo per completare il trasferimento delle chiavi API."
           }
         },
         "de": {
           "stringUnit": {
             "state": "translated",
-            "value": "Entsperren Sie das Gerät, um die Migration der gespeicherten API-Schlüssel abzuschließen."
+            "value": "Entsperre das Gerät, um die API-Schlüssel zu übertragen."
           }
         },
         "ar": {
           "stringUnit": {
             "state": "translated",
-            "value": "فتح الجهاز لإكمال الهجرة تم حفظ المفاتيح."
+            "value": "افتح قفل الجهاز لإكمال نقل مفاتيح API."
           }
         },
         "ru": {
           "stringUnit": {
             "state": "translated",
-            "value": "Разблокируйте устройство, чтобы завершить миграцию сохраненных ключей API."
+            "value": "Разблокируйте устройство для завершения переноса ключей API."
           }
         }
       }
@@ -9111,55 +9111,55 @@
         "ja": {
           "stringUnit": {
             "state": "translated",
-            "value": "履歴はデフォルトでオフです。 保存された履歴を削除します。 アカウントや広告はありません。 AI プロバイダーは料金を請求することがあります。 API キーは、このデバイスの Keychain にのみ保存されます。"
+            "value": "履歴は標準でオフです。オフにすると保存済みの結果を削除します。アカウントも広告もありません。AIには外部料金がかかる場合があります。キーは端末のキーチェーンに保存します。"
           }
         },
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "L'historique est désactivé par défaut. L'éteindre supprime l'historique enregistré. Aucun compte ou annonces. Les fournisseurs d'IA peuvent facturer des frais; leurs clés API sont stockées uniquement dans cet appareil."
+            "value": "L’historique est désactivé par défaut. Le désactiver efface les résultats enregistrés. Sans compte ni publicité. L’IA peut être payante ; les clés restent dans le trousseau."
           }
         },
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "La historia está apagada por defecto. Apague el borrador de la historia guardada. No hay cuenta o anuncios. Los proveedores de IA pueden cobrar honorarios; sus claves de API se almacenan sólo en el Keychain de este dispositivo."
+            "value": "El historial está desactivado por defecto. Al desactivarlo se borran los resultados guardados. Sin cuenta ni anuncios. Los proveedores de IA pueden cobrar; las claves permanecen en el llavero del dispositivo."
           }
         },
         "ko": {
           "stringUnit": {
             "state": "translated",
-            "value": "역사는 기본적으로 꺼집니다. 삭제 된 역사를 차단합니다. 계정이나 광고를하지 마십시오. AI 공급자는 수수료가 부과될 수 있습니다. API 키는이 장치의 키체인에서만 저장됩니다."
+            "value": "기록 저장은 기본적으로 꺼져 있으며, 끄면 저장된 결과가 삭제됩니다. 계정과 광고는 없습니다. AI 제공업체는 요금을 청구할 수 있으며, 키는 기기 키체인에 보관됩니다."
           }
         },
         "pt": {
           "stringUnit": {
             "state": "translated",
-            "value": "O histórico está desligado por padrão. Desligando-o, apaga o histórico salvo. Nenhuma conta ou anúncios. Os provedores de IA podem cobrar taxas; suas chaves de API são armazenadas apenas no Keychain deste dispositivo."
+            "value": "O histórico vem desativado; desativá-lo apaga os resultados salvos. Sem conta ou anúncios. A IA pode cobrar taxas; as chaves ficam no dispositivo."
           }
         },
         "it": {
           "stringUnit": {
             "state": "translated",
-            "value": "La cronologia è disattivata per impostazione predefinita. Spegnilo cancella la cronologia salvata. Nessun account o annunci. I fornitori di AI possono addebitare le tasse; le chiavi API sono memorizzate solo nella Keychain di questo dispositivo."
+            "value": "La cronologia è disattivata per impostazione predefinita; disattivarla cancella i risultati salvati. Senza account né pubblicità. L’IA può essere a pagamento; le chiavi restano nel portachiavi."
           }
         },
         "de": {
           "stringUnit": {
             "state": "translated",
-            "value": "Die Historie ist standardmäßig deaktiviert. Wenn man sie deaktiviert, löscht sie die gespeicherte Historie. Kein Konto oder Werbung. KI-Anbieter können Gebühren erheben; ihre API-Schlüssel werden nur im Schlüsselbund dieses Geräts gespeichert."
+            "value": "Der Verlauf ist standardmäßig aus. Ausschalten löscht gespeicherte Ergebnisse. Ohne Konto und Werbung. KI-Anbieter können Gebühren erheben; Schlüssel bleiben im Geräteschlüsselbund."
           }
         },
         "ar": {
           "stringUnit": {
             "state": "translated",
-            "value": "ويتوقف التاريخ عن التقصير، ويطفئه عن الحذف، ولا يوجد حساب أو إعلانات، ولا يجوز لمقدمي خدمات الإعلام أن يسددوا رسوما، ولا تخزن مفاتيحهم إلا في كيشين لهذا الجهاز."
+            "value": "السجل معطل افتراضياً، وتعطيله يحذف النتائج المحفوظة. دون حساب أو إعلانات. قد تفرض خدمات الذكاء الاصطناعي رسوماً؛ وتبقى المفاتيح على الجهاز."
           }
         },
         "ru": {
           "stringUnit": {
             "state": "translated",
-            "value": "Историю выключают по умолчанию. Отключение удаляет сохраненную историю. Никакая учетная запись или реклама. Поставщики ИИ могут взимать плату; их ключи API хранятся только в цепочке ключей этого устройства."
+            "value": "История по умолчанию отключена. Отключение удаляет сохранённые результаты. Без аккаунта и рекламы. ИИ может быть платным; ключи остаются в связке ключей."
           }
         }
       }
@@ -9727,55 +9727,55 @@
         "ja": {
           "stringUnit": {
             "state": "translated",
-            "value": "Apple VisionとApple Translationはデフォルトで、APIキーは必要ありません。 彼らの言語モデルはワンタイムシステムのダウンロードが必要な場合があります。 アプリにはスクリーンショットアップロードサーバー、分析、アカウント、広告はありません。"
+            "value": "標準は端末内のApple VisionとApple翻訳で、キーは不要です。初回のみ言語モデルのダウンロードが必要な場合があります。独自の画像サーバー、アカウント、解析、広告はありません。"
           }
         },
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Apple Vision et Apple Translation sont les valeurs par défaut et n'ont pas besoin de clé API. Leurs modèles de langue peuvent avoir besoin d'un téléchargement système unique. L'application n'a pas de serveur de capture d'écran, d'analyse, de compte ou d'annonces."
+            "value": "Apple Vision et Traduction Apple sont les moteurs locaux par défaut, sans clé. Les modèles peuvent nécessiter un téléchargement initial. Aucun serveur d’images, compte, suivi ou publicité."
           }
         },
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "Apple Vision y Apple Translation son los predeterminados y no necesitan clave de API. Sus modelos de lenguaje pueden necesitar una descarga de sistema de una sola vez. La aplicación no tiene servidor de captura de pantalla, análisis, cuenta o anuncios."
+            "value": "Por defecto se usan Apple Vision y Apple Translation en el dispositivo, sin clave. Los modelos pueden requerir una descarga inicial. Sin servidor propio de imágenes, cuenta, analítica ni anuncios."
           }
         },
         "ko": {
           "stringUnit": {
             "state": "translated",
-            "value": "Apple Vision 및 Apple Translation는 기본이며 API 키가 필요하지 않습니다. 그들의 언어 모델은 한 번의 시스템 다운로드가 필요할 수 있습니다. 앱에는 스크린 샷 업로드 서버, 분석, 계정 또는 광고가 없습니다."
+            "value": "기본값은 키가 필요 없는 기기 내 Apple Vision과 Apple 번역입니다. 처음에는 언어 모델을 다운로드해야 할 수 있습니다. 자체 이미지 서버, 계정, 분석 및 광고는 없습니다."
           }
         },
         "pt": {
           "stringUnit": {
             "state": "translated",
-            "value": "Apple Vision e Apple Translation são os padrões e não precisam de chave API. Seus modelos de linguagem podem precisar de um download de sistema único. O aplicativo não tem servidor de screenshot-upload, análise, conta ou anúncios."
+            "value": "Apple Vision e Tradução Apple são os padrões locais, sem chave. Os modelos podem exigir um download inicial. Sem servidor próprio de imagens, conta, análise ou anúncios."
           }
         },
         "it": {
           "stringUnit": {
             "state": "translated",
-            "value": "Apple Vision e Apple Translation sono i valori predefiniti e non hanno bisogno di chiave API. I loro modelli di lingua possono avere bisogno di un download di sistema una volta. L'applicazione non ha server di caricamento di screenshot, analisi, account o annunci."
+            "value": "Apple Vision e Traduzione Apple funzionano sul dispositivo senza chiave. I modelli possono richiedere un download iniziale. Nessun server immagini, account, analisi o pubblicità."
           }
         },
         "de": {
           "stringUnit": {
             "state": "translated",
-            "value": "Apple Vision und Apple Translation sind die Standardeinstellungen und benötigen keinen API-Schlüssel. Ihre Sprachmodelle benötigen möglicherweise einen einmaligen Systemdownload. Die App hat keinen Screenshot-Upload-Server, keine Analysen, kein Konto oder keine Werbung."
+            "value": "Standard sind Apple Vision und Apple Übersetzen auf dem Gerät, ohne Schlüssel. Sprachmodelle müssen eventuell einmal geladen werden. Keine eigenen Bildserver, Konten, Analysen oder Werbung."
           }
         },
         "ar": {
           "stringUnit": {
             "state": "translated",
-            "value": "إن رؤية التفاح وترجمة التفاح هما التخلفان ولا يحتاجان إلى مفتاح للتسجيلات الرسمية، وقد تحتاج نماذجها اللغوية إلى تنزيل نظام لمرة واحدة، ولا يوجد لدى التطبيق خادم أو محلل أو حساب أو إعلانات."
+            "value": "المحركات الافتراضية هي Apple Vision وترجمة Apple على الجهاز دون مفتاح. قد تحتاج النماذج إلى تنزيل أولي. لا خادم صور خاص ولا حساب أو تحليلات أو إعلانات."
           }
         },
         "ru": {
           "stringUnit": {
             "state": "translated",
-            "value": "Apple Vision и Apple Translation являются по умолчанию и не нуждаются в ключе API. Их языковые модели могут нуждаться в одноразовой загрузке системы. В приложении нет сервера для загрузки скриншотов, аналитики, учетной записи или рекламы."
+            "value": "По умолчанию Apple Vision и перевод Apple работают на устройстве без ключа. Может потребоваться загрузка языковых моделей. Нет своего сервера изображений, аккаунта, аналитики и рекламы."
           }
         }
       }
@@ -9863,73 +9863,73 @@
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "When history is off, imported screenshots stay in memory until Close. Shortcuts uses a protected, temporary handoff file, deleted when consumed or expired. No image is added to Photos."
+            "value": "Without history, shared screenshots stay in memory until Close. Only the alternative foreground action uses a protected temporary handoff file, removed after reading or expiry. No image is added to Photos."
           }
         },
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "关闭历史记录时，截图只在处理和查看期间保留于内存。App 内打开模式的快捷指令使用受保护的临时交接文件，读取时删除，过期内容会被丢弃。不向相册写入图片。"
+            "value": "关闭历史时，共享截图只在内存中保留到关闭。只有备用的“在 App 中翻译截图”动作使用受保护临时文件，读取或过期后清除。不会保存到相册。"
           }
         },
         "zh-Hant": {
           "stringUnit": {
             "state": "translated",
-            "value": "關閉歷史記錄時，截圖只在處理和檢視期間保留於記憶體。App 內開啟模式的快捷指令使用受保護的臨時交接檔案，讀取時刪除，過期內容會被丟棄。不向相簿寫入圖片。"
+            "value": "關閉記錄時，共享截圖只在記憶體中保留到關閉。只有備用的「在 App 中翻譯截圖」動作使用受保護暫存檔，讀取或到期後清除。不會儲存到相簿。"
           }
         },
         "ja": {
           "stringUnit": {
             "state": "translated",
-            "value": "履歴が消えると、インポートされたスクリーンショットは閉じるまでメモリに留まります。 ショートカットは、消費されたり、期限が切れた場合に削除された、保護された一時的なハンドオフファイルを使用します。 写真には画像は追加されません。"
+            "value": "履歴を保存しない場合、画像は閉じるまでメモリに保持します。「アプリで開く」予備アクションのみ保護された一時ファイルを使い、読み込み時や期限切れ時に削除します。写真には保存しません。"
           }
         },
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Lorsque l'historique est désactivé, les captures d'écran importées restent en mémoire jusqu'à Fermer. Raccourcis utilise un fichier protégé, temporaire, supprimé quand consommé ou expiré. Aucune image n'est ajoutée à Photos."
+            "value": "Sans historique, les images restent en mémoire jusqu’à la fermeture. L’action alternative ouvrant l’app utilise un fichier temporaire protégé, effacé après lecture ou expiration. Rien dans Photos."
           }
         },
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "Cuando la historia está apagada, las capturas de pantalla importadas permanecen en memoria hasta Close. Shortcuts utiliza un archivo de desvío protegido, temporal, eliminado cuando se consume o expira. Ninguna imagen se añade a Fotos."
+            "value": "Sin historial, las imágenes permanecen en memoria hasta cerrar. La acción alternativa de abrir en la app usa un archivo temporal protegido que se elimina al leerlo o caducar. No se guarda nada en Fotos."
           }
         },
         "ko": {
           "stringUnit": {
             "state": "translated",
-            "value": "역사가 꺼져있을 때, 수입 된 스크린 샷은 가까운 때까지 기억에 남아 있습니다. 단축키는 소비되거나 만료 될 때 보호 된, 임시 손전등 파일, 삭제를 사용합니다. 이미지가 사진에 추가되지 않습니다."
+            "value": "기록 저장이 꺼져 있으면 이미지는 닫을 때까지 메모리에만 보관됩니다. 앱에서 여는 보조 동작은 보호된 임시 파일을 사용하고 읽거나 만료되면 삭제합니다. 사진 앱에는 저장하지 않습니다."
           }
         },
         "pt": {
           "stringUnit": {
             "state": "translated",
-            "value": "Quando o histórico está desligado, as imagens importadas permanecem na memória até Fechar. Os atalhos usam um ficheiro de transferência temporário protegido, apagado quando consumido ou expirado. Nenhuma imagem é adicionada às fotografias."
+            "value": "Sem histórico, as imagens ficam na memória até fechar. A ação alternativa no app usa arquivo temporário protegido, apagado após leitura ou expiração. Nada é salvo em Fotos."
           }
         },
         "it": {
           "stringUnit": {
             "state": "translated",
-            "value": "Quando la storia è spenta, gli screenshot importati rimangono in memoria fino a Close. Scorciatoie utilizza un file di handoff protetto, temporaneo, eliminato quando consumato o scaduto. Nessuna immagine viene aggiunta a Foto."
+            "value": "Senza cronologia, le immagini restano in memoria fino alla chiusura. L’azione alternativa nell’app usa un file temporaneo protetto, eliminato dopo lettura o scadenza. Nulla viene salvato in Foto."
           }
         },
         "de": {
           "stringUnit": {
             "state": "translated",
-            "value": "Wenn der Verlauf ausgeschaltet ist, bleiben importierte Screenshots bis zum Schließen im Speicher. Shortcuts verwendet eine geschützte, temporäre Handoff-Datei, die beim Verbrauch gelöscht wird oder abgelaufen ist."
+            "value": "Ohne Verlauf bleiben Bilder bis zum Schließen im Speicher. Die alternative App-Aktion nutzt eine geschützte temporäre Datei, die nach Lesen oder Ablauf gelöscht wird. Keine Speicherung in Fotos."
           }
         },
         "ar": {
           "stringUnit": {
             "state": "translated",
-            "value": "وعندما يغيب التاريخ، تبقى الشاشات المستوردة في الذاكرة إلى حين إغلاقها، ويستخدم الاختصار ملفاً محمياً ومؤقتاً للإقلاع، يُحذف عند استهلاكه أو إنهائه، ولا تُضاف أي صورة إلى الصور الفوتوغرافية."
+            "value": "دون سجل، تبقى الصور في الذاكرة حتى الإغلاق. يستخدم الفتح البديل في التطبيق ملفاً مؤقتاً محمياً يُحذف بعد القراءة أو انتهاء الصلاحية. لا تُحفظ الصور في تطبيق الصور."
           }
         },
         "ru": {
           "stringUnit": {
             "state": "translated",
-            "value": "Когда история выключена, импортные скриншоты остаются в памяти до закрытия. Ярлыки используют защищенный, временный файл передачи, удаляются при потреблении или истечении срока действия. Изображение не добавляется к фотографиям."
+            "value": "Без истории изображения остаются в памяти до закрытия. Альтернативное открытие в приложении использует защищённый временный файл, удаляемый после чтения или истечения срока. В Фото ничего не сохраняется."
           }
         }
       }
@@ -10035,55 +10035,55 @@
         "ja": {
           "stringUnit": {
             "state": "translated",
-            "value": "AIエンジンを選択し、権限を付与するだけで、設定されたHTTPSプロバイダにデータを送信します。AI OCRのイメージ、またはAI翻訳用のテキストを認識します。 許可はエンドポイントとモデルに結び付けられます。 プロバイダの保持ポリシーと手数料が適用されます。 APIキーはデバイスキーホルダーに保存され、ログや履歴に書き込まれません。"
+            "value": "AIを選び、許可した場合のみ送信します。文字認識は画像、翻訳は認識済みテキストを送ります。許可は接続先とモデルに結び付きます。外部の料金・保存方針が適用されます。キーはログや履歴には保存しません。"
           }
         },
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Seule la sélection d'un moteur AI et l'octroi de la permission envoient des données à votre fournisseur HTTPS configuré: une image pour OCR AI, ou un texte reconnu pour la traduction AI. La permission est liée au paramètre et au modèle. Les politiques de rétention du fournisseur et les frais s'appliquent."
+            "value": "L’IA envoie des données uniquement après sélection et accord : image pour OCR, texte pour traduction. L’accord dépend de l’adresse et du modèle. Tarifs et conservation du fournisseur s’appliquent. Aucune clé dans les journaux ou l’historique."
           }
         },
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "Sólo la selección de un motor AI y el permiso de concesión envía datos a su proveedor de HTTPS configurado: una imagen para AI OCR, o texto reconocido para la traducción de AI. Permiso está ligado al punto final y modelo. Las políticas de retención de proveedores y las tarifas se aplican. Las claves de API se guardan en el dispositivo Keychain y nunca se escriben a los registros o la historia."
+            "value": "La IA solo envía datos tras elegirla y dar permiso: imagen para OCR, texto para traducción. El permiso depende de la dirección y el modelo. Rigen las tarifas y políticas del proveedor. Las claves nunca se guardan en registros ni historial."
           }
         },
         "ko": {
           "stringUnit": {
             "state": "translated",
-            "value": "AI 엔진 및 보조 허가를 선택하면 구성 된 HTTPS 제공 업체에 데이터를 보냅니다. AI OCR에 대한 이미지 또는 AI 번역에 대한 인식 텍스트. 권한은 엔드 포인트와 모델에 묶여 있습니다. 제공 업체 유지 정책 및 수수료가 적용됩니다. API 키는 장치 키체인에 보관되며 로그 또는 기록에 기록되지 않습니다."
+            "value": "AI를 선택하고 동의한 경우에만 전송합니다. 문자 인식에는 이미지, 번역에는 인식된 텍스트를 보냅니다. 동의는 주소와 모델에 연결됩니다. 제공업체의 요금과 보관 정책이 적용되며, 키는 로그나 기록에 저장되지 않습니다."
           }
         },
         "pt": {
           "stringUnit": {
             "state": "translated",
-            "value": "Somente selecionando um motor de IA e concedendo permissão envia dados para seu provedor HTTPS configurado: uma imagem para AI OCR, ou texto reconhecido para tradução de IA. Permissão está ligada ao endpoint e modelo. Políticas e taxas de retenção de provedor se aplicam. Chaves de API são mantidas no dispositivo Keychain e nunca escritas em logs ou histórico."
+            "value": "A IA só envia dados após escolha e permissão: imagem para OCR, texto para tradução. A permissão depende do endereço e modelo. Valem taxas e retenção do provedor. As chaves não entram em logs ou histórico."
           }
         },
         "it": {
           "stringUnit": {
             "state": "translated",
-            "value": "Solo la selezione di un motore AI e la concessione del permesso invia i dati al provider HTTPS configurato: un'immagine per l'AI OCR, o un testo riconosciuto per la traduzione AI. L'autorizzazione è legata al punto finale e al modello. Le politiche di conservazione del provider e le tasse si applicano. Le chiavi API sono conservate nel dispositivo Keychain e non sono mai scritte a log o alla storia."
+            "value": "L’IA invia dati solo dopo scelta e consenso: immagini per OCR, testo per traduzione. Il consenso è legato a indirizzo e modello. Si applicano costi e conservazione del fornitore. Le chiavi non finiscono nei log o nella cronologia."
           }
         },
         "de": {
           "stringUnit": {
             "state": "translated",
-            "value": "Nur die Auswahl einer KI-Engine und die Erteilung von Berechtigungen sendet Daten an Ihren konfigurierten HTTPS-Provider: ein Bild für AI OCR oder erkannter Text für die KI-Übersetzung. Die Berechtigung ist an den Endpunkt und das Modell gebunden. Aufbewahrungsrichtlinien und -gebühren des Anbieters gelten. API-Schlüssel werden im Geräteschlüsselbund gespeichert und niemals in Protokolle oder den Verlauf geschrieben."
+            "value": "Nur nach Auswahl und Zustimmung sendet KI Daten: Bilder für OCR, Text für Übersetzung. Die Freigabe gilt für Adresse und Modell. Gebühren und Speicherregeln des Anbieters gelten. Schlüssel stehen nie in Protokollen oder Verlauf."
           }
         },
         "ar": {
           "stringUnit": {
             "state": "translated",
-            "value": "ولا يُسمح إلا باختيار محرك تابع للشركة، ويُرسل بيانات إلى مقدِّم خدماتها المُحدَّد، وهو: صورة لمكتب خدمات الرقابة الداخلية، أو النص المُعترف به لترجمة المعلوماتية، ويُقيَّد الإذن بالنقاط النهائية والنموذج، وتُطبَّق سياسات ورسوم استبقاء مقدِّمي الخدمات، ويُحتفظ بمفاتيحها في جهاز كيشاين، ولا تُكتب أبداً لسجلات أو تاريخ."
+            "value": "لا يرسل الذكاء الاصطناعي البيانات إلا بعد اختياره والموافقة: صورة للتعرف ونص للترجمة. يرتبط الإذن بالعنوان والنموذج. تسري رسوم المزود وسياسة احتفاظه، ولا تُكتب المفاتيح في السجلات أو التاريخ."
           }
         },
         "ru": {
           "stringUnit": {
             "state": "translated",
-            "value": "Только выбор движка ИИ и предоставление разрешения отправляет данные вашему настроенному провайдеру HTTPS: изображение для AI OCR или распознанный текст для перевода ИИ. Разрешение привязано к конечной точке и модели. Применяются политики удержания провайдера и сборы. Ключи API хранятся в устройстве Keychain и никогда не пишутся в журналы или историю."
+            "value": "ИИ отправляет данные только после выбора и согласия: изображение для OCR, текст для перевода. Согласие связано с адресом и моделью. Действуют правила и тарифы поставщика. Ключи не попадают в логи и историю."
           }
         }
       }
@@ -11113,55 +11113,55 @@
         "ja": {
           "stringUnit": {
             "state": "translated",
-            "value": "選択したAIエンジンのみがデータを送信します。 プロバイダはリクエストを請求し、独自の保持ポリシーを適用することができます。"
+            "value": "選択したAIエンジンのみが送信します。外部料金やプロバイダーのデータ保存方針が適用されます。"
           }
         },
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Seuls les moteurs AI que vous avez sélectionnés envoient des données. Votre fournisseur peut facturer les demandes et appliquer sa propre politique de conservation."
+            "value": "Seuls les moteurs IA choisis envoient des données. Le fournisseur peut facturer et appliquer sa politique de conservation."
           }
         },
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "Sólo los motores AI que ha seleccionado envían datos. Su proveedor puede cobrar por solicitudes y aplicar su propia política de retención."
+            "value": "Solo los motores de IA elegidos envían datos. El proveedor puede cobrar y conservarlos según su política."
           }
         },
         "ko": {
           "stringUnit": {
             "state": "translated",
-            "value": "선택한 AI 엔진 만 데이터 전송. 귀하의 공급자는 요청을 청구하고 자신의 보존 정책을 적용 할 수 있습니다."
+            "value": "선택한 AI 엔진만 데이터를 전송합니다. 제공업체가 요금을 청구하고 자체 정책에 따라 데이터를 보관할 수 있습니다."
           }
         },
         "pt": {
           "stringUnit": {
             "state": "translated",
-            "value": "Somente os motores de IA que você selecionou enviam dados. Seu provedor pode cobrar por pedidos e aplicar sua própria política de retenção."
+            "value": "Somente os mecanismos de IA escolhidos enviam dados. O provedor pode cobrar e reter dados conforme sua política."
           }
         },
         "it": {
           "stringUnit": {
             "state": "translated",
-            "value": "Solo i motori AI che hai selezionato inviano i dati. Il tuo fornitore può addebitare le richieste e applicare la propria politica di conservazione."
+            "value": "Solo i motori IA scelti inviano dati. Il fornitore può applicare costi e conservare i dati secondo le sue regole."
           }
         },
         "de": {
           "stringUnit": {
             "state": "translated",
-            "value": "Nur die von Ihnen ausgewählten KI-Engines senden Daten. Ihr Provider kann Anfragen in Rechnung stellen und seine eigenen Aufbewahrungsrichtlinien anwenden."
+            "value": "Nur ausgewählte KI-Engines senden Daten. Der Anbieter kann Gebühren erheben und Daten nach eigenen Regeln speichern."
           }
         },
         "ar": {
           "stringUnit": {
             "state": "translated",
-            "value": "فقط محركات الـ(آي آي) التي اخترتها ترسل بياناتها، قد يكلف مُقدّمك بطلبات ويطبق سياسته الخاصة بالاحتفاظ بها."
+            "value": "ترسل البيانات محركات الذكاء الاصطناعي المختارة فقط. قد يفرض المزود رسوماً ويحتفظ بالبيانات وفق سياسته."
           }
         },
         "ru": {
           "stringUnit": {
             "state": "translated",
-            "value": "Только выбранные вами движки ИИ отправляют данные.Ваш провайдер может взимать плату за запросы и применять свою собственную политику хранения."
+            "value": "Данные отправляют только выбранные движки ИИ. Поставщик может взимать плату и хранить данные по своим правилам."
           }
         }
       }
@@ -11190,55 +11190,55 @@
         "ja": {
           "stringUnit": {
             "state": "translated",
-            "value": "パーミッションは、このエンドポイントとモデルで記憶されます。プライバシー設定でそれを変更できます。"
+            "value": "この接続先とモデルへの許可を記憶します。プライバシー設定で取り消せます。"
           }
         },
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Vous pouvez le révoquer dans les paramètres de confidentialité."
+            "value": "L’accord est mémorisé pour cette adresse et ce modèle. Révoquez-le dans Confidentialité."
           }
         },
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "Permiso es recordado por este punto final y modelo. Usted puede revocarlo en la configuración de privacidad."
+            "value": "El permiso se recuerda para esta dirección y modelo. Puedes revocarlo en Privacidad."
           }
         },
         "ko": {
           "stringUnit": {
             "state": "translated",
-            "value": "제출은이 엔드포인트와 모델에 대해 기억됩니다. 개인 정보 설정에서 수정할 수 있습니다."
+            "value": "이 주소와 모델에 대한 동의를 기억합니다. 개인정보 보호 설정에서 철회할 수 있습니다."
           }
         },
         "pt": {
           "stringUnit": {
             "state": "translated",
-            "value": "A permissão é lembrada para este endpoint e modelo. Você pode revogá- lo nas configurações de privacidade."
+            "value": "A permissão vale para este endereço e modelo. Você pode revogá-la em Privacidade."
           }
         },
         "it": {
           "stringUnit": {
             "state": "translated",
-            "value": "Il permesso è ricordato per questo endpoint e modello. È possibile revocarlo nelle impostazioni della Privacy."
+            "value": "Il consenso vale per indirizzo e modello. Puoi revocarlo in Privacy."
           }
         },
         "de": {
           "stringUnit": {
             "state": "translated",
-            "value": "Die Berechtigung wird für diesen Endpunkt und dieses Modell gespeichert. Sie können sie in den Datenschutzeinstellungen widerrufen."
+            "value": "Die Freigabe gilt für diese Adresse und dieses Modell. Unter Datenschutz widerrufbar."
           }
         },
         "ar": {
           "stringUnit": {
             "state": "translated",
-            "value": "الاذن يتذكر لهذه النقطه النهائيه و العارضه يمكنك ان تلغيها في اماكن الخصوصيه"
+            "value": "يُحفظ الإذن لهذا العنوان والنموذج. يمكنك إلغاؤه من إعدادات الخصوصية."
           }
         },
         "ru": {
           "stringUnit": {
             "state": "translated",
-            "value": "Разрешение запоминается для этой конечной точки и модели. Вы можете отозвать его в настройках конфиденциальности."
+            "value": "Согласие сохраняется для адреса и модели. Его можно отозвать в разделе конфиденциальности."
           }
         }
       }
@@ -17954,55 +17954,55 @@
         "ja": {
           "stringUnit": {
             "state": "translated",
-            "value": "ショートカットは、現在のアプリ上のフルスクリーンの翻訳者とスクリーンショットを共有します。 クローズまたはスワイプを最大返します。 iOSは、ショートカットを追加し、ハードウェアトリガーを割り当てる前に確認が必要です。"
+            "value": "ショートカットで現在のアプリ上に全画面翻訳を表示します。閉じるか上へスワイプして戻れます。ショートカット追加と操作ボタンへの割り当てはiOSでの確認が必要です。"
           }
         },
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Le raccourci partage la capture d'écran avec le traducteur plein écran au-dessus de votre application actuelle. Fermer ou glisser jusqu'à retourner. iOS nécessite une confirmation avant d'ajouter un raccourci et d'assigner un déclencheur matériel."
+            "value": "Le raccourci affiche la traduction en plein écran au-dessus de l’app actuelle. Fermez ou balayez vers le haut pour revenir. iOS exige une confirmation pour l’ajout et l’attribution du déclencheur."
           }
         },
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "El acceso directo comparte la captura de pantalla con el traductor de pantalla completa por encima de su aplicación actual. Cerrar o cambiar hasta volver. iOS requiere confirmación antes de añadir un acceso directo y asignar un disparador de hardware."
+            "value": "El atajo comparte la captura con el traductor a pantalla completa sobre la app actual. Cierra o desliza hacia arriba para volver. iOS pide confirmar la importación y asignar el disparador."
           }
         },
         "ko": {
           "stringUnit": {
             "state": "translated",
-            "value": "단축키는 현재 앱 위 풀스크린 번역기를 사용하여 스크린 샷을 공유합니다. 닫거나 swipe를 반환합니다. iOS는 단축키를 추가하고 하드웨어 트리거를 할당하기 전에 확인해야합니다."
+            "value": "단축어는 현재 앱 위에 전체 화면 번역을 표시합니다. 닫거나 위로 쓸어 올리면 돌아갑니다. 단축어 추가와 동작 버튼 지정은 iOS에서 확인해야 합니다."
           }
         },
         "pt": {
           "stringUnit": {
             "state": "translated",
-            "value": "O atalho compartilha a captura de tela com o tradutor de tela cheia acima de sua aplicação atual. Feche ou deslize para retornar. iOS requer confirmação antes de adicionar um atalho e atribuir um gatilho de hardware."
+            "value": "O atalho mostra a tradução em tela cheia sobre o app atual. Feche ou deslize para cima para voltar. O iOS pede confirmação para adicionar e atribuir o acionamento."
           }
         },
         "it": {
           "stringUnit": {
             "state": "translated",
-            "value": "La scorciatoia condivide lo screenshot con il traduttore a schermo intero sopra l'app corrente. Chiudere o scorrere fino al ritorno. iOS richiede la conferma prima di aggiungere una scorciatoia e assegnare un trigger hardware."
+            "value": "Il comando mostra la traduzione a schermo intero sopra l’app attuale. Chiudi o scorri in alto per tornare. iOS richiede conferma per l’aggiunta e l’assegnazione al tasto."
           }
         },
         "de": {
           "stringUnit": {
             "state": "translated",
-            "value": "Die Verknüpfung teilt den Screenshot mit dem Vollbild-Übersetzer über Ihrer aktuellen App. Schließen oder wischen Sie nach oben, um zurückzukehren. iOS erfordert eine Bestätigung, bevor Sie eine Verknüpfung hinzufügen und einen Hardware-Trigger zuweisen."
+            "value": "Der Kurzbefehl zeigt die Übersetzung über der aktuellen App im Vollbild. Schließen oder nach oben wischen kehrt zurück. Hinzufügen und Tastenzuordnung müssen in iOS bestätigt werden."
           }
         },
         "ar": {
           "stringUnit": {
             "state": "translated",
-            "value": "ويتقاسم المختصر الشاشة مع مترجم الشاشة الكاملة فوق تطبيقك الحالي، ويغلق أو يستعد للعودة، ويحتاج نظام iOS إلى تأكيد قبل إضافة طريق مختصر وتعيين مشغل للأجهزة."
+            "value": "يعرض الاختصار الترجمة بملء الشاشة فوق التطبيق الحالي. أغلقه أو اسحب للأعلى للعودة. يتطلب iOS تأكيد الإضافة وتعيين زر التشغيل."
           }
         },
         "ru": {
           "stringUnit": {
             "state": "translated",
-            "value": "Ярлык делится скриншотом с полноэкранным переводчиком над вашим текущим приложением. Закройте или проведите пальцем вверх, чтобы вернуться. iOS требует подтверждения, прежде чем добавлять ярлык и назначать аппаратный триггер."
+            "value": "Команда показывает полноэкранный перевод поверх текущего приложения. Закройте или смахните вверх для возврата. Добавление и привязку кнопки нужно подтвердить в iOS."
           }
         }
       }
@@ -18182,55 +18182,55 @@
         "ja": {
           "stringUnit": {
             "state": "translated",
-            "value": "スクリーンショットのショートカットは、現在のアプリ上でフルスクリーンの翻訳者を開きます。 閉じるか、どこにいたか続行するようにスワイプします。"
+            "value": "現在のアプリ上に全画面翻訳を表示します。閉じるか上へスワイプして戻れます。"
           }
         },
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Le raccourci de capture d'écran ouvre le traducteur plein écran au-dessus de votre application actuelle. Fermez ou glissez jusqu'à continuer où vous étiez."
+            "value": "Le raccourci traduit au-dessus de l’app actuelle. Fermez ou balayez vers le haut pour revenir."
           }
         },
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "El atajo de captura de pantalla abre el traductor de pantalla completa sobre tu aplicación actual. Cerrar o cambiar para continuar donde estabas."
+            "value": "El atajo muestra la traducción sobre la app actual. Cierra o desliza hacia arriba para volver."
           }
         },
         "ko": {
           "stringUnit": {
             "state": "translated",
-            "value": "스크린 샷 단축키는 현재 앱 위의 풀 스크린 번역기를 엽니다. 당신이 어디에 있었는지 계속하려면 닫거나 swipe."
+            "value": "현재 앱 위에 전체 화면 번역을 표시합니다. 닫거나 위로 쓸어 올려 돌아가세요."
           }
         },
         "pt": {
           "stringUnit": {
             "state": "translated",
-            "value": "O atalho de captura de tela abre o tradutor de tela inteira acima de sua aplicação atual. Feche ou deslize para continuar onde você estava."
+            "value": "Traduz sobre o app atual. Feche ou deslize para cima para voltar."
           }
         },
         "it": {
           "stringUnit": {
             "state": "translated",
-            "value": "La scorciatoia dello screenshot apre il traduttore a schermo intero sopra la tua app corrente. Chiudere o scorrere fino a continuare dove eri."
+            "value": "Traduce sopra l’app attuale. Chiudi o scorri verso l’alto per tornare."
           }
         },
         "de": {
           "stringUnit": {
             "state": "translated",
-            "value": "Die Screenshot-Verknüpfung öffnet den Vollbild-Übersetzer über Ihrer aktuellen App. Schließen oder wischen Sie nach oben, um dort fortzufahren, wo Sie waren."
+            "value": "Übersetzt über der aktuellen App. Zum Zurückkehren schließen oder nach oben wischen."
           }
         },
         "ar": {
           "stringUnit": {
             "state": "translated",
-            "value": "اختصار الشاشة يفتح مترجم كامل الشاشة فوق تطبيقك الحالي"
+            "value": "يعرض الترجمة فوق التطبيق الحالي. أغلقه أو اسحب للأعلى للعودة."
           }
         },
         "ru": {
           "stringUnit": {
             "state": "translated",
-            "value": "Ярлык скриншота открывает полноэкранный переводчик над вашим текущим приложением. Закройте или проведите пальцем вверх, чтобы продолжить там, где вы были."
+            "value": "Перевод поверх текущего приложения. Закройте или смахните вверх для возврата."
           }
         }
       }
@@ -18535,6 +18535,158 @@
           "stringUnit": {
             "state": "translated",
             "value": "Apple не поддерживает эту пару языков. Выберите сервис ИИ в меню «Ещё» или измените языки."
+          }
+        }
+      }
+    },
+    "Automatic import is unavailable in this build. Add the two actions shown above once in Shortcuts.": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Automatic import is unavailable in this build. Add the two actions shown above once in Shortcuts."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "本构建暂不支持自动导入。请在快捷指令中一次性添加上方两个动作。"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "此版本暫不支援自動匯入。請在捷徑中一次加入上方兩個動作。"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "La importación automática no está disponible en esta versión. Añade una vez las dos acciones de arriba en Atajos."
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "このビルドでは自動読み込みは利用できません。ショートカットで上の2つのアクションを一度追加してください。"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "이 빌드에서는 자동 가져오기를 지원하지 않습니다. 단축어에서 위의 두 동작을 한 번 추가하세요."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "L’importation automatique est indisponible dans cette version. Ajoutez une fois les deux actions ci-dessus dans Raccourcis."
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Der automatische Import ist in diesem Build nicht verfügbar. Füge die beiden gezeigten Aktionen einmal in Kurzbefehle hinzu."
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "L’importazione automatica non è disponibile in questa versione. Aggiungi una volta le due azioni mostrate in Comandi rapidi."
+          }
+        },
+        "pt": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "A importação automática não está disponível nesta versão. Adicione uma vez as duas ações acima em Atalhos."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Автоматический импорт в этой сборке недоступен. Один раз добавьте две указанные операции в Командах."
+          }
+        },
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "الاستيراد التلقائي غير متاح في هذا الإصدار. أضف الإجراءين الموضحين مرة واحدة في تطبيق الاختصارات."
+          }
+        }
+      }
+    },
+    "This installation cannot share settings with the main app. Configure engines here; Apple engines remain available.": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "This installation cannot share settings with the main app. Configure engines here; Apple engines remain available."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "当前签名安装不支持与主 App 共享设置。可在这里配置引擎，苹果引擎仍然可用。"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "目前的簽署安裝不支援與主 App 共享設定。可在此設定引擎，Apple 引擎仍可使用。"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Esta instalación no comparte ajustes con la app principal. Configura los motores aquí; los de Apple siguen disponibles."
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "このインストールではメインアプリと設定を共有できません。ここでエンジンを設定できます。Appleのエンジンは利用可能です。"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "이 설치에서는 기본 앱과 설정을 공유할 수 없습니다. 여기에서 엔진을 설정하세요. Apple 엔진은 계속 사용할 수 있습니다."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Cette installation ne partage pas les réglages avec l’app principale. Configurez les moteurs ici ; ceux d’Apple restent disponibles."
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Diese Installation teilt keine Einstellungen mit der Haupt-App. Konfiguriere die Engines hier; Apple-Engines sind weiterhin verfügbar."
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Questa installazione non condivide le impostazioni con l’app principale. Configura i motori qui; quelli Apple restano disponibili."
+          }
+        },
+        "pt": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Esta instalação não compartilha configurações com o app principal. Configure os mecanismos aqui; os da Apple continuam disponíveis."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Эта установка не обменивается настройками с основным приложением. Настройте движки здесь; движки Apple доступны."
+          }
+        },
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "لا يشارك هذا التثبيت الإعدادات مع التطبيق الرئيسي. اضبط المحركات هنا؛ وتبقى محركات Apple متاحة."
           }
         }
       }

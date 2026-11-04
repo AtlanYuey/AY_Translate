@@ -146,6 +146,7 @@ final class InterfaceAndServiceTests: XCTestCase {
     }
 
     func testChineseFullScreenAndSettingsSnapshots() async throws {
+        executionTimeAllowance = 120
         settings.interfaceLanguage = .simplifiedChinese
         settings.source = .english; settings.target = .chinese
         let fixture = snapshotFixture()
@@ -171,6 +172,10 @@ final class InterfaceAndServiceTests: XCTestCase {
         try settings.saveService(a, keyReplacement: nil); try settings.saveService(b, keyReplacement: nil)
         await attach(NavigationStack { AIServicesView() }.environmentObject(settings).environment(\.locale, settings.interfaceLocale).preferredColorScheme(.dark), name: "中文-多服务管理")
         await attach(NavigationStack { AIServiceEditor(service: b) }.environmentObject(settings).environment(\.locale, settings.interfaceLocale).preferredColorScheme(.dark), name: "中文-自定义服务名称与接口")
+        for language in [InterfaceLanguage.spanish, .japanese, .korean] {
+            settings.interfaceLanguage = language
+            await attach(NavigationStack { SettingsView() }.environmentObject(settings).environmentObject(state.history).environment(\.locale, settings.interfaceLocale), name: language.name + "-设置")
+        }
         state.closeResult()
     }
 

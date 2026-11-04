@@ -130,8 +130,8 @@ struct ShortcutSetupView: View {
                     VStack(spacing: 0) {
                         SetupStep(
                             number: 1,
-                            title: "Add the prepared shortcut",
-                            detail: "Tap Add Screenshot Shortcut below and confirm the system import. No manual action assembly is needed."
+                            title: ShortcutInstaller.bundledFile == nil ? "Create “Translate Screen”" : "Add the prepared shortcut",
+                            detail: ShortcutInstaller.bundledFile == nil ? "In Shortcuts, add the two actions shown above in that order." : "Tap Add Screenshot Shortcut below and confirm the system import. No manual action assembly is needed."
                         )
                         Divider().padding(.leading, 58)
                         SetupStep(
@@ -153,6 +153,11 @@ struct ShortcutSetupView: View {
                     .buttonStyle(.borderedProminent)
                     .buttonBorderShape(.roundedRectangle(radius: 14))
                     .disabled(ShortcutInstaller.bundledFile == nil)
+
+                    if ShortcutInstaller.bundledFile == nil {
+                        Text("Automatic import is unavailable in this build. Add the two actions shown above once in Shortcuts.")
+                            .font(.footnote).foregroundStyle(.secondary)
+                    }
 
                     if ShortcutInstaller.bundledFile != nil {
                         Button("Import Bundled Shortcut File") { showsFile = true }

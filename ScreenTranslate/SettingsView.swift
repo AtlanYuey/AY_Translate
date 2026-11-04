@@ -45,6 +45,12 @@ struct SettingsView: View {
                 NavigationLink { AIServicesView() } label: {
                     LabeledContent("AI Services", value: String(settings.serviceCatalog.services.count))
                 }
+                #if SCREEN_TRANSLATE_SHARE_EXTENSION
+                if SharedAppContainer.url == nil {
+                    Text("This installation cannot share settings with the main app. Configure engines here; Apple engines remain available.")
+                        .font(.footnote).foregroundStyle(.secondary)
+                }
+                #endif
             } footer: { Text("Save multiple named providers and switch instantly. Each API key stays in its own Keychain entry.") }
             Section("Display") {
                 Picker("Default Result View", selection: $settings.defaultResultMode) {

@@ -15,13 +15,13 @@ See foreign text → press the Action Button → see the translated screen.
 
 </div>
 
-## 1.1：中文与轻量预览
+## 1.2：全屏共享扩展与系统语言
 
-界面默认中文，支持跟随系统/简繁中文/English。结果页改为无上下条目的全屏画面与三个悬浮符号；字号及默认模式移入设置，文字使用周围背景采样覆盖。可保存多个自定义名称的 AI 服务，分别选择用于 OCR 或翻译，切换不丢密钥。
+截图翻译改用“截屏 → 与屏幕翻译共享”的全屏 Action 扩展，在系统宿主中显示并返回来源 App，移除 Siri 片段卡片。默认跟随系统语言，提供十二种界面语言及本地文字名；加入应用图标，历史标签仅在保存历史开启时显示。
 
-默认快捷指令改用不打开主 App 的系统互动片段，不再弹出 Opening 完成提示；缺少苹果语言包时首次进入 App 准备。片段的显示尺寸及上滑收起由系统管理，需真机验收。需要完整缩放与阅读可进入 App，或使用“在 App 中翻译截图”动作。
+一键导入器和双动作模板已准备，但公开分发所需签名仍需要已登录 iCloud 的 Mac；当前无有效签名文件时会明确禁用自动导入。不会把未签名模板当作可用安装文件。
 
-详细说明与限制：[中文界面与轻量预览](docs/中文界面与轻量预览.md)。
+实现依据、签名限制与验收范围：[全屏扩展与快捷指令调查](docs/全屏扩展与快捷指令调查.md)。
 
 ## Preview (original version)
 
@@ -34,7 +34,7 @@ See foreign text → press the Action Button → see the translated screen.
 </p>
 
 <p align="center">
-  <sub>原始版本示意。1.1 中文界面及精简结果页的最新截图随 Actions 的 validation 附件提供。</sub>
+  <sub>原始版本示意。新版界面及全屏扩展的最新截图随 Actions 的 validation 附件提供。</sub>
 </p>
 
 ## Overview
@@ -95,18 +95,18 @@ Layout-preserving overlays
 Run Translate Screen once after installing it, then create a shortcut with these two actions:
 
 1. Add **Take Screenshot**.
-2. Add **Translate Screenshot** from Translate Screen directly below it.
+2. Add **Share with Translate Screen** directly below it (the installed Action extension).
 3. Confirm that the Screenshot output from the first action is connected to the Screenshot input of the second action.
 4. Name the shortcut `Translate Screen`.
 5. Open **Settings → Action Button → Shortcut**.
 6. Select `Translate Screen`.
 
-Prepare the selected Apple translation language pair in the app once. The default action then returns an interactive system preview without foregrounding the main app; the system handles dismissal back to the previous context. Use **Translate Screenshot in App** for direct access to the full editor.
+Use **Take Screenshot → Share with Translate Screen** for the full-screen action extension. Apple Translation prepares models through system UI. The legacy **Translate Screenshot in App** action remains a foreground fallback.
 
 The resulting workflow is:
 
 ```text
-Take Screenshot → Translate Screenshot → System preview (stay in the source app)
+Take Screenshot → Share with Translate Screen → Full-screen extension → Return to host
 ```
 
 No photo picker, conditional action, or separate Open action is required. iOS requires the system **Take Screenshot** action to be added during this one-time setup; third-party apps cannot silently capture the contents of other apps.
@@ -209,7 +209,7 @@ Privacy is a core design constraint:
 - Screenshots are recognized and translated using Apple frameworks on the device by default; cloud AI is opt-in and destination-specific.
 - Translate Screen does not include analytics, advertising SDKs, or its own screenshot-upload service.
 - Translation history is disabled by default.
-- When history is off, translations stay in memory until Close (system previews expire after ten minutes). Only the alternative foreground shortcut uses a protected temporary handoff file, removed on consumption or expiry; nothing is added to Photos.
+- When history is off, translations stay in memory until Close (system previews expire after ten minutes). The shared-screen extension keeps its input in memory. Only the alternative foreground shortcut uses a protected temporary handoff file, removed on consumption or expiry; nothing is added to Photos.
 - Optional provider keys stay in the device-only Keychain. Cloud requests use ephemeral sessions and refuse redirects; provider error bodies and credentials are never logged.
 - When history is enabled, screenshots and text are stored in the app's private local container.
 - Saved history can be removed from the History or Settings screen.

@@ -33,7 +33,8 @@ final class ShareAndLanguageTests: XCTestCase {
         let provider = NSItemProvider(item: try XCTUnwrap(image.pngData()) as NSData, typeIdentifier: UTType.png.identifier)
         let item = NSExtensionItem(); item.attachments = [provider]
         let loaded = try await SharedImageLoader.load(from: [item])
-        XCTAssertEqual(loaded.size, image.size)
+        XCTAssertEqual(loaded.cgImage?.width, image.cgImage?.width)
+        XCTAssertEqual(loaded.cgImage?.height, image.cgImage?.height)
     }
 
     func testMissingImageAndInvalidDataFailWithoutLaunchingTranslator() async {
@@ -69,5 +70,16 @@ final class ShareAndLanguageTests: XCTestCase {
         let primary = try XCTUnwrap(icons["CFBundlePrimaryIcon"] as? [String: Any])
         XCTAssertEqual(primary["CFBundleIconName"] as? String, "AppIcon")
         XCTAssertFalse((primary["CFBundleIconFiles"] as? [String] ?? []).isEmpty)
+    }
+
+    func testSpanishJapaneseAndKoreanProductTerminologyIsCorrect() {
+        let terms: [(InterfaceLanguage, [String])] = [
+            (.spanish, ["Ajustes", "Historial", "Guardar", "Cerrar"]),
+            (.japanese, ["設定", "履歴", "保存", "閉じる"]),
+            (.korean, ["설정", "기록", "저장", "닫기"])
+        ]
+        for (language, expected) in terms {
+            XCTAssertEqual(["Settings", "History", "Save", "Close"].map { AppLocalization.text($0, language: language) }, expected)
+        }
     }
 }
