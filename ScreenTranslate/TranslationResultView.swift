@@ -14,6 +14,9 @@ struct TranslationResultView: View {
     @State private var resetZoom = UUID()
     @State private var palette: [UUID: SampledColor] = [:]
     @State private var imageZoom: CGFloat = 1
+    @State private var isClosing = false
+
+    private var showsImage: Bool { appState.phase == .ready && appState.document != nil && mode != .text }
 
     var body: some View {
         let requestID = appState.appleRequestID
@@ -29,7 +32,10 @@ struct TranslationResultView: View {
             .accessibilityElement(children: .contain)
             .accessibilityIdentifier("result.canvas")
             .simultaneousGesture(DragGesture(minimumDistance: 45).onEnded { value in
-                if appState.phase == .ready, mode != .text, imageZoom <= 1.01,
+                // The image handles its own drag to avoid competing parent and
+                // child recognizers. This fallback also lets loading/error
+                // screens be dismissed from their bottom margin.
+                if !showsImage, mode != .text, imageZoom <= 1.01,
                    value.startLocation.y > geometry.size.height - 110,
                    value.translation.height < -100,
                    abs(value.translation.width) < abs(value.translation.height) * 0.65 {
@@ -80,7 +86,7 @@ struct TranslationResultView: View {
                 } else {
                     ZoomableScreenshot(document: document, showsOriginal: mode == .original, appearance: settings.appearance,
                                        textScale: settings.overlayTextScale, palette: palette, resetZoom: resetZoom,
-                                       zoomChanged: { imageZoom = $0 }) { selectedBlock = $0 }
+                                       zoomChanged: { imageZoom = $0 }, dismissAction: close) { selectedBlock = $0 }
                         .id(document.id)
                 }
             }
@@ -134,6 +140,8 @@ struct TranslationResultView: View {
     }
 
     private func close() {
+        guard !isClosing else { return }
+        isClosing = true
         appState.closeResult()
         if let onClose { onClose() } else { dismiss() }
     }
@@ -202,6 +210,7 @@ private struct ZoomableScreenshot: View {
     let palette: [UUID: SampledColor]
     let resetZoom: UUID
     let zoomChanged: (CGFloat) -> Void
+    let dismissAction: () -> Void
     let select: (RecognizedBlock) -> Void
     @State private var scale: CGFloat = 1
     @State private var offset = CGSize.zero
@@ -238,6 +247,12 @@ private struct ZoomableScreenshot: View {
                 offset = ImageViewport.boundedOffset(offset, image: fitted, container: proxy.size, scale: scale)
             })
             .simultaneousGesture(DragGesture(minimumDistance: 8).updating($drag) { value, state, _ in state = value.translation }.onEnded { value in
+                if scale <= 1.01, value.startLocation.y > proxy.size.height - 110,
+                   value.translation.height < -100,
+                   abs(value.translation.width) < abs(value.translation.height) * 0.65 {
+                    dismissAction()
+                    return
+                }
                 offset = ImageViewport.boundedOffset(CGSize(width: offset.width + value.translation.width, height: offset.height + value.translation.height), image: fitted, container: proxy.size, scale: scale)
             })
             .onChange(of: resetZoom) { _, _ in withAnimation(.snappy) { scale = 1; offset = .zero; zoomChanged(1) } }

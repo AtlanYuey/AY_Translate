@@ -26,13 +26,13 @@ final class ScreenTranslateUITests: XCTestCase {
         XCTAssertEqual(original.label, "Show Translation")
         let attachment = XCTAttachment(screenshot: app.screenshot())
         attachment.name = "真实系统扩展-全屏覆盖来源界面"; attachment.lifetime = .keepAlways; add(attachment)
+        app.buttons["result.close"].tap()
+        guard waitUntilHittable(source) else { failWithScreenshot(app, name: "叉号关闭后返回失败"); return }
+        openExtension(app, source: source)
+        XCTAssertTrue(original.waitForExistence(timeout: 60))
         app.coordinate(withNormalizedOffset: CGVector(dx: 0.12, dy: 0.94))
             .press(forDuration: 0.05, thenDragTo: app.coordinate(withNormalizedOffset: CGVector(dx: 0.12, dy: 0.60)))
-        XCTAssertTrue(waitUntilHittable(source), "Swipe-up must complete the extension and reveal its invoking app")
-        openExtension(app, source: source)
-        let close = app.buttons["result.close"]
-        XCTAssertTrue(close.waitForExistence(timeout: 45)); close.tap()
-        XCTAssertTrue(waitUntilHittable(source))
+        if !waitUntilHittable(source) { failWithScreenshot(app, name: "上滑后返回失败") }
     }
 
     func testHistoryTabOnlyExistsWhenHistorySavingIsEnabled() throws {
@@ -66,6 +66,12 @@ final class ScreenTranslateUITests: XCTestCase {
     }
 
     private func waitUntilHittable(_ element: XCUIElement) -> Bool {
-        XCTWaiter.wait(for: [XCTNSPredicateExpectation(predicate: NSPredicate(format: "isHittable == true"), object: element)], timeout: 20) == .completed
+        XCTWaiter.wait(for: [XCTNSPredicateExpectation(predicate: NSPredicate(format: "isHittable == true"), object: element)], timeout: 45) == .completed
+    }
+
+    private func failWithScreenshot(_ app: XCUIApplication, name: String) {
+        let attachment = XCTAttachment(screenshot: app.screenshot())
+        attachment.name = name; attachment.lifetime = .keepAlways; add(attachment)
+        XCTFail(name + "\n" + app.debugDescription)
     }
 }

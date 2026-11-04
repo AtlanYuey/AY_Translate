@@ -9,6 +9,10 @@ final class ShareViewController: UIViewController {
     private var loading: Task<Void, Never>?
     private var completed = false
 
+    override var prefersStatusBarHidden: Bool { true }
+    override var prefersHomeIndicatorAutoHidden: Bool { true }
+    override var preferredScreenEdgesDeferringSystemGestures: UIRectEdge { .bottom }
+
     override func viewDidLoad() {
         super.viewDidLoad()
         modalPresentationStyle = .fullScreen
@@ -31,6 +35,7 @@ final class ShareViewController: UIViewController {
 
     override func viewDidAppear(_ animated: Bool) {
         super.viewDidAppear(animated)
+        setNeedsUpdateOfScreenEdgesDeferringSystemGestures()
         guard loading == nil, !completed else { return }
         let items = extensionContext?.inputItems.compactMap { $0 as? NSExtensionItem } ?? []
         let state = self.state
