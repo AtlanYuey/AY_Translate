@@ -155,7 +155,7 @@ final class InterfaceAndServiceTests: XCTestCase {
             }
         }
         let attachment = XCTAttachment(image: image); attachment.name = "竖排日文小字原图"; attachment.lifetime = .keepAlways; add(attachment)
-        let blocks = try await ScreenReader.recognize(in: image, source: .japanese)
+        let blocks = try await ScreenReader.recognize(in: image, source: .automatic)
         let text = blocks.map(\.original).joined()
         let recognized = XCTAttachment(string: text); recognized.name = "真实Vision竖排识别"; recognized.lifetime = .keepAlways; add(recognized)
         XCTAssertTrue(text.contains("ケーキ"), text)

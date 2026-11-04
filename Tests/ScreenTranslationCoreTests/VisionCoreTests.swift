@@ -13,7 +13,7 @@ final class VisionCoreTests: XCTestCase {
         draw("Small text survives", x: 140, y: 220, font: "Helvetica", size: 22, context: context)
         let image = try XCTUnwrap(context.makeImage())
         try record(image, blocks: [], name: "small-text")
-        let blocks = try await VisionTextRecognizer.recognize(image, language: "en-US")
+        let blocks = try await VisionTextRecognizer.recognize(image, language: nil)
         try record(image, blocks: blocks, name: "small-text")
         XCTAssertTrue(blocks.map(\.original).joined().lowercased().filter { !$0.isWhitespace }.contains("smalltextsurvives"))
         XCTAssertTrue(blocks.allSatisfy { $0.boundingBox.minX >= 0 && $0.boundingBox.maxX <= 1 && $0.boundingBox.minY >= 0 && $0.boundingBox.maxY <= 1 })
@@ -28,7 +28,7 @@ final class VisionCoreTests: XCTestCase {
         }
         let image = try XCTUnwrap(context.makeImage())
         try record(image, blocks: [], name: "japanese-vertical")
-        let blocks = try await VisionTextRecognizer.recognize(image, language: "ja")
+        let blocks = try await VisionTextRecognizer.recognize(image, language: nil)
         try record(image, blocks: blocks, name: "japanese-vertical")
         let text = blocks.map(\.original).joined()
         XCTAssertTrue(text.contains("ケーキ"), text)
