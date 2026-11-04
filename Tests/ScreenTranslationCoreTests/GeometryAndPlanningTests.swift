@@ -34,6 +34,16 @@ final class GeometryAndPlanningTests: XCTestCase {
         XCTAssertFalse(VerticalTextLayout(text: String(repeating: "太长", count: 100), size: CGSize(width: 20, height: 100), preferred: 18, scale: 1).fits)
     }
 
+    func testManualVerticalEnlargementKeepsEveryGlyphAndItsRelativePosition() {
+        let base = VerticalTextLayout(text: "这是什么蛋糕", size: CGSize(width: 24, height: 160), preferred: 20, scale: 1)
+        XCTAssertTrue(base.fits)
+        let enlarged = VerticalTextLayout(scaling: base, by: 1.5)
+        XCTAssertTrue(enlarged.fits)
+        XCTAssertEqual(enlarged.fontSize, base.fontSize * 1.5)
+        XCTAssertEqual(enlarged.glyphs.count, base.glyphs.count)
+        XCTAssertEqual(enlarged.glyphs[0].center.x, base.glyphs[0].center.x * 1.5)
+    }
+
     func testVerticalDetectorSeparatesColumnsAndDistantBubbles() {
         let glyphs = (0..<6).map { CGRect(x: 0.6, y: 0.8 - Double($0) * 0.025, width: 0.02, height: 0.02) }
         let distant = (0..<3).map { CGRect(x: 0.6, y: 0.2 - Double($0) * 0.025, width: 0.02, height: 0.02) }

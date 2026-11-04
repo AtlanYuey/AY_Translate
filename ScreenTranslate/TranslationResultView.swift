@@ -320,11 +320,12 @@ private struct OverlayTextView: View {
     var body: some View {
         let layout = ScreenshotRendering.textLayout(for: block, canvasSize: canvasSize, textScale: textScale,
                                                    text: revealsOriginal ? block.original : block.translation)
+        let drawingRect = layout.textRect.union(layout.sourceRect.insetBy(dx: -layout.coverPadding, dy: -layout.coverPadding))
         Canvas { context, _ in
             guard layout.canRender, !revealsOriginal else { return }
             let local = ScreenshotRendering.textLayout(for: block, canvasSize: canvasSize, textScale: textScale)
             context.withCGContext { cg in
-                cg.translateBy(x: -local.textRect.minX, y: -local.textRect.minY)
+                cg.translateBy(x: -drawingRect.minX, y: -drawingRect.minY)
                 if appearance != .minimal {
                     let fill = appearance == .readable ? UIColor.black : UIColor(red: color.red, green: color.green, blue: color.blue, alpha: 1)
                     cg.setFillColor(fill.cgColor)
@@ -334,9 +335,9 @@ private struct OverlayTextView: View {
                     color: appearance == .readable || !color.usesDarkText ? .white : .black, isRTL: isRTL, in: cg)
             }
         }
-        .frame(width: layout.textRect.width, height: layout.textRect.height)
+        .frame(width: drawingRect.width, height: drawingRect.height)
         .contentShape(Rectangle())
-        .position(x: layout.textRect.midX, y: layout.textRect.midY)
+        .position(x: drawingRect.midX, y: drawingRect.midY)
         .onTapGesture(perform: onTap)
         .onLongPressGesture(minimumDuration: 0.15, pressing: { revealsOriginal = $0 }, perform: {})
         .accessibilityLabel("\(block.original), \(block.translation)")

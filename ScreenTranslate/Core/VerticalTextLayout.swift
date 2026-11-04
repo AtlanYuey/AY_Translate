@@ -15,6 +15,12 @@ nonisolated struct VerticalTextLayout: Sendable {
     let glyphs: [VerticalGlyph]
     let fits: Bool
 
+    init(scaling base: VerticalTextLayout, by factor: CGFloat) {
+        fontSize = base.fontSize * factor
+        glyphs = base.glyphs.map { VerticalGlyph(text: $0.text, center: CGPoint(x: $0.center.x * factor, y: $0.center.y * factor)) }
+        fits = base.fits
+    }
+
     static func supports(_ text: String) -> Bool {
         text.unicodeScalars.contains { (0x2E80...0x9FFF).contains($0.value) || (0xAC00...0xD7AF).contains($0.value) }
     }

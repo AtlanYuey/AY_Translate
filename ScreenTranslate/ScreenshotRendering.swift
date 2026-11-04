@@ -27,8 +27,15 @@ enum ScreenshotRendering {
         let lineHeight = max(0.0001, block.originalLineHeight * canvasSize.height)
         let scale = textScale.isFinite && textScale > 0 ? CGFloat(textScale) : 1
         if block.flow == .vertical && VerticalTextLayout.supports(text) {
-            let layout = VerticalTextLayout(text: text, size: rect.size, preferred: max(0.001, block.originalColumnWidth * canvasSize.width * 0.94), scale: scale)
-            return TextLayout(sourceRect: rect, textRect: rect, fontSize: layout.fontSize, lineLimit: 1,
+            let preferred = max(0.001, block.originalColumnWidth * canvasSize.width * 0.94)
+            let base = VerticalTextLayout(text: text, size: rect.size, preferred: preferred, scale: min(1, scale))
+            let layout = scale > 1 ? VerticalTextLayout(scaling: base, by: scale) : base
+            // Manual enlargement must not silently turn a complete vertical
+            // translation back into the original. Grow its text area around
+            // the same anchor; the background still covers only the source.
+            let textRect = scale > 1 ? CGRect(x: rect.midX - rect.width * scale / 2, y: rect.midY - rect.height * scale / 2,
+                width: rect.width * scale, height: rect.height * scale) : rect
+            return TextLayout(sourceRect: rect, textRect: textRect, fontSize: layout.fontSize, lineLimit: 1,
                               coverPadding: layout.fontSize * 0.06, vertical: layout, canRender: layout.fits)
         }
         let metrics = glyphMetrics(for: text)
