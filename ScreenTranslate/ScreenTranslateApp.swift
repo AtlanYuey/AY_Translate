@@ -18,7 +18,7 @@ struct ScreenTranslateApp: App {
         if ProcessInfo.processInfo.arguments.contains("--ui-test-reset") {
             let preferences = SharedAppContainer.preferences
             preferences.set("en", forKey: "interfaceLanguage")
-            preferences.set("en", forKey: "defaultSourceLanguage")
+            preferences.set("automatic", forKey: "defaultSourceLanguage")
             preferences.set("en", forKey: "defaultTargetLanguage")
             preferences.set(false, forKey: "saveTranslationHistory")
             preferences.set("appleVision", forKey: "ocrEngine")
