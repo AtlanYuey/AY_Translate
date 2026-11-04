@@ -51,6 +51,12 @@ enum ScreenReader {
 
             request.recognitionLevel = .accurate
             request.usesLanguageCorrection = true
+            #if targetEnvironment(simulator)
+            // Hosted Intel simulators can spend minutes compiling Vision's
+            // Metal pipeline. Use the same accurate model on CPU in tests;
+            // physical devices keep Vision's default hardware acceleration.
+            request.usesCPUOnly = true
+            #endif
             request.automaticallyDetectsLanguage = source == .automatic
             if let language = source.recognitionCode {
                 request.recognitionLanguages = [language]

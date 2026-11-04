@@ -13,7 +13,7 @@ final class ScreenTranslateUITests: XCTestCase {
         let original = app.buttons["result.original"]
         guard original.waitForExistence(timeout: 60) else {
             let failure = XCTAttachment(screenshot: app.screenshot())
-            failure.name = "系统共享输入读取失败"; failure.lifetime = .keepAlways; add(failure)
+            failure.name = "系统扩展未生成识别结果"; failure.lifetime = .keepAlways; add(failure)
             XCTFail(app.debugDescription)
             return
         }
