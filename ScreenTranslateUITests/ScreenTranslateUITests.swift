@@ -19,8 +19,10 @@ final class ScreenTranslateUITests: XCTestCase {
         }
         let canvas = app.otherElements["result.canvas"]
         XCTAssertTrue(canvas.waitForExistence(timeout: 10))
-        XCTAssertGreaterThanOrEqual(canvas.frame.height, app.frame.height * 0.97)
-        XCTAssertGreaterThanOrEqual(canvas.frame.width, app.frame.width * 0.97)
+        guard canvas.frame.height >= app.frame.height * 0.97, canvas.frame.width >= app.frame.width * 0.97 else {
+            failWithScreenshot(app, name: "系统共享容器未覆盖屏幕")
+            return
+        }
         XCTAssertFalse(source.isHittable)
         original.tap()
         let changed = XCTNSPredicateExpectation(predicate: NSPredicate(format: "label == %@", "Show Translation"), object: original)
