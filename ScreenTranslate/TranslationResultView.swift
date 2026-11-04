@@ -190,9 +190,11 @@ struct TranslationResultView: View {
                 appState.retry()
             }
             ForEach(settings.serviceCatalog.services.filter { profile != .ocr || $0.supportsVision }) { service in
-                Button(service.name) {
+                Button {
                     do { try settings.selectService(service.id, for: profile); appState.retry() }
                     catch { showsSettings = true }
+                } label: {
+                    Label { Text(service.name) } icon: { ProviderIcon(preset: service.preset) }
                 }
             }
         } label: { Text(LocalizedStringKey(profile == .ocr ? "OCR Engine" : "Translation Engine")) }

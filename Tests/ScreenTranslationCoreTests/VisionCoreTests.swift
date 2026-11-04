@@ -50,7 +50,7 @@ final class VisionCoreTests: XCTestCase {
     }
 
     func testNativeDocumentRecognitionReadsCompleteVerticalTextAndRecordsLatency() async throws {
-        guard #available(macOS 26.0, iOS 26.0, *) else { return }
+        guard #available(macOS 26.0, iOS 26.0, *) else { throw XCTSkip("The new native document engine requires macOS/iOS 26; legacy Vision is covered separately") }
         let context = try canvas()
         for (column, text) in ["これは何ですか", "一口だけ食べて", "とても甘いです"].enumerated() {
             for (row, glyph) in text.enumerated() {

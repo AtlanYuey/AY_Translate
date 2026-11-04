@@ -18984,13 +18984,13 @@
         }
       }
     },
-    "AY Translateshot": {
+    "Translate Screenshot": {
       "extractionState": "manual",
       "localizations": {
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "AY Translateshot"
+            "value": "Translate Screenshot"
           }
         },
         "zh-Hans": {
@@ -19061,13 +19061,13 @@
         }
       }
     },
-    "AY Translateshot in App": {
+    "Translate Screenshot in App": {
       "extractionState": "manual",
       "localizations": {
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "AY Translateshot in App"
+            "value": "Translate Screenshot in App"
           }
         },
         "zh-Hans": {
@@ -19369,13 +19369,13 @@
         }
       }
     },
-    "No photo picker or separate Open action is needed. Use AY Translateshot in App instead if you prefer the full editor.": {
+    "No photo picker or separate Open action is needed. Use Translate Screenshot in App instead if you prefer the full editor.": {
       "extractionState": "manual",
       "localizations": {
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "No photo picker or separate Open action is needed. Use AY Translateshot in App instead if you prefer the full editor."
+            "value": "No photo picker or separate Open action is needed. Use Translate Screenshot in App instead if you prefer the full editor."
           }
         },
         "zh-Hans": {
@@ -19429,7 +19429,7 @@
         "de": {
           "stringUnit": {
             "state": "translated",
-            "value": "Es ist kein Foto-Picker oder eine separate Open-Aktion erforderlich.Verwenden Sie stattdessen AY Translateshot in App, wenn Sie den vollständigen Editor bevorzugen."
+            "value": "Es ist kein Foto-Picker oder eine separate Open-Aktion erforderlich.Verwenden Sie stattdessen Translate Screenshot in App, wenn Sie den vollständigen Editor bevorzugen."
           }
         },
         "ar": {
@@ -19441,18 +19441,18 @@
         "ru": {
           "stringUnit": {
             "state": "translated",
-            "value": "Нет необходимости в сборщике фотографий или отдельном открытом действии.Вместо этого используйте AY Translateshot в приложении, если вы предпочитаете полный редактор."
+            "value": "Нет необходимости в сборщике фотографий или отдельном открытом действии.Вместо этого используйте Translate Screenshot в приложении, если вы предпочитаете полный редактор."
           }
         }
       }
     },
-    "Shortcut recipe: Take Screenshot, then AY Translateshot": {
+    "Shortcut recipe: Take Screenshot, then Translate Screenshot": {
       "extractionState": "manual",
       "localizations": {
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Shortcut recipe: Take Screenshot, then AY Translateshot"
+            "value": "Shortcut recipe: Take Screenshot, then Translate Screenshot"
           }
         },
         "zh-Hans": {

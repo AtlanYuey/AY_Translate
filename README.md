@@ -1,6 +1,6 @@
 <div align="center">
 
-# Translate Screen
+# AY Translate
 
 **Translate text anywhere on your iPhone—without losing the original screen layout.**
 
@@ -15,22 +15,20 @@ See foreign text → press the Action Button → see the translated screen.
 
 </div>
 
-## 1.2.1：修复快捷指令共享与原位字号
+## 1.4：识别、背景与日常操作
 
-修正扩展注册类型为真正的 Share 扩展，解决“截屏 → 与屏幕翻译共享”报告“App 没有共享扩展”的问题。译文字号按每条原文的行高和图片缩放估算，标题和小字保持各自比例；字号设置按此相对缩放，移除小图中强制 12pt 的下限。当前系统活动面板中的 Share 结果仍以卡片呈现，无边框全屏效果列为后续工作；CI 明确记录这一条预期尺寸失败，同时检查识别、切换和返回来源界面。
+默认 Apple Vision + 苹果本机翻译，无需 API Key。新版本使用原生文档识别读取竖排方向与文字位置，减少重复 OCR；AI 翻译使用紧凑 ID 和最多两批并发。背景按文字笔画局部处理，保留未遮罩的画面，不再为默认译文绘制整块底色。具体真机耗时取决于图片、语言模型及供应商，可长按原图图标查看处理耗时。
 
-默认跟随系统语言，提供十二种界面语言及本地文字名；包含应用图标，历史标签仅在保存历史开启时显示。
+首页只保留语言与单一图片入口，显示、隐私、翻译历史进入各自二级设置；内置蓝色 AY Translate 截屏快捷指令和品牌服务商图标。iCloud 设置同步可选，首次上传已配置设备的设置，其他设备读取；API Key、截图、历史和授权保留在本机。自签需要描述文件支持对应 iCloud 权限。
 
-已内置签名的双动作快捷指令，可点击“添加截屏翻译快捷指令”进入系统导入界面，再确认添加。操作按钮或轻点背面的绑定仍需在系统设置选择。CI 验证 Apple 证书链、归档签名和实际动作内容，不依赖运行时签名服务。
-
-实现依据、签名限制与验收范围：[全屏扩展与快捷指令调查](docs/全屏扩展与快捷指令调查.md)。
+实现、验证范围与限制：[1.4 开发记录](docs/AY-Translate-1.4.md)。现有系统 Share 宿主仍可能以卡片显示，无边框全屏尚未解决，真实快捷指令与签名权限需要设备验收。
 
 ## Preview (original version)
 
 <p align="center">
   <img
     src="screenshots/screenshotExample.png"
-    alt="Translate Screen displaying English translations over text in a Chinese shopping app"
+    alt="AY Translate displaying English translations over text in a Chinese shopping app"
     width="420"
   />
 </p>
@@ -41,12 +39,12 @@ See foreign text → press the Action Button → see the translated screen.
 
 ## Overview
 
-Translate Screen is a native iPhone utility that recognizes text in a screenshot, translates it on-device, and places the translation over the original text in approximately the same location.
+AY Translate is a native iPhone utility that recognizes text in a screenshot, translates it on-device, and places the translation over the original text in approximately the same location.
 
 Instead of reducing a screen to a plain list of sentences, the app preserves the visual context of menus, websites, maps, messages, social media, and other interfaces. It is designed around a fast Action Button workflow, with manual screenshot import available when needed.
 
 > [!IMPORTANT]
-> Translate Screen is an early-stage open-source project. APIs, storage formats, and UI behavior may change as the project evolves.
+> AY Translate is an early-stage open-source project. APIs, storage formats, and UI behavior may change as the project evolves.
 
 ## Features
 
@@ -55,7 +53,7 @@ Instead of reducing a screen to a plain list of sentences, the app preserves the
 - **Free local defaults** — Apple Vision and Apple Translation work without an account, ads, or an API key.
 - **Optional AI engines** — Independently select OpenAI-compatible image OCR or contextual translation, with custom HTTPS endpoints, models, and device-only Keychain credentials.
 - **Verified OCR positions** — AI text uses local Vision anchors for overlays; uncertain positions remain in Full Text.
-- **Readable results** — Pinch repeatedly to zoom, drag to pan, reset the view, and adjust overlay type size; tap truncated text for its complete translation.
+- **Readable results** — Pinch repeatedly to zoom, drag to pan, reset the view, and adjust overlay type size; tap any translated region for its complete translation.
 - **Automatic language detection** — Detects the source language or allows explicit language selection.
 - **Multiple languages** — Supports English, Arabic, Chinese, Japanese, Korean, Spanish, French, German, Italian, Portuguese, and Russian.
 - **First-class Arabic support** — Right-to-left layout, alignment, and mixed text handling.
@@ -74,7 +72,7 @@ Instead of reducing a screen to a plain list of sentences, the app preserves the
 Take Screenshot
       │
       ▼
-Share with Translate Screen
+Share with AY Translate
       │
       ▼
 Vision text recognition
@@ -94,23 +92,23 @@ Layout-preserving overlays
 
 ## Action Button Setup
 
-Run Translate Screen once after installing it, then open **Settings → Action Button & Shortcuts → Add Screenshot Shortcut**. Open the bundled file in Shortcuts and confirm **Add Shortcut**. Its two actions are already connected. Then assign it in **Settings → Action Button** or **Accessibility → Touch → Back Tap**.
+Run AY Translate once after installing it, then open **Settings → Action Button & Shortcuts → Add Screenshot Shortcut**. Open the bundled file in Shortcuts and confirm **Add Shortcut**. Its two actions are already connected. Then assign it in **Settings → Action Button** or **Accessibility → Touch → Back Tap**.
 
 For manual setup or a build with a changed bundle identifier, create this workflow:
 
 1. Add **Take Screenshot**.
-2. Add **Share with Translate Screen** directly below it (the installed Share extension).
+2. Add **Share with AY Translate** directly below it (the installed Share extension).
 3. Confirm that the Screenshot output from the first action is connected to the Screenshot input of the second action.
-4. Name the shortcut `Translate Screen`.
+4. Name the shortcut `AY Translate`.
 5. Open **Settings → Action Button → Shortcut**.
-6. Select `Translate Screen`.
+6. Select `AY Translate`.
 
-Use **Take Screenshot → Share with Translate Screen** for the Share extension. Install version 1.2.1 or later: version 1.2 incorrectly registered an Action extension, which does not satisfy Shortcuts' “Share with App” lookup. Existing two-action shortcuts can be kept if signing preserves the app identifier. Apple Translation prepares models through system UI. The legacy **Translate Screenshot in App** action remains a foreground fallback.
+Use **Take Screenshot → Share with AY Translate** for the Share extension. Install version 1.2.1 or later: version 1.2 incorrectly registered an Action extension, which does not satisfy Shortcuts' “Share with App” lookup. Existing two-action shortcuts can be kept if signing preserves the app identifier. Apple Translation prepares models through system UI. The legacy **Translate Screenshot in App** action remains a foreground fallback.
 
 The resulting workflow is:
 
 ```text
-Take Screenshot → Share with Translate Screen → Extension result → Return to host
+Take Screenshot → Share with AY Translate → Extension result → Return to host
 ```
 
 No photo picker, conditional action, or separate Open action is required. iOS asks you to confirm importing the shortcut; third-party apps cannot silently capture the contents of other apps. If signing changes the app's bundle identifier, regenerate the signed template with the matching `WFAppIdentifier` or use the manual setup above.
@@ -212,7 +210,7 @@ To test IPA creation without publishing a release, open **Actions → Build IPA 
 Privacy is a core design constraint:
 
 - Screenshots are recognized and translated using Apple frameworks on the device by default; cloud AI is opt-in and destination-specific.
-- Translate Screen does not include analytics, advertising SDKs, or its own screenshot-upload service.
+- AY Translate does not include analytics, advertising SDKs, or its own screenshot-upload service.
 - Translation history is disabled by default.
 - When history is off, the shared-screen extension keeps its input and results in memory until Close. Only the alternative foreground shortcut uses a protected temporary handoff file, removed on consumption or expiry; nothing is added to Photos.
 - Optional provider keys stay in the device-only Keychain. Cloud requests use ephemeral sessions and refuse redirects; provider error bodies and credentials are never logged.
@@ -268,7 +266,7 @@ Do not report vulnerabilities involving screenshot exposure, local data access, 
 
 ## License
 
-Translate Screen is licensed under the [Apache License 2.0](LICENSE). You may use, modify, and distribute the project, including in commercial applications, subject to the license terms.
+AY Translate is licensed under the [Apache License 2.0](LICENSE). You may use, modify, and distribute the project, including in commercial applications, subject to the license terms.
 
 Unless explicitly stated otherwise, contributions submitted to this repository are licensed under the same terms.
 

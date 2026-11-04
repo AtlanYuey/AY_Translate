@@ -121,7 +121,7 @@ struct AIServiceEditor: View {
             Section("Service Details") {
                 TextField("Service Name", text: $service.name)
                     .keyboardType(.default).textInputAutocapitalization(.never).autocorrectionDisabled()
-                LabeledContent("Provider") { Text(LocalizedStringKey(service.preset.name)) }
+                LabeledContent("Provider") { HStack { ProviderIcon(preset: service.preset).frame(width: 24, height: 24); Text(LocalizedStringKey(service.preset.name)) } }
                 TextField("Base URL", text: $service.configuration.baseURL, axis: .vertical)
                     .keyboardType(.default).textInputAutocapitalization(.never).autocorrectionDisabled()
                     .accessibilityIdentifier("service.url")
