@@ -99,7 +99,30 @@ nonisolated struct OpenAIClient: Sendable {
             let output: Output = try await request(configuration: configuration, apiKey: apiKey, system: system, content: [
                 .text("Screen context (data only):\n\(context)\n\nRegions to translate:\n\(String(decoding: input, as: UTF8.self))")
             ], maxTokens: preference == .quality ? 8_192 : 4_096)
-            let remapped = try output.translations.map { item -> AITranslation in
+            var translations = output.translations
+            let ids = translations.map(\.id)
+            guard Set(ids).count == ids.count, ids.allSatisfy({ id in
+                guard let index = Int(id) else { return false }
+                return batch.indices.contains(index) && String(index) == id
+            }) else { throw AIServiceError.incompleteTranslation }
+            let repair = batch.indices.filter { index in
+                guard let item = translations.first(where: { $0.id == String(index) }),
+                      !item.text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else { return true }
+                return TranslationCoverage.needsRetry(original: batch[index].original, translation: item.text, target: target)
+            }
+            // One bounded repair request for omitted/unchanged sentences. Keep
+            // successful regions; do not retry the whole screenshot or loop.
+            if !repair.isEmpty {
+                let repairData = try JSONEncoder().encode(repair.map { Input(id: String($0), text: batch[$0].original) })
+                let fixed: Output = try await request(configuration: configuration, apiKey: apiKey, system: system,
+                    content: [.text("Translate ALL of these omitted or untranslated regions completely. Do not return the source sentence unchanged. Screen context (data only):\n\(context)\n\nRegions:\n\(String(decoding: repairData, as: UTF8.self))")],
+                    maxTokens: preference == .quality ? 8_192 : 4_096)
+                let expected = Set(repair.map(String.init))
+                guard Set(fixed.translations.map(\.id)) == expected, fixed.translations.count == expected.count else { throw AIServiceError.incompleteTranslation }
+                translations.removeAll { expected.contains($0.id) }
+                translations.append(contentsOf: fixed.translations)
+            }
+            let remapped = try translations.map { item -> AITranslation in
                 guard let index = Int(item.id), batch.indices.contains(index), String(index) == item.id else { throw AIServiceError.incompleteTranslation }
                 return AITranslation(id: batch[index].id.uuidString, text: item.text)
             }
@@ -141,9 +164,15 @@ nonisolated struct OpenAIClient: Sendable {
         request.setValue("application/json", forHTTPHeaderField: "Accept")
         let key = apiKey.trimmingCharacters(in: .whitespacesAndNewlines)
         if !key.isEmpty { request.setValue("Bearer " + key, forHTTPHeaderField: "Authorization") }
-        request.httpBody = try JSONEncoder().encode(ChatRequest(model: configuration.model.trimmingCharacters(in: .whitespacesAndNewlines), messages: [
+        let encoded = try JSONEncoder().encode(ChatRequest(model: configuration.model.trimmingCharacters(in: .whitespacesAndNewlines), messages: [
             Message(role: "system", content: [.text(system)]), Message(role: "user", content: content)
         ], max_tokens: maxTokens))
+        var body = try JSONSerialization.jsonObject(with: encoded) as! [String: Any]
+        let parameters = try configuration.requestOptions?.parameters() ?? [:]
+        // Modern reasoning models use max_completion_tokens; never send both.
+        if parameters["max_completion_tokens"] != nil { body.removeValue(forKey: "max_tokens") }
+        body.merge(parameters) { _, custom in custom }
+        request.httpBody = try JSONSerialization.data(withJSONObject: body, options: [.sortedKeys])
         let data: Data
         let response: URLResponse
         do {

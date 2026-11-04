@@ -52,7 +52,7 @@ enum ScreenshotRendering {
         let textHeight = max(rect.height, fontSize * metrics.inkRatio) + leading
         let textRect = CGRect(x: rect.minX, y: rect.midY - textHeight / 2, width: rect.width, height: textHeight)
         let bounds = (text as NSString).boundingRect(with: CGSize(width: max(0.0001, textRect.width), height: .greatestFiniteMagnitude),
-            options: [.usesLineFragmentOrigin, .usesFontLeading], attributes: [.font: UIFont.systemFont(ofSize: fontSize, weight: .medium)], context: nil)
+            options: [.usesLineFragmentOrigin, .usesFontLeading], attributes: [.font: UIFont.systemFont(ofSize: fontSize, weight: .semibold)], context: nil)
         return TextLayout(sourceRect: rect, textRect: textRect, fontSize: fontSize,
                           lineLimit: max(1, Int((textRect.height + fontSize * 0.001) / fontLineHeight)),
                           coverPadding: lineHeight * 0.06, vertical: nil,
@@ -68,7 +68,7 @@ enum ScreenshotRendering {
         // CTLine includes actual fallback glyphs (e.g. Chinese/Japanese), unlike
         // capHeight alone. Bound measurement work on long model responses.
         let sample = String(text.prefix(256)).replacingOccurrences(of: "\n", with: " ")
-        let referenceFont = UIFont.systemFont(ofSize: 100, weight: .medium)
+        let referenceFont = UIFont.systemFont(ofSize: 100, weight: .semibold)
         let line = CTLineCreateWithAttributedString(NSAttributedString(string: sample, attributes: [
             .font: referenceFont
         ]) as CFAttributedString)
@@ -86,7 +86,7 @@ enum ScreenshotRendering {
 
     private static func fittedFontSize(for text: String, in rect: CGRect, preferred: CGFloat, metrics: GlyphMetrics) -> CGFloat {
         func fits(_ size: CGFloat) -> Bool {
-            let font = UIFont.systemFont(ofSize: size, weight: .medium)
+            let font = UIFont.systemFont(ofSize: size, weight: .semibold)
             let leading = max(0, size * (metrics.lineHeightRatio - metrics.inkRatio))
             let bounds = (text as NSString).boundingRect(
                 with: CGSize(width: max(0.0001, rect.width), height: .greatestFiniteMagnitude),
@@ -230,9 +230,12 @@ enum ScreenshotRendering {
             document.image.draw(in: CGRect(origin: .zero, size: size))
             for block in document.blocks where block.placement == .overlay && block.translation != block.original {
                 let layout = textLayout(for: block, canvasSize: size, textScale: textScale)
+                if layout.canRender { drawRestoration(restorations[block.id], canvas: size, in: renderer.cgContext) }
+            }
+            for block in document.blocks where block.placement == .overlay && block.translation != block.original {
+                let layout = textLayout(for: block, canvasSize: size, textScale: textScale)
                 guard layout.canRender else { continue } // Keep the original intact rather than paint a fragment/ellipsis.
                 let color = palette[block.id] ?? SampledColor(red: 1, green: 1, blue: 1)
-                drawRestoration(restorations[block.id], canvas: size, in: renderer.cgContext)
                 drawText(block.translation, layout: layout, color: color.usesDarkText ? .black : .white,
                          isRTL: document.target.isRightToLeft, in: renderer.cgContext)
             }
@@ -244,11 +247,11 @@ enum ScreenshotRendering {
     static func drawText(_ text: String, layout: TextLayout, color: UIColor, isRTL: Bool, in context: CGContext) {
         guard layout.canRender else { return }
         context.saveGState()
-        context.clip(to: layout.textRect)
+        context.clip(to: layout.textRect.insetBy(dx: -layout.fontSize * 0.08, dy: -layout.fontSize * 0.08))
         UIGraphicsPushContext(context)
-        let font = UIFont.systemFont(ofSize: layout.fontSize, weight: .medium)
+        let font = UIFont.systemFont(ofSize: layout.fontSize, weight: .semibold)
         let outline: UIColor = color == .white ? .black : .white
-        let ink: [NSAttributedString.Key: Any] = [.font: font, .foregroundColor: color, .strokeColor: outline, .strokeWidth: -3]
+        let ink: [NSAttributedString.Key: Any] = [.font: font, .foregroundColor: color, .strokeColor: outline, .strokeWidth: -6]
         if let vertical = layout.vertical {
             for glyph in vertical.glyphs {
                 let attributes = ink

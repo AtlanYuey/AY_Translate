@@ -15,13 +15,55 @@ nonisolated enum VisionTextRecognizer {
                 let start = ContinuousClock.now
                 let blocks = try await readDocument(cgImage, language: language)
                 Logger(subsystem: "AYTranslate", category: "Performance").info("Native OCR seconds: \(String(describing: start.duration(to: .now)), privacy: .public); regions: \(blocks.count)")
-                if !blocks.isEmpty { return blocks }
+                if !blocks.isEmpty {
+                    return try await supplementVerticalGaps(cgImage, blocks: blocks, language: language)
+                }
             } catch {
                 try Task.checkCancellation()
                 // Older hardware/runtime failures retain the tested local route.
             }
         }
         return try await recognizeLegacy(cgImage, language: language)
+    }
+
+    /// Check only uncovered vertical runs, not every recognized column. Never
+    /// upload additional images or discard successful native OCR on a failure.
+    static func supplementVerticalGaps(_ image: CGImage, blocks: [RecognizedBlock], language: String?) async throws -> [RecognizedBlock] {
+        guard language == "ja" || language?.hasPrefix("zh") == true || blocks.contains(where: { $0.flow == .vertical }) else { return blocks }
+        let task = Task.detached(priority: .userInitiated) {
+            guard let raster = grayscaleImage(image) else { return blocks }
+            let size = CGSize(width: image.width, height: image.height)
+            let columns = VerticalInkDetector.columns(grayscale: raster.bytes, width: raster.width, height: raster.height)
+            let missing = OCRCoverage.uncoveredColumns(columns, blocks: blocks, imageSize: size)
+            var result = blocks
+            for column in missing.prefix(6) {
+                try Task.checkCancellation()
+                guard !OCRCoverage.uncoveredColumns([column], blocks: result, imageSize: size).isEmpty else { continue }
+                guard let strip = stripImage(image, glyphs: column),
+                      let recognized = try? read(strip, language: language ?? "ja") else { continue }
+                let text = recognized.sorted { $0.boundingBox.minX < $1.boundingBox.minX }.map(\.original).joined()
+                guard text.count >= 2, VerticalTextLayout.supports(text),
+                      text.count >= column.count / 2, text.count <= column.count * 2,
+                      (recognized.map(\.confidence).min() ?? 0) >= 0.45 else { continue }
+                let box = column.reduce(CGRect.null) { $0.union($1) }
+                let conflicts = VerticalOCRGeometry.horizontalConflicts(column: column, blocks: result, imageSize: size)
+                guard !conflicts.protected, !result.contains(where: { $0.flow == .vertical && overlap(box, $0.boundingBox) > 0.7 && $0.original.count >= text.count }) else { continue }
+                // Replace a partial fragment only once the complete local run
+                // was successfully read; independent bubbles stay independent.
+                result.removeAll { block in
+                    if conflicts.fragmentedRows.contains(block.id) { return true }
+                    return block.flow == .vertical && text.count > block.original.count
+                        && box.contains(CGPoint(x: block.boundingBox.midX, y: block.boundingBox.midY))
+                        && overlap(box, block.boundingBox) > 0.7
+                }
+                let widths = column.map(\.width).sorted(), heights = column.map(\.height).sorted()
+                result.append(RecognizedBlock(id: UUID(), original: text, translation: text, boundingBox: box,
+                    confidence: recognized.map(\.confidence).min() ?? 0, sourceLineHeight: heights[heights.count / 2],
+                    flow: .vertical, sourceColumnWidth: widths[widths.count / 2], sourceGlyphBoxes: column))
+            }
+            return result
+        }
+        return try await withTaskCancellationHandler(operation: { try await task.value }, onCancel: { task.cancel() })
     }
 
     static func recognizeLegacy(_ cgImage: CGImage, language: String?) async throws -> [RecognizedBlock] {

@@ -33,6 +33,10 @@ final class ScreenTranslateUITests: XCTestCase {
         dimensions.name = "系统Share容器尺寸"; dimensions.lifetime = .keepAlways; add(dimensions)
         XCTAssertGreaterThanOrEqual(canvasFrame.width, screenFrame.width * 0.97)
         XCTAssertFalse(source.isHittable)
+        canvas.pinch(withScale: 2.0, velocity: 1.0)
+        XCTAssertFalse(app.navigationBars["Full Translation"].exists)
+        let zoomed = XCTAttachment(screenshot: app.screenshot())
+        zoomed.name = "原生双指缩放-关闭点字弹窗"; zoomed.lifetime = .keepAlways; add(zoomed)
         original.tap()
         let changed = XCTNSPredicateExpectation(predicate: NSPredicate(format: "label == %@", "Show Translation"), object: original)
         guard XCTWaiter.wait(for: [changed], timeout: 15) == .completed else {

@@ -150,6 +150,15 @@ struct AIServiceEditor: View {
                 Text("Pasting a key fetches the provider’s model list. If listing is unavailable, choose Other Model and enter its ID. Enable image input only for a vision-capable model.")
             }
             Section {
+                NavigationLink {
+                    AIRequestOptionsView(options: Binding(
+                        get: { service.configuration.requestOptions ?? AIRequestOptions() },
+                        set: { service.configuration.requestOptions = $0 }))
+                } label: {
+                    LabeledContent("Request Parameters", value: settings.text((service.configuration.requestOptions?.preset ?? .modelDefault).name))
+                }
+            }
+            Section {
                 Picker("Test Phrase", selection: Binding(get: { probe.id }, set: { probeID = $0 })) {
                     ForEach(probes) { Text(verbatim: $0.languageName).tag($0.id) }
                 }
@@ -210,6 +219,7 @@ struct AIServiceEditor: View {
         }
         .onChange(of: key) { _, _ in cancelTest() }
         .onChange(of: service.configuration.model) { _, _ in cancelTest() }
+        .onChange(of: service.configuration.requestOptions) { _, _ in cancelTest() }
         .onChange(of: probeID) { _, _ in cancelTest() }
         .onChange(of: settings.target) { _, _ in cancelTest() }
         // Form pickers can push another page. Keep unsaved pasted credentials
@@ -308,7 +318,7 @@ struct ProviderIcon: View {
             if preset == .other {
                 Image(systemName: "slider.horizontal.3").resizable().scaledToFit().foregroundStyle(.blue).padding(5)
             } else {
-                Image("provider-" + preset.rawValue).resizable().scaledToFit().padding(3)
+                Image("provider-" + preset.rawValue).renderingMode(.original).resizable().scaledToFit().padding(3)
             }
         }.background(.white, in: RoundedRectangle(cornerRadius: 8)).accessibilityHidden(true)
     }

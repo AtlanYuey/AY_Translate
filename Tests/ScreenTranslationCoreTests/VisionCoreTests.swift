@@ -76,6 +76,19 @@ final class VisionCoreTests: XCTestCase {
         print("Synthetic OCR comparison, native: \(nativeTime), legacy: \(legacyTime), native regions: \(native.count), legacy regions: \(legacy.count), native warm: \(warmTime)")
     }
 
+    func testSupplementalCheckRecoversAMissingLowerLeftColumnWithoutDuplicatingTheRest() async throws {
+        let context = try canvas()
+        for (row, glyph) in "一口食べますか".enumerated() {
+            draw(String(glyph), x: 120, y: CGFloat(1000 + row * 34), font: "HiraginoSans-W6", size: 28, context: context)
+        }
+        let image = try XCTUnwrap(context.makeImage())
+        let recovered = try await VisionTextRecognizer.supplementVerticalGaps(image, blocks: [], language: "ja")
+        XCTAssertTrue(recovered.map(\.original).joined().contains("食べ"), recovered.map(\.original).joined())
+        let repeated = try await VisionTextRecognizer.supplementVerticalGaps(image, blocks: recovered, language: "ja")
+        XCTAssertEqual(repeated.map(\.id), recovered.map(\.id))
+        try record(image, blocks: recovered, name: "supplemental-lower-left")
+    }
+
     private func canvas() throws -> CGContext {
         let context = try XCTUnwrap(CGContext(data: nil, width: 900, height: 1600, bitsPerComponent: 8, bytesPerRow: 0,
             space: CGColorSpaceCreateDeviceRGB(), bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue))

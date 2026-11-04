@@ -34,6 +34,7 @@ nonisolated enum TextInkRestoration {
             for y in top...bottom { for x in left...right { allowed[y * width + x] = true } }
         }
         var mask = [Bool](repeating: false, count: width * height)
+        var localBackground = luminance
         // Eight surrounding samples estimate background without a global dark/
         // light assumption. Both dark glyphs and white outline can be detected.
         for i in allowed.indices where allowed[i] {
@@ -45,19 +46,20 @@ nonisolated enum TextInkRestoration {
             }
             samples.sort()
             let middle = (samples[3] + samples[4]) / 2
+            localBackground[i] = middle
             // Ignore uncertain picture edges; outlined text remains readable
             // there even if conservative restoration retains some original ink.
             mask[i] = abs(luminance[i] - middle) > 58 && samples[5] - samples[2] < 80
         }
-        // Grow only inside OCR guidance to remove antialiasing at stroke edges.
+        // Include faint antialiased edges, but never paint clean surrounding pixels.
         let seed = mask
         for i in seed.indices where seed[i] {
             let x = i % width, y = i / width
-            for dy in -1...1 { for dx in -1...1 {
+            for dy in -2...2 { for dx in -2...2 {
                 let xx = x + dx, yy = y + dy
                 if xx >= 0 && xx < width && yy >= 0 && yy < height {
                     let j = yy * width + xx
-                    if allowed[j] { mask[j] = true }
+                    if allowed[j] && abs(luminance[j] - localBackground[j]) > 8 { mask[j] = true }
                 }
             } }
         }
@@ -70,7 +72,7 @@ nonisolated enum TextInkRestoration {
                     let xx = x + dx * step, yy = y + dy * step
                     if xx < 0 || xx >= width || yy < 0 || yy >= height { break }
                     let j = yy * width + xx
-                    if !mask[j] { samples.append((j, step)); break }
+                    if !mask[j] && abs(luminance[j] - localBackground[i]) < 40 { samples.append((j, step)); break }
                 }
             }
             guard samples.count >= 3 else { continue }

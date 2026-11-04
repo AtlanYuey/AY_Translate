@@ -196,6 +196,9 @@ final class AppSettings: ObservableObject {
     @Published var overlayTextScale: Double {
         didSet { persist(overlayTextScale, forKey: "overlayTextScale") }
     }
+    @Published var showsTextDetailsOnTap: Bool {
+        didSet { persist(showsTextDetailsOnTap, forKey: "showsTextDetailsOnTap") }
+    }
     @Published var defaultResultMode: ResultDisplayMode {
         didSet { persist(defaultResultMode.rawValue, forKey: "defaultResultMode") }
     }
@@ -234,6 +237,7 @@ final class AppSettings: ObservableObject {
         preference = TranslationPreference(rawValue: defaults.string(forKey: "translationPreference") ?? "") ?? .speed
         let textScale = defaults.double(forKey: "overlayTextScale")
         overlayTextScale = textScale == 0 ? 1 : min(1.8, max(0.8, textScale))
+        showsTextDetailsOnTap = defaults.bool(forKey: "showsTextDetailsOnTap")
         defaultResultMode = ResultDisplayMode(rawValue: defaults.string(forKey: "defaultResultMode") ?? "") ?? .overlay
         serviceCatalog = defaults.data(forKey: "ai.services.v1").flatMap { try? JSONDecoder().decode(AIServiceCatalog.self, from: $0) } ?? AIServiceCatalog()
         interfaceLanguage = InterfaceLanguage(rawValue: defaults.string(forKey: "interfaceLanguage") ?? "") ?? .system
@@ -257,6 +261,7 @@ final class AppSettings: ObservableObject {
         let saved = AppSettings(defaults: defaults, keyStore: keyStore, syncThroughKeychain: false)
         source = saved.source; target = saved.target; appearance = saved.appearance
         savesHistory = saved.savesHistory; ocrEngine = saved.ocrEngine; translationEngine = saved.translationEngine
+        showsTextDetailsOnTap = saved.showsTextDetailsOnTap
         preference = saved.preference; overlayTextScale = saved.overlayTextScale; defaultResultMode = saved.defaultResultMode
         interfaceLanguage = saved.interfaceLanguage; serviceCatalog = saved.serviceCatalog; serviceMigrationError = saved.serviceMigrationError
     }

@@ -28,6 +28,7 @@ nonisolated enum AIProfile: String, CaseIterable, Identifiable, Sendable {
 nonisolated struct AIServiceConfiguration: Codable, Equatable, Sendable {
     var baseURL = "https://api.openai.com/v1"
     var model = ""
+    var requestOptions: AIRequestOptions? = nil
 
     func endpoint() throws -> URL {
         guard var components = URLComponents(string: baseURL.trimmingCharacters(in: .whitespacesAndNewlines)),
@@ -45,6 +46,7 @@ nonisolated struct AIServiceConfiguration: Codable, Equatable, Sendable {
 
     func validate() throws {
         _ = try endpoint()
+        _ = try requestOptions?.parameters()
         guard !model.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else {
             throw AIServiceError.missingModel
         }

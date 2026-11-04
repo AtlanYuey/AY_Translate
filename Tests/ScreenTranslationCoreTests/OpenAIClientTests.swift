@@ -35,6 +35,43 @@ final class OpenAIClientTests: XCTestCase {
         String(decoding: try JSONSerialization.data(withJSONObject: ["translations": [["id": "0", "text": text]]]), as: UTF8.self)
     }
 
+    func testConfiguredBodyOptionsReachOCRAndTranslationRequests() async throws {
+        var config = configuration
+        config.requestOptions = AIRequestOptions(preset: .deepSeekFast, bodyJSON: #"{"temperature":0.2,"max_completion_tokens":2048}"#)
+        let region = block()
+        let service = client { request in
+            let body = try XCTUnwrap(JSONSerialization.jsonObject(with: XCTUnwrap(request.httpBody)) as? [String: Any])
+            XCTAssertEqual((body["thinking"] as? [String: String])?["type"], "disabled")
+            XCTAssertEqual(body["temperature"] as? Double, 0.2)
+            XCTAssertEqual(body["max_completion_tokens"] as? Int, 2048)
+            XCTAssertNil(body["max_tokens"])
+            let messages = body["messages"] as? [[String: Any]]
+            if messages?.last?["content"] is [Any] {
+                return (200, try self.response(#"{"regions":[{"id":"0","text":"Hello","box":[0.1,0.2,0.5,0.1]}]}"#))
+            }
+            return (200, try self.response(self.translated(region)))
+        }
+        _ = try await service.translate([region], source: "English", target: "Spanish", preference: .speed, configuration: config, apiKey: "")
+        _ = try await service.recognize(imageData: Data([0xff]), anchors: [region], configuration: config, apiKey: "")
+    }
+
+    func testOmittedRegionIsRepairedOnceWithoutRetranslatingSuccessfulText() async throws {
+        let first = block("First sentence"), second = block("Second sentence")
+        var calls = 0
+        let service = client { request in
+            calls += 1
+            if calls == 1 { return (200, try self.response(#"{"translations":[{"id":"0","text":"第一句"}]}"#)) }
+            let body = try XCTUnwrap(JSONSerialization.jsonObject(with: XCTUnwrap(request.httpBody)) as? [String: Any])
+            let messages = try XCTUnwrap(body["messages"] as? [[String: Any]])
+            let prompt = try XCTUnwrap(messages.last?["content"] as? String)
+            XCTAssertTrue(prompt.contains("omitted or untranslated"))
+            return (200, try self.response(#"{"translations":[{"id":"1","text":"第二句"}]}"#))
+        }
+        let result = try await service.translate([first, second], source: "English", target: "Chinese", preference: .speed, configuration: configuration, apiKey: "")
+        XCTAssertEqual(calls, 2)
+        XCTAssertEqual(result[first.id], "第一句"); XCTAssertEqual(result[second.id], "第二句")
+    }
+
     func testModelDiscoveryUsesGETAndWorksWithoutAChosenModel() async throws {
         let service = client { request in
             XCTAssertEqual(request.url?.path, "/custom/v1/models")

@@ -20357,6 +20357,310 @@
           }
         }
       }
+    },
+    "Request Parameters": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Request Parameters"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "请求参数"
+          }
+        }
+      }
+    },
+    "Parameter Preset": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Parameter Preset"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "参数预设"
+          }
+        }
+      }
+    },
+    "Model defaults": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Model defaults"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "模型默认"
+          }
+        }
+      }
+    },
+    "OpenAI · No reasoning": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "OpenAI · No reasoning"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "OpenAI · 关闭思考"
+          }
+        }
+      }
+    },
+    "Reasoning · Low": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Reasoning · Low"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "思考强度 · 低"
+          }
+        }
+      }
+    },
+    "Reasoning · Medium": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Reasoning · Medium"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "思考强度 · 中"
+          }
+        }
+      }
+    },
+    "Reasoning · High": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Reasoning · High"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "思考强度 · 高"
+          }
+        }
+      }
+    },
+    "DeepSeek · Thinking off": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "DeepSeek · Thinking off"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "DeepSeek · 关闭思考"
+          }
+        }
+      }
+    },
+    "DeepSeek · Thinking on": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "DeepSeek · Thinking on"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "DeepSeek · 开启思考"
+          }
+        }
+      }
+    },
+    "Qwen · Thinking off": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Qwen · Thinking off"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "通义千问 · 关闭思考"
+          }
+        }
+      }
+    },
+    "Custom JSON": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Custom JSON"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "自定义 JSON"
+          }
+        }
+      }
+    },
+    "JSON object": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "JSON object"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "JSON 对象"
+          }
+        }
+      }
+    },
+    "Custom Body Parameters": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Custom Body Parameters"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "自定义 Body 参数"
+          }
+        }
+      }
+    },
+    "Effective Parameters": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Effective Parameters"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "实际生效参数"
+          }
+        }
+      }
+    },
+    "Tap text for details": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Tap text for details"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "点击文字查看详情"
+          }
+        }
+      }
+    },
+    "Model defaults sends no reasoning override. Choose only parameters supported by your model; stronger reasoning can increase latency. Gemini's compatible API also accepts reasoning_effort on supported models.": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Model defaults sends no reasoning override. Choose only parameters supported by your model; stronger reasoning can increase latency. Gemini's compatible API also accepts reasoning_effort on supported models."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "“模型默认”不额外设置思考参数。请按模型支持情况选择；思考强度越高，等待可能越久。Gemini 兼容接口的部分模型也支持 reasoning_effort。"
+          }
+        }
+      }
+    },
+    "Custom values override the preset. For example: {\"temperature\":0.2,\"max_completion_tokens\":4096}. Do not put credentials here. Test Translation uses these same parameters.": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Custom values override the preset. For example: {\"temperature\":0.2,\"max_completion_tokens\":4096}. Do not put credentials here. Test Translation uses these same parameters."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "自定义值覆盖预设，例如：{\"temperature\":0.2,\"max_completion_tokens\":4096}。请勿填写密钥；“测试翻译”使用这里的同一组参数。"
+          }
+        }
+      }
+    },
+    "Enter a JSON object of at most 16 KB.": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Enter a JSON object of at most 16 KB."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "请输入不超过 16 KB 的 JSON 对象。"
+          }
+        }
+      }
+    },
+    "Model, messages, stream, tools, credentials and response count are managed by the app.": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Model, messages, stream, tools, credentials and response count are managed by the app."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "模型、消息、流式输出、工具、密钥和返回数量由 App 管理，请勿在此覆盖。"
+          }
+        }
+      }
     }
   },
   "version": "1.0"

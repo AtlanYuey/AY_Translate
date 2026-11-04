@@ -172,6 +172,7 @@ private struct DisplaySettingsView: View {
                 Picker("Overlay Appearance", selection: $settings.appearance) {
                     ForEach(TranslationAppearance.allCases) { Text(LocalizedStringKey($0.name)).tag($0) }
                 }
+                Toggle("Tap text for details", isOn: $settings.showsTextDetailsOnTap).accessibilityIdentifier("settings.text-details")
                 LabeledContent("Text Size", value: settings.overlayTextScale.formatted(.percent.precision(.fractionLength(0))))
                 Slider(value: $settings.overlayTextScale, in: 0.8...1.8, step: 0.1).accessibilityLabel("Translation text size")
                 Text("Tap the original icon to compare. Touch and hold it for copy, full text, engines and settings.")

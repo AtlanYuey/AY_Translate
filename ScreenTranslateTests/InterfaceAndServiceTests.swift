@@ -40,6 +40,51 @@ final class InterfaceAndServiceTests: XCTestCase {
         ProcessingServices(vision: { _, _ in regions }, aiOCR: { _, _, _, _ in XCTFail("Unexpected cloud OCR"); throw AIServiceError.transport }, aiTranslation: { _, _, _, _, _, _ in XCTFail("Unexpected cloud translation"); throw AIServiceError.transport })
     }
 
+    func testTextDetailsAreOptInAndPersistAcrossSettingsReload() {
+        XCTAssertFalse(settings.showsTextDetailsOnTap)
+        settings.showsTextDetailsOnTap = true
+        XCTAssertTrue(AppSettings(defaults: defaults, keyStore: keys).showsTextDetailsOnTap)
+        XCTAssertTrue(SharedPreferenceKeys.contains("showsTextDetailsOnTap"))
+        XCTAssertTrue(CloudSettingsRecord.allowedKeys.contains("showsTextDetailsOnTap"))
+    }
+
+    func testNativeZoomKeepsTheRequestedFocalPointAndSurvivesContentUpdates() {
+        let controller = ZoomScrollController(root: Color.white)
+        let window = UIWindow(frame: CGRect(x: 0, y: 0, width: 400, height: 800))
+        window.rootViewController = controller; window.makeKeyAndVisible()
+        controller.view.frame = window.bounds; controller.view.layoutIfNeeded()
+        let reset = UUID()
+        controller.update(size: CGSize(width: 400, height: 600), resetID: reset)
+        controller.view.layoutIfNeeded()
+        controller.scroll.zoom(to: CGRect(x: 170, y: 150, width: 160, height: 320), animated: false)
+        controller.view.layoutIfNeeded()
+        let center = controller.scroll.convert(CGPoint(x: controller.scroll.bounds.midX, y: controller.scroll.bounds.midY), to: controller.host.view)
+        XCTAssertEqual(controller.scroll.zoomScale, 2.5, accuracy: 0.02)
+        XCTAssertEqual(center.x, 250, accuracy: 1)
+        XCTAssertEqual(center.y, 310, accuracy: 1)
+        let offset = controller.scroll.contentOffset
+        controller.host.rootView = Color.black
+        controller.update(size: CGSize(width: 400, height: 600), resetID: reset)
+        XCTAssertEqual(controller.scroll.zoomScale, 2.5, accuracy: 0.02)
+        XCTAssertEqual(controller.scroll.contentOffset, offset)
+        window.isHidden = true
+    }
+
+    func testEveryPackagedProviderMarkHasVisibleArtwork() throws {
+        for preset in AIProviderPreset.allCases where preset != .other {
+            let image = try XCTUnwrap(UIImage(named: "provider-" + preset.rawValue))
+            var bytes = [UInt8](repeating: 255, count: 64 * 64 * 4)
+            try bytes.withUnsafeMutableBytes { raw in
+                let context = try XCTUnwrap(CGContext(data: raw.baseAddress, width: 64, height: 64, bitsPerComponent: 8, bytesPerRow: 64 * 4,
+                    space: CGColorSpaceCreateDeviceRGB(), bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue))
+                context.setFillColor(UIColor.white.cgColor); context.fill(CGRect(x: 0, y: 0, width: 64, height: 64))
+                context.draw(try XCTUnwrap(image.cgImage), in: CGRect(x: 0, y: 0, width: 64, height: 64))
+            }
+            let visible = stride(from: 0, to: bytes.count, by: 4).filter { min(bytes[$0], min(bytes[$0+1], bytes[$0+2])) < 180 }.count
+            XCTAssertGreaterThan(visible, 160, "Missing/clipped mark: " + preset.rawValue)
+        }
+    }
+
     func testCloudSyncWaitsForRemoteBeforeSeedingDefaultsAndKeepsLocalChanges() throws {
         defaults.set("en", forKey: "defaultTargetLanguage")
         let cloud = MemoryCloudSettings()
@@ -498,6 +543,16 @@ final class InterfaceAndServiceTests: XCTestCase {
     }
 
     func testChineseFullScreenAndSettingsSnapshots() async throws {
+        settings.interfaceLanguage = .simplifiedChinese
+        await attach(NavigationStack {
+            AIRequestOptionsView(options: .constant(AIRequestOptions(preset: .deepSeekFast, bodyJSON: #"{"temperature":0.2}"#)))
+        }.environmentObject(settings), name: "中文-模型预设与自定义参数")
+        await attach(List {
+            ForEach(AIProviderPreset.allCases) { preset in
+                HStack { ProviderIcon(preset: preset).frame(width: 32, height: 32); Text(preset.name) }
+            }
+        }.preferredColorScheme(.dark), name: "服务商品牌标志-完整显示")
+
         executionTimeAllowance = 120
         settings.interfaceLanguage = .simplifiedChinese
         settings.source = .english; settings.target = .chinese

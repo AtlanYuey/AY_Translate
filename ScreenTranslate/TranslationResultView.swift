@@ -110,7 +110,7 @@ struct TranslationResultView: View {
                     FullTextContent(document: document).contentMargins(.bottom, 90)
                 } else {
                     ZoomableScreenshot(document: document, showsOriginal: mode == .original, appearance: settings.appearance,
-                                       textScale: settings.overlayTextScale, palette: palette, restorations: restorations, resetZoom: resetZoom,
+                                       textScale: settings.overlayTextScale, allowsTextDetails: settings.showsTextDetailsOnTap, palette: palette, restorations: restorations, resetZoom: resetZoom,
                                        zoomChanged: { imageZoom = $0 }, dismissAction: close) { selectedBlock = $0 }
                         .id(document.id)
                 }
@@ -269,58 +269,42 @@ private struct ZoomableScreenshot: View {
     let showsOriginal: Bool
     let appearance: TranslationAppearance
     let textScale: Double
+    let allowsTextDetails: Bool
     let palette: [UUID: SampledColor]
     let restorations: [UUID: ScreenshotRendering.RestoredRegion]
     let resetZoom: UUID
     let zoomChanged: (CGFloat) -> Void
     let dismissAction: () -> Void
     let select: (RecognizedBlock) -> Void
-    @State private var scale: CGFloat = 1
-    @State private var offset = CGSize.zero
-    @GestureState private var magnification: CGFloat = 1
-    @GestureState private var drag = CGSize.zero
 
     var body: some View {
         GeometryReader { proxy in
             let fitted = ImageViewport.fittedSize(image: document.image.size, container: proxy.size)
-            let displayedScale = ImageViewport.scale(scale, magnification: magnification)
-            let displayedOffset = ImageViewport.boundedOffset(CGSize(width: offset.width + drag.width, height: offset.height + drag.height), image: fitted, container: proxy.size, scale: displayedScale)
-            ZStack(alignment: .topTrailing) {
-                Color.black.opacity(0.94)
+            NativeZoomScroll(size: fitted, resetID: resetZoom, zoomChanged: zoomChanged, dismissAction: dismissAction) {
                 ZStack(alignment: .topLeading) {
                     Image(uiImage: document.image).resizable().frame(width: fitted.width, height: fitted.height)
                     if !showsOriginal {
+                        Canvas { context, _ in
+                            context.withCGContext { cg in
+                                for block in document.blocks where block.placement == .overlay && block.translation != block.original {
+                                    let layout = ScreenshotRendering.textLayout(for: block, canvasSize: fitted, textScale: textScale)
+                                    guard layout.canRender else { continue }
+                                    if appearance == .natural {
+                                        ScreenshotRendering.drawRestoration(restorations[block.id], canvas: fitted, in: cg)
+                                    } else if appearance == .readable {
+                                        cg.setFillColor(UIColor.black.cgColor)
+                                        cg.fill(layout.sourceRect.insetBy(dx: -layout.coverPadding, dy: -layout.coverPadding))
+                                    }
+                                }
+                            }
+                        }.frame(width: fitted.width, height: fitted.height).allowsHitTesting(false)
                         ForEach(document.blocks.filter { $0.placement == .overlay && $0.translation != $0.original }) { block in
                             OverlayTextView(block: block, canvasSize: fitted, appearance: appearance, isRTL: document.target.isRightToLeft, textScale: textScale, color: palette[block.id] ?? SampledColor(red: 1, green: 1, blue: 1), restoration: restorations[block.id]) { select(block) }
+                                .allowsHitTesting(allowsTextDetails)
                         }
                     }
-                }
-                .frame(width: fitted.width, height: fitted.height)
-                .scaleEffect(displayedScale)
-                .offset(displayedOffset)
-                .position(x: proxy.size.width / 2, y: proxy.size.height / 2)
+                }.frame(width: fitted.width, height: fitted.height)
             }
-            .contentShape(Rectangle())
-            .clipped()
-            .simultaneousGesture(MagnifyGesture().updating($magnification) { value, state, _ in state = value.magnification }.onChanged { value in
-                zoomChanged(ImageViewport.scale(scale, magnification: value.magnification))
-            }.onEnded { value in
-                scale = ImageViewport.scale(scale, magnification: value.magnification)
-                zoomChanged(scale)
-                offset = ImageViewport.boundedOffset(offset, image: fitted, container: proxy.size, scale: scale)
-            })
-            .simultaneousGesture(DragGesture(minimumDistance: 8).updating($drag) { value, state, _ in state = value.translation }.onEnded { value in
-                if scale <= 1.01, value.startLocation.y > proxy.size.height - 110,
-                   value.translation.height < -100,
-                   abs(value.translation.width) < abs(value.translation.height) * 0.65 {
-                    dismissAction()
-                    return
-                }
-                offset = ImageViewport.boundedOffset(CGSize(width: offset.width + value.translation.width, height: offset.height + value.translation.height), image: fitted, container: proxy.size, scale: scale)
-            })
-            .onChange(of: resetZoom) { _, _ in withAnimation(.snappy) { scale = 1; offset = .zero; zoomChanged(1) } }
-            .onChange(of: proxy.size) { _, _ in scale = 1; offset = .zero; zoomChanged(1) }
-            .onAppear { zoomChanged(scale) }
         }
     }
 }
@@ -334,24 +318,16 @@ private struct OverlayTextView: View {
     let color: SampledColor
     let restoration: ScreenshotRendering.RestoredRegion?
     let onTap: () -> Void
-    @State private var revealsOriginal = false
 
     var body: some View {
         let layout = ScreenshotRendering.textLayout(for: block, canvasSize: canvasSize, textScale: textScale,
-                                                   text: revealsOriginal ? block.original : block.translation)
-        let patchRect = restoration.map { CGRect(x: $0.rect.minX * canvasSize.width, y: $0.rect.minY * canvasSize.height, width: $0.rect.width * canvasSize.width, height: $0.rect.height * canvasSize.height) } ?? layout.sourceRect
-        let drawingRect = layout.textRect.union(patchRect)
+                                                   text: block.translation)
+        let drawingRect = layout.textRect.insetBy(dx: -layout.fontSize * 0.08, dy: -layout.fontSize * 0.08)
         Canvas { context, _ in
-            guard layout.canRender, !revealsOriginal else { return }
+            guard layout.canRender else { return }
             let local = ScreenshotRendering.textLayout(for: block, canvasSize: canvasSize, textScale: textScale)
             context.withCGContext { cg in
                 cg.translateBy(x: -drawingRect.minX, y: -drawingRect.minY)
-                if appearance == .readable {
-                    cg.setFillColor(UIColor.black.cgColor)
-                    cg.fill(local.sourceRect.insetBy(dx: -local.coverPadding, dy: -local.coverPadding))
-                } else if appearance == .natural {
-                    ScreenshotRendering.drawRestoration(restoration, canvas: canvasSize, in: cg)
-                }
                 ScreenshotRendering.drawText(block.translation, layout: local,
                     color: appearance == .readable || !color.usesDarkText ? .white : .black, isRTL: isRTL, in: cg)
             }
@@ -360,7 +336,7 @@ private struct OverlayTextView: View {
         .contentShape(Rectangle())
         .position(x: drawingRect.midX, y: drawingRect.midY)
         .onTapGesture(perform: onTap)
-        .onLongPressGesture(minimumDuration: 0.15, pressing: { revealsOriginal = $0 }, perform: {})
+
         .accessibilityLabel("\(block.original), \(block.translation)")
         .accessibilityHint("Tap to read and copy the full translation")
     }
