@@ -202,17 +202,19 @@ final class WorkflowTests: XCTestCase {
         XCTAssertFalse(FileManager.default.fileExists(atPath: handoff.path))
     }
 
-    func testKeychainRoundTripUpdateAndDeletionAreIsolatedByProfile() throws {
+    func testKeychainRoundTripUpdateAndDeletionAreIsolatedByService() throws {
         let store = KeychainStore(service: "ScreenTranslate.tests." + UUID().uuidString)
-        defer { try? store.save("", for: .ocr); try? store.save("", for: .translation) }
-        XCTAssertEqual(try store.read(.ocr), "")
-        try store.save("test-credential-one", for: .ocr)
-        try store.save("test-credential-two", for: .translation)
-        try store.save("updated-test-credential", for: .ocr)
-        XCTAssertEqual(try store.read(.ocr), "updated-test-credential")
-        XCTAssertEqual(try store.read(.translation), "test-credential-two")
-        try store.save("", for: .ocr)
-        XCTAssertEqual(try store.read(.ocr), "")
+        let first = APIKeySlot.service(UUID()), second = APIKeySlot.service(UUID())
+        defer { try? store.save("", for: first); try? store.save("", for: second) }
+        XCTAssertEqual(try store.read(first), "")
+        try store.save("test-credential-one", for: first)
+        try store.save("test-credential-two", for: second)
+        try store.save("updated-test-credential", for: first)
+        XCTAssertEqual(try store.read(first), "updated-test-credential")
+        XCTAssertEqual(try store.read(second), "test-credential-two")
+        try store.save("", for: first)
+        XCTAssertEqual(try store.read(first), "")
+        XCTAssertEqual(try store.read(second), "test-credential-two")
     }
 }
 

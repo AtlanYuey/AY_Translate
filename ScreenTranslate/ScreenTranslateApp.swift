@@ -15,7 +15,7 @@ struct ScreenTranslateApp: App {
 
     init() {
         let settings = AppSettings.shared
-        let history = HistoryStore()
+        let history = HistoryStore.shared
         _settings = StateObject(wrappedValue: settings)
         _history = StateObject(wrappedValue: history)
         _appState = StateObject(wrappedValue: AppState(settings: settings, history: history))

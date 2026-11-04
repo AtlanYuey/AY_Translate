@@ -25,18 +25,20 @@ final class ShortcutSessionStore {
     private var expirationTask: Task<Void, Never>?
     private var foregroundRequest: UUID?
     private let settings: AppSettings
+    private let history: HistoryStore
     private let services: ProcessingServices
     private let installedTranslator: ((AppState) async throws -> Bool)?
 
-    init(settings: AppSettings? = nil, services: ProcessingServices? = nil, installedTranslator: ((AppState) async throws -> Bool)? = nil) {
+    init(settings: AppSettings? = nil, history: HistoryStore? = nil, services: ProcessingServices? = nil, installedTranslator: ((AppState) async throws -> Bool)? = nil) {
         self.settings = settings ?? .shared
+        self.history = history ?? .shared
         self.services = services ?? .live
         self.installedTranslator = installedTranslator
     }
 
     func start(_ image: UIImage) async throws -> UUID {
         if let current { clear(id: current.id) }
-        let session = ShortcutSession(state: AppState(settings: settings, history: HistoryStore(), services: services))
+        let session = ShortcutSession(state: AppState(settings: settings, history: history, services: services))
         current = session
         session.state.process(image)
         let sessionID = session.id

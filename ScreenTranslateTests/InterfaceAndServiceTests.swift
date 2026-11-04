@@ -184,6 +184,27 @@ final class InterfaceAndServiceTests: XCTestCase {
         store.clear(id: next)
     }
 
+    func testPreviewAndEditorShareOptInHistoryWithoutRestoringDeletedItems() async throws {
+        let folder = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+        defer { try? FileManager.default.removeItem(at: folder) }
+        let history = HistoryStore(fileURL: folder.appendingPathComponent("history.json"))
+        settings.savesHistory = true; settings.source = .english; settings.target = .english
+        let store = ShortcutSessionStore(settings: settings, history: history, services: services([region()]))
+        let first = try await store.start(image())
+        let session = try XCTUnwrap(store.session(id: first))
+        let documentID = try XCTUnwrap(session.state.document?.id)
+        XCTAssertTrue(session.state.history === history)
+        XCTAssertEqual(history.items.count, 1)
+        store.requestForeground(id: first)
+        XCTAssertTrue(store.takeForegroundRequest()?.state.history === history)
+        XCTAssertEqual(history.items.count, 1, "Continuing in the editor must not save a duplicate")
+        history.clear()
+        let next = try await store.start(image())
+        XCTAssertEqual(history.items.count, 1)
+        XCTAssertNotEqual(history.items.first?.id, documentID, "A new preview must not restore cleared history")
+        session.state.closeResult(); store.clear(id: next)
+    }
+
     func testOldSnippetCannotCloseOrExposeANewerScreenshot() async throws {
         settings.source = .english; settings.target = .english
         let store = ShortcutSessionStore(settings: settings, services: services([region()]))

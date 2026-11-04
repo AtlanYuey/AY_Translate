@@ -327,6 +327,7 @@ final class AppSettings: ObservableObject {
 
 @MainActor
 final class HistoryStore: ObservableObject {
+    static let shared = HistoryStore()
     @Published private(set) var items: [HistoryItem] = []
     private let fileURL: URL
 

@@ -23,7 +23,7 @@ See foreign text → press the Action Button → see the translated screen.
 
 详细说明与限制：[中文界面与轻量预览](docs/中文界面与轻量预览.md)。
 
-## Preview
+## Preview (original version)
 
 <p align="center">
   <img
@@ -34,7 +34,7 @@ See foreign text → press the Action Button → see the translated screen.
 </p>
 
 <p align="center">
-  <sub>Translated text remains aligned with the original interface while preserving the surrounding visual context.</sub>
+  <sub>原始版本示意。1.1 中文界面及精简结果页的最新截图随 Actions 的 validation 附件提供。</sub>
 </p>
 
 ## Overview
