@@ -5,9 +5,15 @@ final class ScreenTranslateUITests: XCTestCase {
     override func setUpWithError() throws { continueAfterFailure = false; executionTimeAllowance = 600 }
 
     func testRealShareExtensionRecognizesTogglesAndReturnsToInvokingApp() throws {
+        XCUIDevice.shared.orientation = .portrait
         let app = XCUIApplication()
         app.launchArguments = ["--ui-test-reset", "--ui-test-share", "-AppleLanguages", "(en)", "-AppleLocale", "en_US"]
         app.launch()
+        let portrait = XCTNSPredicateExpectation(predicate: NSPredicate { _, _ in
+            let frame = app.windows.firstMatch.frame
+            return frame.height > frame.width
+        }, object: nil)
+        XCTAssertEqual(XCTWaiter.wait(for: [portrait], timeout: 20), .completed)
         let source = app.buttons["share.test.present"]
         XCTAssertTrue(source.waitForExistence(timeout: 20))
         openExtension(app, source: source)
@@ -111,6 +117,17 @@ final class ScreenTranslateUITests: XCTestCase {
         // activity cell's accessibility label, rather than treating its title
         // as an identifier or searching for an unrelated navigation button.
         let shareCell = app.cells.matching(NSPredicate(format: "label == %@", "Translate Screen")).firstMatch
+        // The first system sharing process can display an entirely empty
+        // RemoteContainerView while launching on a cold hosted simulator.
+        // Swiping that placeholder does not test extension discovery. Require
+        // real app-row content before looking for our particular extension.
+        let ready = XCTNSPredicateExpectation(predicate: NSPredicate { _, _ in
+            shareCell.exists || app.cells["shareCell"].firstMatch.exists
+        }, object: nil)
+        guard XCTWaiter.wait(for: [ready], timeout: 120) == .completed else {
+            failWithScreenshot(app, name: "系统分享面板未加载应用列表")
+            return
+        }
         for _ in 0..<5 {
             if shareCell.waitForExistence(timeout: 2), shareCell.isHittable { shareCell.tap(); return }
             let appRow = app.scrollViews.containing(.cell, identifier: "shareCell").firstMatch

@@ -33,8 +33,12 @@ final class SourceViewController: UIViewController {
 
     private func share() {
         let controller = UIActivityViewController(activityItems: [image], applicationActivities: nil)
-        controller.popoverPresentationController?.sourceView = view
-        controller.popoverPresentationController?.sourceRect = view.bounds
+        if traitCollection.userInterfaceIdiom == .phone {
+            controller.modalPresentationStyle = .pageSheet
+        } else {
+            controller.popoverPresentationController?.sourceView = view
+            controller.popoverPresentationController?.sourceRect = view.bounds
+        }
         // Use the actual system sharing presenter. Wrapping an activity
         // controller in SwiftUI.sheet creates an extra page-sheet container.
         present(controller, animated: true)
