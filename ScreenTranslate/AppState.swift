@@ -41,6 +41,7 @@ final class AppState: ObservableObject {
     private var cachedAppleConfiguration: TranslationSession.Configuration?
     private var cachedAppleLanguages = ""
     private var pendingAppleIDs = Set<UUID>()
+    private var appleResolvedSource: Locale.Language?
 
     init(settings: AppSettings, history: HistoryStore, services: ProcessingServices? = nil) {
         self.settings = settings
@@ -134,14 +135,23 @@ final class AppState: ObservableObject {
                     pendingAppleIDs = Set(blocks.filter { !Self.alreadyInTargetLanguage($0.original, target: target) }.map(\.id))
                     translatedBlockCount = blocks.count - pendingAppleIDs.count
                     if pendingAppleIDs.isEmpty { finish(processID); return }
+                    let pendingText = blocks.filter { pendingAppleIDs.contains($0.id) }.map(\.original).joined(separator: "\n")
+                    let detected = NLLanguageRecognizer.dominantLanguage(for: pendingText)
+                    let resolvedSource = source.localeLanguage ?? detected.flatMap { $0 == .undetermined ? nil : Locale.Language(identifier: $0.rawValue) }
+                    appleResolvedSource = resolvedSource
+                    if resolvedSource?.minimalIdentifier == target.localeLanguage?.minimalIdentifier {
+                        translatedBlockCount = blocks.count
+                        finish(processID)
+                        return
+                    }
                     phase = .translating
                     appleRequestID = processID
-                    let signature = source.rawValue + ":" + target.rawValue + ":" + preference.rawValue
+                    let signature = (resolvedSource?.minimalIdentifier ?? source.rawValue) + ":" + target.rawValue + ":" + preference.rawValue
                     if signature != cachedAppleLanguages || cachedAppleConfiguration == nil {
                         cachedAppleLanguages = signature
                         cachedAppleConfiguration = preference == .speed
-                            ? TranslationSession.Configuration(source: source.localeLanguage, target: target.localeLanguage, preferredStrategy: .lowLatency)
-                            : TranslationSession.Configuration(source: source.localeLanguage, target: target.localeLanguage)
+                            ? TranslationSession.Configuration(source: resolvedSource, target: target.localeLanguage, preferredStrategy: .lowLatency)
+                            : TranslationSession.Configuration(source: resolvedSource, target: target.localeLanguage)
                     }
                     // Repeated screenshots with the same languages must restart
                     // the view-bound session even if SwiftUI coalesces updates.
@@ -187,6 +197,14 @@ final class AppState: ObservableObject {
         guard let processID, isActive(processID), appleRequestID == processID,
               phase == .translating, var current = document else { return }
         do {
+            // prepareTranslation throws when source is nil. Resolve it locally
+            // first when possible, then let the system request model downloads.
+            if appleResolvedSource != nil {
+                phase = .preparing
+                try await session.prepareTranslation()
+                guard isActive(processID) else { session.cancel(); return }
+                phase = .translating
+            }
             let requests = current.blocks.filter { pendingAppleIDs.contains($0.id) }.map { TranslationSession.Request(sourceText: $0.original, clientIdentifier: $0.id.uuidString) }
             let indices = Dictionary(uniqueKeysWithValues: current.blocks.indices.map { (current.blocks[$0].id.uuidString, $0) })
             var completed = Set<String>()
@@ -212,7 +230,7 @@ final class AppState: ObservableObject {
                 return
             }
             let detected = NLLanguageRecognizer.dominantLanguage(for: current.originalText)
-            let source = current.source.localeLanguage ?? detected.map { Locale.Language(identifier: $0.rawValue) }
+            let source = appleResolvedSource ?? current.source.localeLanguage ?? detected.map { Locale.Language(identifier: $0.rawValue) }
             if let source, let target = current.target.localeLanguage,
                source.minimalIdentifier != target.minimalIdentifier,
                await LanguageAvailability().status(from: source, to: target) == .unsupported {
@@ -289,5 +307,6 @@ final class AppState: ObservableObject {
         translationConfiguration = nil
         appleRequestID = nil
         pendingAppleIDs = []
+        appleResolvedSource = nil
     }
 }

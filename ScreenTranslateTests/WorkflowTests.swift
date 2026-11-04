@@ -65,6 +65,22 @@ final class WorkflowTests: XCTestCase {
         XCTAssertNil(state.translationConfiguration)
     }
 
+    func testAutomaticAppleSourceIsResolvedAndChangesBetweenScreenshots() async throws {
+        settings.source = .automatic
+        let english = block("This delicious cake is made with fresh fruit."), japanese = block("このケーキはとてもおいしいです。もう一口食べてもいいですか？")
+        var next = english
+        let state = AppState(settings: settings, history: HistoryStore(fileURL: historyURL), services: services { _, _ in [next] })
+        state.process(image())
+        try await waitUntil { state.translationConfiguration != nil }
+        XCTAssertEqual(state.translationConfiguration?.source?.languageCode?.identifier, "en")
+        next = japanese
+        state.process(image())
+        try await waitUntil { state.translationConfiguration != nil }
+        XCTAssertEqual(state.translationConfiguration?.source?.languageCode?.identifier, "ja", "Automatic screenshots must not reuse the previous screenshot’s language model")
+        XCTAssertEqual(keys.readCount, 0)
+        state.closeResult()
+    }
+
     func testOCRFailureCanRetryWithTheOriginalImage() async throws {
         var attempts = 0
         let region = block()
