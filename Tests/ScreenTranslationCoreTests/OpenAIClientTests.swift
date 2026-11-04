@@ -209,13 +209,13 @@ final class OpenAIClientTests: XCTestCase {
         let service = client { request in
             let body = String(decoding: try XCTUnwrap(request.httpBody), as: UTF8.self)
             XCTAssertTrue(body.contains("data:image\\/jpeg;base64,"))
-            XCTAssertTrue(body.contains(anchor.id.uuidString))
+            XCTAssertFalse(body.contains(anchor.id.uuidString), "AI OCR also uses compact local IDs")
             let object = try XCTUnwrap(JSONSerialization.jsonObject(with: XCTUnwrap(request.httpBody)) as? [String: Any])
             let messages = try XCTUnwrap(object["messages"] as? [[String: Any]])
             XCTAssertNotNil(messages[0]["content"] as? String, "Vision requests must also satisfy the system-message schema")
             let parts = try XCTUnwrap(messages[1]["content"] as? [[String: Any]])
             XCTAssertEqual(parts.compactMap { $0["type"] as? String }, ["text", "image_url"])
-            let json = try JSONSerialization.data(withJSONObject: ["regions": [["id": anchor.id.uuidString, "text": anchor.original, "box": [0, 0, 1, 1]]]])
+            let json = try JSONSerialization.data(withJSONObject: ["regions": [["id": "0", "text": anchor.original, "box": [0, 0, 1, 1]]]])
             return (200, try self.response(String(decoding: json, as: UTF8.self)))
         }
         let result = try await service.recognize(imageData: Data([1, 2, 3]), anchors: [anchor], configuration: configuration, apiKey: "")

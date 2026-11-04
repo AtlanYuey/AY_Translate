@@ -64,13 +64,16 @@ final class VisionCoreTests: XCTestCase {
         let oldStart = ContinuousClock.now
         let legacy = try await VisionTextRecognizer.recognizeLegacy(image, language: "ja")
         let legacyTime = oldStart.duration(to: .now)
-        let text = native.map(\.original).joined()
-        XCTAssertTrue(text.contains("一口だけ"), text)
-        XCTAssertTrue(text.contains("甘い"), text)
+        let text = native.map(\.original).joined().filter { !$0.isWhitespace }
+        for expected in ["これは何ですか", "一口だけ食べて", "とても甘いです"] { XCTAssertTrue(text.contains(expected), text) }
+        let warmStart = ContinuousClock.now
+        let warm = try await VisionTextRecognizer.readDocument(image, language: "ja")
+        let warmTime = warmStart.duration(to: .now)
+        XCTAssertEqual(warm.map(\.original), native.map(\.original))
         XCTAssertTrue(native.contains { $0.flow == .vertical })
         XCTAssertTrue(native.contains { !($0.sourceGlyphBoxes ?? []).isEmpty })
         try record(image, blocks: native, name: "native-document-vertical")
-        print("Synthetic OCR comparison, native: \(nativeTime), legacy: \(legacyTime), native regions: \(native.count), legacy regions: \(legacy.count)")
+        print("Synthetic OCR comparison, native: \(nativeTime), legacy: \(legacyTime), native regions: \(native.count), legacy regions: \(legacy.count), native warm: \(warmTime)")
     }
 
     private func canvas() throws -> CGContext {

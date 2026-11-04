@@ -153,7 +153,7 @@ private struct LanguageRow: View {
             }
             Spacer()
             Menu {
-                Picker(title, selection: $selection) {
+                Picker(LocalizedStringKey(title), selection: $selection) {
                     ForEach(options) { language in
                         Text(language == .automatic ? settings.text(language.name) : language.nativeName).tag(language)
                     }

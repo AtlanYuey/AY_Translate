@@ -1,4 +1,7 @@
 import Foundation
+#if canImport(CoreGraphics)
+import CoreGraphics
+#endif
 
 /// Removes locally contrasted ink, not its enclosing rectangle. The result
 /// preserves every unmasked source pixel, including a translucent bubble's art.

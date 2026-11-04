@@ -21,7 +21,8 @@ permissions:
   contents: read
 
 concurrency:
-  group: ipa-${{ github.event.pull_request.number || github.ref }}-${{ inputs.inspect_run_id || 'build' }}
+  # Explicit retries must not wait for a cancelled hosted runner to release its lock.
+  group: ipa-${{ github.event.pull_request.number || github.ref }}-${{ github.event_name == 'workflow_dispatch' && github.run_id || 'build' }}
   cancel-in-progress: true
 
 env:
@@ -110,6 +111,17 @@ jobs:
         run: |
           set -euo pipefail
           swift test --jobs 3 2>&1 | tee "$RUNNER_TEMP/core-tests.log"
+
+      - name: Upload OCR timing and core regression evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: ocr-core-${{ github.run_id }}-${{ github.run_attempt }}
+          path: |
+            ${{ runner.temp }}/core-tests.log
+            ${{ runner.temp }}/vision-core
+          if-no-files-found: warn
+          retention-days: 14
 
       - name: Verify bundled Shortcut signature and actions
         shell: bash

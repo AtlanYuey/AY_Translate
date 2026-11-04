@@ -148,7 +148,7 @@ enum ScreenshotRendering {
         })
     }
 
-    struct RestoredRegion {
+    nonisolated struct RestoredRegion: Sendable {
         let image: CGImage
         /// Normalized top-left image coordinates, including sampling margin.
         let rect: CGRect

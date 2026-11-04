@@ -86,7 +86,7 @@ struct TranslationResultView: View {
             restorations = [:]
             backgroundSeconds = 0
             imageZoom = 1
-            guard let document = appState.document else { return }
+            guard appState.document != nil else { return }
             mode = settings.defaultResultMode
         }
         .task(id: appState.document?.id) {

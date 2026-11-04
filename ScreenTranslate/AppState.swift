@@ -159,7 +159,7 @@ final class AppState: ObservableObject {
                     pendingAppleIDs = Set(blocks.filter { !Self.alreadyInTargetLanguage($0.original, target: target) }.map(\.id))
                     translatedBlockCount = blocks.count - pendingAppleIDs.count
                     if pendingAppleIDs.isEmpty { finish(processID); return }
-                    let pendingText = blocks.filter { pendingAppleIDs.contains($0.id) }.map(\.original).joined(separator: "\n")
+                    let pendingText = blocks.filter { self.pendingAppleIDs.contains($0.id) }.map(\.original).joined(separator: "\n")
                     let detected = NLLanguageRecognizer.dominantLanguage(for: pendingText)
                     let resolvedSource = source.localeLanguage ?? detected.flatMap { $0 == .undetermined ? nil : Locale.Language(identifier: $0.rawValue) }
                     appleResolvedSource = resolvedSource
@@ -230,7 +230,7 @@ final class AppState: ObservableObject {
                 guard isActive(processID) else { session.cancel(); return }
                 phase = .translating
             }
-            let requests = current.blocks.filter { pendingAppleIDs.contains($0.id) }.map { TranslationSession.Request(sourceText: $0.original, clientIdentifier: $0.id.uuidString) }
+            let requests = current.blocks.filter { self.pendingAppleIDs.contains($0.id) }.map { TranslationSession.Request(sourceText: $0.original, clientIdentifier: $0.id.uuidString) }
             let indices = Dictionary(uniqueKeysWithValues: current.blocks.indices.map { (current.blocks[$0].id.uuidString, $0) })
             var completed = Set<String>()
             var lastPublish = ContinuousClock.now

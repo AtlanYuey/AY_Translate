@@ -10,14 +10,17 @@ struct ProcessingServices {
     var aiTranslation: ([RecognizedBlock], AppLanguage, AppLanguage, TranslationPreference, AIServiceConfiguration, String) async throws -> [UUID: String]
 
     static var live: ProcessingServices {
-        ProcessingServices(
+        // Reuse the ephemeral connection pool for OCR, translation and retries;
+        // keep cookies/cache disabled without repeating TLS setup per operation.
+        let client = OpenAIClient()
+        return ProcessingServices(
             vision: { try await ScreenReader.recognize(in: $0, source: $1) },
             aiOCR: { image, anchors, configuration, key in
                 let data = try screenshotJPEG(image)
-                return try await OpenAIClient().recognize(imageData: data, anchors: anchors, configuration: configuration, apiKey: key)
+                return try await client.recognize(imageData: data, anchors: anchors, configuration: configuration, apiKey: key)
             },
             aiTranslation: { blocks, source, target, preference, configuration, key in
-                try await OpenAIClient().translate(blocks, source: source == .automatic ? "auto-detect" : source.name, target: target.name, preference: preference, configuration: configuration, apiKey: key)
+                try await client.translate(blocks, source: source == .automatic ? "auto-detect" : source.name, target: target.name, preference: preference, configuration: configuration, apiKey: key)
             }
         )
     }
