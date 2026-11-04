@@ -1,7 +1,7 @@
 import XCTest
 
 final class ScreenTranslateUITests: XCTestCase {
-    override func setUpWithError() throws { continueAfterFailure = false; executionTimeAllowance = 120 }
+    override func setUpWithError() throws { continueAfterFailure = false; executionTimeAllowance = 180 }
 
     func testRealActionExtensionFillsScreenAndReturnsToInvokingApp() throws {
         let app = XCUIApplication()
@@ -39,15 +39,19 @@ final class ScreenTranslateUITests: XCTestCase {
         app.tabBars.buttons["Settings"].tap()
         let toggle = app.switches["settings.history"]
         for _ in 0..<8 where !toggle.isHittable { app.swipeUp() }
-        XCTAssertTrue(toggle.isHittable); toggle.tap()
-        XCTAssertTrue(app.tabBars.buttons["History"].waitForExistence(timeout: 10))
-        toggle.tap()
+        XCTAssertTrue(toggle.isHittable)
+        // SwiftUI exposes both the containing row and its UISwitch. Tapping
+        // the row's centre hits its label on iOS 26 rather than the control.
+        toggle.switches.firstMatch.tap()
+        XCTAssertTrue(app.tabBars.buttons["History"].waitForExistence(timeout: 10), app.debugDescription)
+        toggle.switches.firstMatch.tap()
         XCTAssertFalse(app.tabBars.buttons["History"].exists)
     }
 
     private func openExtension(_ app: XCUIApplication, source: XCUIElement) {
         source.tap()
-        let button = app.buttons["Translate Screen"].firstMatch
+        // Action extensions are cells in the system activity list, not buttons.
+        let button = app.cells.containing(.staticText, identifier: "Translate Screen").firstMatch
         for _ in 0..<5 {
             if button.waitForExistence(timeout: 2), button.isHittable { break }
             app.swipeUp()

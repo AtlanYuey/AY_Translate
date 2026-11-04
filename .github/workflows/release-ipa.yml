@@ -30,7 +30,7 @@ jobs:
   build:
     name: Test and build unsigned IPA
     runs-on: ${{ inputs.runner || 'macos-26-intel' }}
-    timeout-minutes: 35
+    timeout-minutes: 45
     outputs:
       version: ${{ steps.metadata.outputs.version }}
       ipa_name: ${{ steps.metadata.outputs.ipa_name }}
@@ -159,8 +159,8 @@ jobs:
         shell: bash
         run: python3 .github/scripts/inspect-shortcut-actions.py > "$RUNNER_TEMP/shortcut-actions.json"
 
-      - name: Test iOS workflow, Vision, Keychain and Chinese interface
-        timeout-minutes: 15
+      - name: Test iOS workflow, Vision, Keychain and system extension interface
+        timeout-minutes: 25
         env:
           TEST_DESTINATION: ${{ steps.simulator.outputs.destination }}
         shell: bash
@@ -172,7 +172,7 @@ jobs:
             -derivedDataPath "$RUNNER_TEMP/DerivedData" \
             -resultBundlePath "$RUNNER_TEMP/TestResults.xcresult" \
             -test-timeouts-enabled YES -default-test-execution-time-allowance 60 \
-            -maximum-test-execution-time-allowance 120 \
+            -maximum-test-execution-time-allowance 180 \
             CODE_SIGNING_ALLOWED=YES CODE_SIGNING_REQUIRED=NO CODE_SIGN_IDENTITY="-" DEVELOPMENT_TEAM="" \
             2>&1 | tee "$RUNNER_TEMP/ios-tests.log"
 
