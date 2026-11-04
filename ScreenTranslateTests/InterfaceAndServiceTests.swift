@@ -199,9 +199,11 @@ final class InterfaceAndServiceTests: XCTestCase {
         XCTAssertTrue(store.takeForegroundRequest()?.state.history === history)
         XCTAssertEqual(history.items.count, 1, "Continuing in the editor must not save a duplicate")
         history.clear()
+        XCTAssertTrue(HistoryStore(fileURL: folder.appendingPathComponent("history.json")).items.isEmpty)
         let next = try await store.start(image())
         XCTAssertEqual(history.items.count, 1)
         XCTAssertNotEqual(history.items.first?.id, documentID, "A new preview must not restore cleared history")
+        XCTAssertEqual(HistoryStore(fileURL: folder.appendingPathComponent("history.json")).items.map(\.id), history.items.map(\.id))
         session.state.closeResult(); store.clear(id: next)
     }
 
@@ -275,10 +277,10 @@ final class InterfaceAndServiceTests: XCTestCase {
     private func attach<Content: View>(_ content: Content, name: String) async {
         // Hosting in a real window also captures List/Form/NavigationStack, whose
         // UIKit-backed views aren't drawn by SwiftUI's ImageRenderer.
-        let previousWindow = UIApplication.shared.connectedScenes.compactMap { $0 as? UIWindowScene }
-            .flatMap(\.windows).first(where: \.isKeyWindow)
+        let scenes = UIApplication.shared.connectedScenes.compactMap { $0 as? UIWindowScene }
+        let previousWindow = scenes.flatMap(\.windows).first(where: \.isKeyWindow)
         let window: UIWindow
-        if let scene = previousWindow?.windowScene { window = UIWindow(windowScene: scene) }
+        if let scene = previousWindow?.windowScene ?? scenes.first { window = UIWindow(windowScene: scene) }
         else { window = UIWindow(frame: CGRect(x: 0, y: 0, width: 390, height: 844)) }
         window.frame = CGRect(x: 0, y: 0, width: 390, height: 844)
         let host = UIHostingController(rootView: content)
@@ -289,7 +291,9 @@ final class InterfaceAndServiceTests: XCTestCase {
         host.view.layoutIfNeeded()
         try? await Task.sleep(for: .milliseconds(250))
         let renderer = UIGraphicsImageRenderer(bounds: window.bounds)
-        let image = renderer.image { _ in window.drawHierarchy(in: window.bounds, afterScreenUpdates: true) }
+        var drawn = false
+        let image = renderer.image { _ in drawn = window.drawHierarchy(in: window.bounds, afterScreenUpdates: true) }
+        XCTAssertTrue(drawn, "The native window must render successfully for interface review")
         let attachment = XCTAttachment(image: image)
         attachment.name = name; attachment.lifetime = .keepAlways
         add(attachment)
