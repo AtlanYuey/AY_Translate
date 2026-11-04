@@ -1,4 +1,5 @@
 import XCTest
+import CoreText
 import SwiftUI
 import UIKit
 @testable import ScreenTranslate
@@ -166,6 +167,30 @@ final class InterfaceAndServiceTests: XCTestCase {
         XCTAssertEqual(enlarged.fontSize, normal.fontSize * 1.6, accuracy: 0.0001)
         XCTAssertEqual(reduced.fontSize, normal.fontSize * 0.8, accuracy: 0.0001)
         XCTAssertEqual(enlarged.sourceRect, normal.sourceRect, "Font scaling must not enlarge the original cover region")
+        let singleLine = ScreenshotRendering.textLayout(for: block, canvasSize: canvas, textScale: 1.8, text: "你好")
+        XCTAssertGreaterThanOrEqual(singleLine.textRect.height + 0.0001,
+                                    UIFont.systemFont(ofSize: singleLine.fontSize, weight: .medium).lineHeight,
+                                    "Manual enlargement must keep an entire glyph line visible")
+    }
+
+    func testShortTranslationInkKeepsOriginalHeightForLatinAndCJKFonts() {
+        for text in ["Menu", "菜单", "メニュー", "메뉴"] {
+            for height in [CGFloat(220), CGFloat(1152)] {
+                let block = RecognizedBlock(id: UUID(), original: "MENU", translation: text,
+                                            boundingBox: CGRect(x: 0.1, y: 0.5, width: 0.6, height: 20 / 1152.0), confidence: 1)
+                let layout = ScreenshotRendering.textLayout(for: block, canvasSize: CGSize(width: height * 16 / 9, height: height), textScale: 1)
+                let line = CTLineCreateWithAttributedString(NSAttributedString(string: text, attributes: [
+                    .font: UIFont.systemFont(ofSize: layout.fontSize, weight: .medium)
+                ]) as CFAttributedString)
+                let ink = CTLineGetImageBounds(line, nil)
+                let originalHeight = block.boundingBox.height * height
+                XCTAssertEqual(ink.height, originalHeight, accuracy: originalHeight * 0.12,
+                               "Short \(text) should not shrink just to accommodate fallback-font leading")
+                var ascent: CGFloat = 0, descent: CGFloat = 0, leading: CGFloat = 0
+                CTLineGetTypographicBounds(line, &ascent, &descent, &leading)
+                XCTAssertGreaterThanOrEqual(layout.textRect.height + originalHeight * 0.02, ascent + descent + leading)
+            }
+        }
     }
 
     func testJoinedParagraphKeepsItsOriginalLineSizeInBothRenderers() {

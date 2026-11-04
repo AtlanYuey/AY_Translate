@@ -23,22 +23,31 @@ enum ScreenshotRendering {
                           width: block.boundingBox.width * canvasSize.width,
                           height: block.boundingBox.height * canvasSize.height)
         let lineHeight = max(0.0001, block.originalLineHeight * canvasSize.height)
-        let inkRatio = inkHeightRatio(for: text)
-        let preferred = lineHeight / inkRatio
-        let fitted = fittedFontSize(for: text, in: rect, preferred: preferred, inkRatio: inkRatio)
+        let metrics = glyphMetrics(for: text)
+        let preferred = lineHeight / metrics.inkRatio
+        let fitted = fittedFontSize(for: text, in: rect, preferred: preferred, metrics: metrics)
         // Fit at 100% first. Fitting again after this multiplication would undo
         // the user's enlargement whenever a translated region is already full.
         let scale = textScale.isFinite && textScale > 0 ? CGFloat(textScale) : 1
         let fontSize = fitted * scale
-        let fontLineHeight = UIFont.systemFont(ofSize: fontSize, weight: .medium).lineHeight
-        let leading = max(0, fontLineHeight - fontSize * inkRatio)
-        let textRect = rect.insetBy(dx: 0, dy: -leading / 2)
+        let fontLineHeight = fontSize * metrics.lineHeightRatio
+        let leading = max(0, fontLineHeight - fontSize * metrics.inkRatio)
+        // Manual enlargement may exceed a single original line's ink box.
+        // Keep a complete line visible while the background still covers only
+        // the original region; clipping the enlarged glyph defeats the slider.
+        let textHeight = max(rect.height, fontSize * metrics.inkRatio) + leading
+        let textRect = CGRect(x: rect.minX, y: rect.midY - textHeight / 2, width: rect.width, height: textHeight)
         return TextLayout(sourceRect: rect, textRect: textRect, fontSize: fontSize,
                           lineLimit: max(1, Int((textRect.height + fontSize * 0.001) / fontLineHeight)),
                           coverPadding: lineHeight * 0.06)
     }
 
-    private static func inkHeightRatio(for text: String) -> CGFloat {
+    private struct GlyphMetrics {
+        let inkRatio: CGFloat
+        let lineHeightRatio: CGFloat
+    }
+
+    private static func glyphMetrics(for text: String) -> GlyphMetrics {
         // CTLine includes actual fallback glyphs (e.g. Chinese/Japanese), unlike
         // capHeight alone. Bound measurement work on long model responses.
         let sample = String(text.prefix(256)).replacingOccurrences(of: "\n", with: " ")
@@ -46,13 +55,19 @@ enum ScreenshotRendering {
             .font: UIFont.systemFont(ofSize: 100, weight: .medium)
         ]) as CFAttributedString)
         let height = CTLineGetImageBounds(line, nil).height
-        return height.isFinite && height > 0 ? min(1.5, max(0.5, height / 100)) : 1
+        var ascent: CGFloat = 0, descent: CGFloat = 0, leading: CGFloat = 0
+        CTLineGetTypographicBounds(line, &ascent, &descent, &leading)
+        let inkRatio = height.isFinite && height > 0 ? min(1.5, max(0.5, height / 100)) : 1
+        // Fallback CJK/Arabic fonts can have different ascent and descent from
+        // UIFont.systemFont. Measure the actual text, including those runs.
+        let lineHeight = (ascent + descent + leading) / 100
+        return GlyphMetrics(inkRatio: inkRatio, lineHeightRatio: lineHeight.isFinite ? max(inkRatio, lineHeight) : 1.5)
     }
 
-    private static func fittedFontSize(for text: String, in rect: CGRect, preferred: CGFloat, inkRatio: CGFloat) -> CGFloat {
+    private static func fittedFontSize(for text: String, in rect: CGRect, preferred: CGFloat, metrics: GlyphMetrics) -> CGFloat {
         func fits(_ size: CGFloat) -> Bool {
             let font = UIFont.systemFont(ofSize: size, weight: .medium)
-            let leading = max(0, font.lineHeight - size * inkRatio)
+            let leading = max(0, size * (metrics.lineHeightRatio - metrics.inkRatio))
             let bounds = (text as NSString).boundingRect(
                 with: CGSize(width: max(0.0001, rect.width), height: .greatestFiniteMagnitude),
                 options: [.usesLineFragmentOrigin, .usesFontLeading],
