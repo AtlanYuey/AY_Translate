@@ -181,8 +181,9 @@ enum ScreenshotRendering {
             let rendered = bytes.withUnsafeMutableBytes { buffer -> Bool in
                 guard let cg = CGContext(data: buffer.baseAddress, width: crop.width, height: crop.height, bitsPerComponent: 8, bytesPerRow: crop.width * 4,
                     space: CGColorSpaceCreateDeviceRGB(), bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue) else { return false }
-                // Explicit top-left rows; restoration and glyph boxes share this origin.
-                cg.translateBy(x: 0, y: CGFloat(crop.height)); cg.scaleBy(x: 1, y: -1)
+                // A bitmap context drawing a CGImage produces its original row
+                // order (same boundary as grayscaleImage). Do not apply UIKit's
+                // display flip here; glyph masks use top-left raster rows.
                 cg.draw(crop, in: CGRect(x: 0, y: 0, width: crop.width, height: crop.height))
                 return true
             }

@@ -323,7 +323,7 @@ final class InterfaceAndServiceTests: XCTestCase {
             UIColor.blue.setFill(); renderer.fill(CGRect(x: 0, y: 200, width: 200, height: 200))
             UIColor.black.setFill(); renderer.fill(CGRect(x: 90, y: 40, width: 3, height: 23))
         }
-        let region = CGRect(x: 0.2, y: 1 - 64.0/400, width: 0.35, height: 24.0/400)
+        let region = CGRect(x: 0.2, y: 1 - 104.0/400, width: 0.35, height: 64.0/400)
         let glyph = CGRect(x: 89.0/200, y: 1 - 64.0/400, width: 5.0/200, height: 24.0/400)
         let block = RecognizedBlock(id: UUID(), original: "IIII", translation: "好", boundingBox: region, confidence: 1, sourceGlyphBoxes: [glyph])
         let document = TranslationDocument(id: UUID(), image: source, blocks: [block], source: .english, target: .chinese, createdAt: Date())
