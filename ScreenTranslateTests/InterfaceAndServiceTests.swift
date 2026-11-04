@@ -173,7 +173,7 @@ final class InterfaceAndServiceTests: XCTestCase {
                                     "Manual enlargement must keep an entire glyph line visible")
     }
 
-    func testShortTranslationInkKeepsOriginalHeightForLatinAndCJKFonts() {
+    func testShortTranslationUsesOriginalLineHeightForLatinAndCJKFonts() {
         for text in ["Menu", "菜单", "メニュー", "메뉴"] {
             for height in [CGFloat(220), CGFloat(1152)] {
                 let block = RecognizedBlock(id: UUID(), original: "MENU", translation: text,
@@ -184,10 +184,12 @@ final class InterfaceAndServiceTests: XCTestCase {
                 ]) as CFAttributedString)
                 let ink = CTLineGetImageBounds(line, nil)
                 let originalHeight = block.boundingBox.height * height
-                XCTAssertEqual(ink.height, originalHeight, accuracy: originalHeight * 0.12,
-                               "Short \(text) should not shrink just to accommodate fallback-font leading")
                 var ascent: CGFloat = 0, descent: CGFloat = 0, leading: CGFloat = 0
                 CTLineGetTypographicBounds(line, &ascent, &descent, &leading)
+                let fontHeight = UIFont.systemFont(ofSize: layout.fontSize, weight: .medium).lineHeight
+                XCTAssertEqual(max(fontHeight, ascent + descent + leading), originalHeight, accuracy: originalHeight * 0.03,
+                               "OCR line height must produce the matching typographic line, not an oversized ink box")
+                XCTAssertGreaterThan(ink.height, 0)
                 XCTAssertGreaterThanOrEqual(layout.textRect.height + originalHeight * 0.02, ascent + descent + leading)
             }
         }
@@ -229,11 +231,45 @@ final class InterfaceAndServiceTests: XCTestCase {
         XCTAssertGreaterThan(large.fontSize / small.fontSize, 1.7)
         XCTAssertLessThan(small.fontSize, 6)
         let document = TranslationDocument(id: UUID(), image: image, blocks: [title, body], source: .spanish, target: .chinese, createdAt: Date())
+        let rendered = ScreenshotRendering.translatedImage(document, palette: [:], textScale: 1)
+        let originalInk = try inkRowHeights(image)
+        let translatedInk = try inkRowHeights(rendered)
+        let pixelScale = CGFloat(try XCTUnwrap(rendered.cgImage).width) / CGFloat(try XCTUnwrap(image.cgImage).width)
+        let measurements = "original ink: \(originalInk); translated ink: \(translatedInk); pixel scale: \(pixelScale); OCR title/body heights: \(title.originalLineHeight * size.height), \(body.originalLineHeight * size.height); font sizes: \(large.fontSize), \(small.fontSize)"
+        let data = XCTAttachment(string: measurements); data.name = "真实Vision字号像素对照"; data.lifetime = .keepAlways; add(data)
+        XCTAssertEqual(originalInk.count, 2)
+        XCTAssertEqual(translatedInk.count, 2)
+        for (original, translated) in zip(originalInk, translatedInk) {
+            let expected = CGFloat(original) * pixelScale
+            XCTAssertEqual(CGFloat(translated), expected, accuracy: max(1, expected * 0.20), measurements)
+        }
         for (name, screenshot) in [("横屏原图-44与22字号", image),
-                                    ("横屏译图-保留标题正文比例", ScreenshotRendering.translatedImage(document, palette: [:], textScale: 1))] {
+                                    ("横屏译图-保留标题正文比例", rendered)] {
             let attachment = XCTAttachment(image: screenshot)
             attachment.name = name; attachment.lifetime = .keepAlways; add(attachment)
         }
+    }
+
+    /// Measure actual rendered pixels independently of the layout calculation.
+    /// The fixture has two black text rows on white, with no borders or graphics.
+    private func inkRowHeights(_ image: UIImage) throws -> [Int] {
+        let cgImage = try XCTUnwrap(image.cgImage)
+        let width = cgImage.width, height = cgImage.height
+        let rowBytes = (width + 15) / 16 * 16
+        var pixels = [UInt8](repeating: 255, count: rowBytes * height)
+        try pixels.withUnsafeMutableBytes { buffer in
+            let context = try XCTUnwrap(CGContext(data: buffer.baseAddress, width: width, height: height,
+                                                  bitsPerComponent: 8, bytesPerRow: rowBytes,
+                                                  space: CGColorSpaceCreateDeviceGray(), bitmapInfo: CGImageAlphaInfo.none.rawValue))
+            context.draw(cgImage, in: CGRect(x: 0, y: 0, width: width, height: height))
+        }
+        var ranges: [ClosedRange<Int>] = []
+        for row in 0..<height where pixels[(row * rowBytes)..<(row * rowBytes + width)].contains(where: { $0 < 128 }) {
+            if let previous = ranges.last, row - previous.upperBound <= 3 {
+                ranges[ranges.count - 1] = previous.lowerBound...row
+            } else { ranges.append(row...row) }
+        }
+        return ranges.map { $0.upperBound - $0.lowerBound + 1 }.sorted(by: >)
     }
 
     func testChineseFullScreenAndSettingsSnapshots() async throws {
@@ -285,13 +321,15 @@ final class InterfaceAndServiceTests: XCTestCase {
             UIColor(red: 0.05, green: 0.12, blue: 0.22, alpha: 1).setFill()
             renderer.fill(CGRect(x: 0, y: 480, width: 390, height: 364))
             for (original, translated, y, size) in lines {
+                let font = UIFont.systemFont(ofSize: size, weight: .medium)
                 let rect = CGRect(x: 24, y: y, width: 342, height: size * 1.5)
                 (original as NSString).draw(in: rect, withAttributes: [
-                    .font: UIFont.systemFont(ofSize: size, weight: .medium),
+                    .font: font,
                     .foregroundColor: y < 480 ? UIColor.black : UIColor.white
                 ])
                 let block = RecognizedBlock(id: UUID(), original: original, translation: original,
-                    boundingBox: CGRect(x: rect.minX / 390, y: 1 - rect.maxY / 844, width: rect.width / 390, height: rect.height / 844), confidence: 1)
+                    boundingBox: CGRect(x: rect.minX / 390, y: 1 - rect.maxY / 844, width: rect.width / 390, height: rect.height / 844), confidence: 1,
+                    sourceLineHeight: font.lineHeight / 844)
                 blocks.append(block); translations[block.id] = translated
             }
         }

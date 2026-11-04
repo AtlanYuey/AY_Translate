@@ -13,8 +13,8 @@ enum ScreenshotRendering {
         let coverPadding: CGFloat
     }
 
-    /// OCR measures ink, not a font's leading. Match each original line's ink
-    /// height, then allow the destination font's leading outside that box.
+    /// Recover a font size from each OCR line's typographic height, not the
+    /// paragraph union or a fixed viewport size. Include fallback-font leading.
     /// All distances scale with the image; there is no viewport-point minimum.
     static func textLayout(for block: RecognizedBlock, canvasSize: CGSize, textScale: Double, text: String? = nil) -> TextLayout {
         let text = text ?? block.translation
@@ -24,7 +24,7 @@ enum ScreenshotRendering {
                           height: block.boundingBox.height * canvasSize.height)
         let lineHeight = max(0.0001, block.originalLineHeight * canvasSize.height)
         let metrics = glyphMetrics(for: text)
-        let preferred = lineHeight / metrics.inkRatio
+        let preferred = lineHeight / metrics.lineHeightRatio
         let fitted = fittedFontSize(for: text, in: rect, preferred: preferred, metrics: metrics)
         // Fit at 100% first. Fitting again after this multiplication would undo
         // the user's enlargement whenever a translated region is already full.

@@ -11,7 +11,9 @@ final class ScreenTranslateUITests: XCTestCase {
         XCTAssertTrue(source.waitForExistence(timeout: 20))
         openExtension(app, source: source)
         let original = app.buttons["result.original"]
-        guard original.waitForExistence(timeout: 60) else {
+        // Cold hosted Intel simulators may initialize Vision for over a minute.
+        // Readiness still requires the real OCR result, not just a loading view.
+        guard original.waitForExistence(timeout: 120) else {
             let failure = XCTAttachment(screenshot: app.screenshot())
             failure.name = "系统扩展未生成识别结果"; failure.lifetime = .keepAlways; add(failure)
             XCTFail(app.debugDescription)
@@ -41,7 +43,7 @@ final class ScreenTranslateUITests: XCTestCase {
         app.buttons["result.close"].tap()
         guard waitUntilHittable(source) else { failWithScreenshot(app, name: "叉号关闭后返回失败"); return }
         openExtension(app, source: source)
-        XCTAssertTrue(original.waitForExistence(timeout: 60))
+        XCTAssertTrue(original.waitForExistence(timeout: 120))
         app.coordinate(withNormalizedOffset: CGVector(dx: 0.12, dy: 0.94))
             .press(forDuration: 0.05, thenDragTo: app.coordinate(withNormalizedOffset: CGVector(dx: 0.12, dy: 0.60)))
         if !waitUntilHittable(source) { failWithScreenshot(app, name: "上滑后返回失败") }
