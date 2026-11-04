@@ -182,7 +182,7 @@ struct ShortcutSetupView: View {
                 Button("OK", role: .cancel) {}
             }
             .sheet(isPresented: $showsFile) {
-                if let file = ShortcutInstaller.bundledFile { ShortcutFileExport(file: file) }
+                if let file = ShortcutInstaller.fileForImport() { ShortcutFileExport(file: file) }
             }
         }
     }

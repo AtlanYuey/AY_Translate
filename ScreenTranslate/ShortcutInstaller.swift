@@ -18,18 +18,25 @@ final class ShortcutInstaller: NSObject, UIDocumentInteractionControllerDelegate
     }
     static func install() -> Bool { shared.present() }
 
+    static func fileForImport() -> URL? {
+        guard let source = bundledFile,
+              let header = try? Data(contentsOf: source).prefix(4), header == Data("AEA1".utf8) else { return nil }
+        // Both import routes must use the same visible filename. Otherwise
+        // Shortcuts may create “TranslateScreen” while Run looks for “Translate Screen”.
+        let destination = FileManager.default.temporaryDirectory.appendingPathComponent(name + ".shortcut")
+        do {
+            if FileManager.default.fileExists(atPath: destination.path) { try FileManager.default.removeItem(at: destination) }
+            try FileManager.default.copyItem(at: source, to: destination)
+            return destination
+        } catch { return nil }
+    }
+
     private func present() -> Bool {
-        guard let file = Self.bundledFile,
-              let header = try? Data(contentsOf: file).prefix(4), header == Data("AEA1".utf8),
+        guard let file = Self.fileForImport(),
               var host = UIApplication.shared.connectedScenes.compactMap({ $0 as? UIWindowScene })
                 .first(where: { $0.activationState == .foregroundActive })?.keyWindow?.rootViewController else { return false }
         while let presented = host.presentedViewController { host = presented }
-        let destination = FileManager.default.temporaryDirectory.appendingPathComponent(Self.name + ".shortcut")
-        do {
-            if FileManager.default.fileExists(atPath: destination.path) { try FileManager.default.removeItem(at: destination) }
-            try FileManager.default.copyItem(at: file, to: destination)
-        } catch { return false }
-        let controller = UIDocumentInteractionController(url: destination)
+        let controller = UIDocumentInteractionController(url: file)
         controller.delegate = self
         self.controller = controller // The menu does not retain its controller.
         return controller.presentOpenInMenu(from: host.view.bounds, in: host.view, animated: true)
