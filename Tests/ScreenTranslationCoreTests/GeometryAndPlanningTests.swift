@@ -9,6 +9,38 @@ final class GeometryAndPlanningTests: XCTestCase {
         RecognizedBlock(id: UUID(), original: text, translation: text, boundingBox: CGRect(x: x, y: y, width: width, height: height), confidence: 0.9)
     }
 
+    func testVerticalColumnsJoinRightToLeftWithinOneBubble() {
+        let right = RecognizedBlock(id: UUID(), original: "面白い形ね", translation: "面白い形ね", boundingBox: CGRect(x: 0.55, y: 0.5, width: 0.025, height: 0.15), confidence: 1, sourceLineHeight: 0.015, flow: .vertical, sourceColumnWidth: 0.025)
+        let left = RecognizedBlock(id: UUID(), original: "一口食べてみる？", translation: "一口食べてみる？", boundingBox: CGRect(x: 0.51, y: 0.47, width: 0.025, height: 0.18), confidence: 1, sourceLineHeight: 0.015, flow: .vertical, sourceColumnWidth: 0.025)
+        let other = RecognizedBlock(id: UUID(), original: "別の吹き出し", translation: "別の吹き出し", boundingBox: CGRect(x: 0.2, y: 0.1, width: 0.03, height: 0.15), confidence: 1, flow: .vertical, sourceColumnWidth: 0.03)
+        let result = TranslationPlanner.paragraphs([left, other, right], preference: .quality)
+        XCTAssertEqual(result.count, 2)
+        XCTAssertEqual(result[0].original, right.original + "\n" + left.original)
+        XCTAssertEqual(result[0].originalColumnWidth, 0.025)
+        XCTAssertEqual(result[0].flow, .vertical)
+    }
+
+    func testVerticalLayoutUsesColumnWidthAndPlacesEveryGlyph() {
+        let layout = VerticalTextLayout(text: "这是什么蛋糕？请让我尝一口。", size: CGSize(width: 48, height: 140), preferred: 18, scale: 1)
+        XCTAssertTrue(layout.fits)
+        XCTAssertEqual(layout.glyphs.count, "这是什么蛋糕？请让我尝一口。".count)
+        XCTAssertLessThanOrEqual(layout.fontSize, 18)
+        XCTAssertLessThan(layout.glyphs.last!.center.x, layout.glyphs.first!.center.x)
+        for glyph in layout.glyphs {
+            XCTAssertTrue(CGRect(x: 0, y: 0, width: 48, height: 140).contains(glyph.center))
+        }
+        let enlarged = VerticalTextLayout(text: "尝一口", size: CGSize(width: 48, height: 140), preferred: 18, scale: 1.5)
+        XCTAssertEqual(enlarged.fontSize, 27)
+        XCTAssertFalse(VerticalTextLayout(text: String(repeating: "太长", count: 100), size: CGSize(width: 20, height: 100), preferred: 18, scale: 1).fits)
+    }
+
+    func testVerticalDetectorSeparatesColumnsAndDistantBubbles() {
+        let glyphs = (0..<6).map { CGRect(x: 0.6, y: 0.8 - Double($0) * 0.025, width: 0.02, height: 0.02) }
+        let distant = (0..<3).map { CGRect(x: 0.6, y: 0.2 - Double($0) * 0.025, width: 0.02, height: 0.02) }
+        let result = VerticalOCRGeometry.columns(glyphs + distant, imageSize: CGSize(width: 1000, height: 1000))
+        XCTAssertEqual(result.map(\.count).sorted(), [3, 6])
+    }
+
     func testCoordinateOriginRoundTrip() throws {
         let original = CGRect(x: 0.1, y: 0.7, width: 0.5, height: 0.1)
         let box = OCRAlignment.topLeftBox(original)

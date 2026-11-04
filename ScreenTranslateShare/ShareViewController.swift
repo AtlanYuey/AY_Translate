@@ -30,6 +30,7 @@ final class ShareViewController: UIViewController {
         // principal controller. viewDidLoad can run after adaptation to a sheet.
         view.backgroundColor = .black
         let settings = AppSettings.shared
+        settings.refreshSharedPreferences()
         let state = AppState(settings: settings, history: .shared)
         self.state = state
         let host = UIHostingController(rootView: TranslationResultView(onClose: { [weak self] in self?.finish() })

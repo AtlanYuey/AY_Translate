@@ -4,6 +4,7 @@ import CoreGraphics
 #endif
 
 nonisolated enum TextPlacement: Hashable, Sendable { case overlay, textOnly }
+nonisolated enum TextFlow: Hashable, Sendable { case horizontal, vertical }
 
 nonisolated struct RecognizedBlock: Identifiable, Hashable, Sendable {
     let id: UUID
@@ -16,6 +17,13 @@ nonisolated struct RecognizedBlock: Identifiable, Hashable, Sendable {
     /// Height of one original OCR line, normalized to the upright image height.
     /// Preserve this when joining lines: a paragraph's union is not a font size.
     var sourceLineHeight: CGFloat? = nil
+    var flow: TextFlow = .horizontal
+    /// One vertical column's glyph width, normalized to image width.
+    var sourceColumnWidth: CGFloat? = nil
+
+    var originalColumnWidth: CGFloat {
+        sourceColumnWidth ?? boundingBox.width / CGFloat(max(1, original.split(separator: "\n").count))
+    }
 
     var originalLineHeight: CGFloat {
         if let sourceLineHeight, sourceLineHeight.isFinite, sourceLineHeight > 0 {
@@ -76,7 +84,7 @@ nonisolated enum OCRAlignment {
             if let index, !used.contains(anchors[index].id), similarity(text, anchors[index].original) >= 0.65 {
                 used.insert(anchors[index].id)
                 let anchor = anchors[index]
-                blocks[index] = RecognizedBlock(id: anchor.id, original: text, translation: text, boundingBox: anchor.boundingBox, confidence: anchor.confidence, sourceLineHeight: anchor.originalLineHeight)
+                blocks[index] = RecognizedBlock(id: anchor.id, original: text, translation: text, boundingBox: anchor.boundingBox, confidence: anchor.confidence, sourceLineHeight: anchor.originalLineHeight, flow: anchor.flow, sourceColumnWidth: anchor.sourceColumnWidth)
             } else {
                 unmatched.append(RecognizedBlock(id: UUID(), original: text, translation: text, boundingBox: .zero, confidence: 0, placement: .textOnly))
             }

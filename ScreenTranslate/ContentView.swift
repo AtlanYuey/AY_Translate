@@ -88,6 +88,8 @@ private struct HomeView: View {
                 setupCard
                 privacyNote
             }
+            .frame(maxWidth: 680)
+            .frame(maxWidth: .infinity)
             .padding(.horizontal, 20)
             .padding(.bottom, 28)
         }

@@ -11,6 +11,8 @@ enum ScreenshotRendering {
         let fontSize: CGFloat
         let lineLimit: Int
         let coverPadding: CGFloat
+        let vertical: VerticalTextLayout?
+        let canRender: Bool
     }
 
     /// Recover a font size from each OCR line's typographic height, not the
@@ -23,12 +25,17 @@ enum ScreenshotRendering {
                           width: block.boundingBox.width * canvasSize.width,
                           height: block.boundingBox.height * canvasSize.height)
         let lineHeight = max(0.0001, block.originalLineHeight * canvasSize.height)
+        let scale = textScale.isFinite && textScale > 0 ? CGFloat(textScale) : 1
+        if block.flow == .vertical && VerticalTextLayout.supports(text) {
+            let layout = VerticalTextLayout(text: text, size: rect.size, preferred: max(0.001, block.originalColumnWidth * canvasSize.width * 0.94), scale: scale)
+            return TextLayout(sourceRect: rect, textRect: rect, fontSize: layout.fontSize, lineLimit: 1,
+                              coverPadding: layout.fontSize * 0.06, vertical: layout, canRender: layout.fits)
+        }
         let metrics = glyphMetrics(for: text)
-        let preferred = lineHeight / metrics.lineHeightRatio
+        let preferred = block.flow == .vertical ? block.originalColumnWidth * canvasSize.width * 0.94 : lineHeight / metrics.lineHeightRatio
         let fitted = fittedFontSize(for: text, in: rect, preferred: preferred, metrics: metrics)
         // Fit at 100% first. Fitting again after this multiplication would undo
         // the user's enlargement whenever a translated region is already full.
-        let scale = textScale.isFinite && textScale > 0 ? CGFloat(textScale) : 1
         let fontSize = fitted * scale
         let fontLineHeight = fontSize * metrics.lineHeightRatio
         let leading = max(0, fontLineHeight - fontSize * metrics.inkRatio)
@@ -37,9 +44,12 @@ enum ScreenshotRendering {
         // the original region; clipping the enlarged glyph defeats the slider.
         let textHeight = max(rect.height, fontSize * metrics.inkRatio) + leading
         let textRect = CGRect(x: rect.minX, y: rect.midY - textHeight / 2, width: rect.width, height: textHeight)
+        let bounds = (text as NSString).boundingRect(with: CGSize(width: max(0.0001, textRect.width), height: .greatestFiniteMagnitude),
+            options: [.usesLineFragmentOrigin, .usesFontLeading], attributes: [.font: UIFont.systemFont(ofSize: fontSize, weight: .medium)], context: nil)
         return TextLayout(sourceRect: rect, textRect: textRect, fontSize: fontSize,
                           lineLimit: max(1, Int((textRect.height + fontSize * 0.001) / fontLineHeight)),
-                          coverPadding: lineHeight * 0.06)
+                          coverPadding: lineHeight * 0.06, vertical: nil,
+                          canRender: bounds.height <= textRect.height + fontSize * 0.01 && bounds.width <= textRect.width + fontSize * 0.01)
     }
 
     private struct GlyphMetrics {
@@ -142,18 +152,39 @@ enum ScreenshotRendering {
             document.image.draw(in: CGRect(origin: .zero, size: size))
             for block in document.blocks where block.placement == .overlay && block.translation != block.original {
                 let layout = textLayout(for: block, canvasSize: size, textScale: textScale)
+                guard layout.canRender else { continue } // Keep the original intact rather than paint a fragment/ellipsis.
                 let color = palette[block.id] ?? SampledColor(red: 1, green: 1, blue: 1)
                 UIColor(red: color.red, green: color.green, blue: color.blue, alpha: 1).setFill()
                 renderer.fill(layout.sourceRect.insetBy(dx: -layout.coverPadding, dy: -layout.coverPadding))
-                let paragraph = NSMutableParagraphStyle()
-                paragraph.alignment = document.target.isRightToLeft ? .right : .left
-                paragraph.lineBreakMode = .byTruncatingTail
-                (block.translation as NSString).draw(in: layout.textRect, withAttributes: [
-                    .font: UIFont.systemFont(ofSize: layout.fontSize, weight: .medium),
-                    .foregroundColor: color.usesDarkText ? UIColor.black : UIColor.white,
-                    .paragraphStyle: paragraph
-                ])
+                drawText(block.translation, layout: layout, color: color.usesDarkText ? .black : .white,
+                         isRTL: document.target.isRightToLeft, in: renderer.cgContext)
             }
         }
+    }
+
+    /// Shared by the interactive Canvas and exported image, so neither path can
+    /// silently substitute a fixed font or truncate a vertical translation.
+    static func drawText(_ text: String, layout: TextLayout, color: UIColor, isRTL: Bool, in context: CGContext) {
+        guard layout.canRender else { return }
+        context.saveGState()
+        context.clip(to: layout.textRect)
+        UIGraphicsPushContext(context)
+        let font = UIFont.systemFont(ofSize: layout.fontSize, weight: .medium)
+        if let vertical = layout.vertical {
+            for glyph in vertical.glyphs {
+                let attributes: [NSAttributedString.Key: Any] = [.font: font, .foregroundColor: color]
+                let size = (glyph.text as NSString).size(withAttributes: attributes)
+                (glyph.text as NSString).draw(at: CGPoint(x: layout.textRect.minX + glyph.center.x - size.width / 2,
+                    y: layout.textRect.minY + glyph.center.y - size.height / 2), withAttributes: attributes)
+            }
+        } else {
+            let paragraph = NSMutableParagraphStyle()
+            paragraph.alignment = isRTL ? .right : .left
+            paragraph.lineBreakMode = .byWordWrapping
+            (text as NSString).draw(with: layout.textRect, options: [.usesLineFragmentOrigin, .usesFontLeading],
+                attributes: [.font: font, .foregroundColor: color, .paragraphStyle: paragraph], context: nil)
+        }
+        UIGraphicsPopContext()
+        context.restoreGState()
     }
 }

@@ -40,6 +40,136 @@ final class InterfaceAndServiceTests: XCTestCase {
         ProcessingServices(vision: { _, _ in regions }, aiOCR: { _, _, _, _ in XCTFail("Unexpected cloud OCR"); throw AIServiceError.transport }, aiTranslation: { _, _, _, _, _, _ in XCTFail("Unexpected cloud translation"); throw AIServiceError.transport })
     }
 
+    func testOCRFailureStillDisplaysTheOriginalScreenshotInDarkMode() async throws {
+        let state = AppState(settings: settings, history: HistoryStore(fileURL: FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)),
+            services: ProcessingServices(vision: { _, _ in throw ScreenReadingError.noText }, aiOCR: { _, _, _, _ in throw AIServiceError.transport }, aiTranslation: { _, _, _, _, _, _ in throw AIServiceError.transport }))
+        state.process(image())
+        for _ in 0..<100 { if case .failed = state.phase { break }; try await Task.sleep(for: .milliseconds(10)) }
+        guard case .failed = state.phase else { return XCTFail("Expected OCR failure") }
+        let screenshot = await attach(TranslationResultView().environmentObject(state).environmentObject(settings).environmentObject(state.history).preferredColorScheme(.dark), name: "识别失败仍然保留原图")
+        let cg = try XCTUnwrap(screenshot.cgImage)
+        var pixels = [UInt8](repeating: 0, count: 64 * 128 * 4)
+        let fraction = try pixels.withUnsafeMutableBytes { bytes -> Double in
+            let context = try XCTUnwrap(CGContext(data: bytes.baseAddress, width: 64, height: 128, bitsPerComponent: 8, bytesPerRow: 64 * 4,
+                space: CGColorSpaceCreateDeviceRGB(), bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue))
+            context.draw(cg, in: CGRect(x: 0, y: 0, width: 64, height: 128))
+            let raw = bytes.bindMemory(to: UInt8.self)
+            return Double(stride(from: 0, to: raw.count, by: 4).filter { raw[$0] > 220 && raw[$0 + 1] > 220 && raw[$0 + 2] > 220 }.count) / (64 * 128)
+        }
+        XCTAssertGreaterThan(fraction, 0.25, "The white half of the original must remain visible, rather than a black error page")
+        state.closeResult()
+    }
+
+    func testResultAdaptsToNarrowWideAndTabletWindows() async throws {
+        settings.source = .english; settings.target = .english
+        let state = AppState(settings: settings, history: HistoryStore(fileURL: FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)), services: services([region()]))
+        state.process(image())
+        for _ in 0..<100 where state.phase != .ready { try await Task.sleep(for: .milliseconds(10)) }
+        XCTAssertEqual(state.phase, .ready)
+        for size in [CGSize(width: 320, height: 740), CGSize(width: 744, height: 1133), CGSize(width: 1024, height: 768), CGSize(width: 507, height: 768)] {
+            let image = await attach(TranslationResultView().environmentObject(state).environmentObject(settings).environmentObject(state.history).preferredColorScheme(.dark),
+                name: "译图窗口-\(Int(size.width))x\(Int(size.height))", size: size)
+            XCTAssertEqual(image.size, size)
+        }
+        state.closeResult()
+    }
+
+    func testSharedKeychainSynchronizesTwoIndependentPreferencesSuites() throws {
+        let otherName = suite + ".extension", other = UserDefaults(suiteName: otherName)!
+        defer { other.removePersistentDomain(forName: otherName) }
+        let main = AppSettings(defaults: defaults, keyStore: keys, syncThroughKeychain: true)
+        let a = service("Feather 自签服务")
+        try main.saveService(a, keyReplacement: "fixture-key-shared")
+        try main.selectService(a.id, for: .translation)
+        main.target = .japanese; main.overlayTextScale = 1.2
+        let extensionSettings = AppSettings(defaults: other, keyStore: keys, syncThroughKeychain: true)
+        XCTAssertEqual(extensionSettings.serviceCatalog, main.serviceCatalog)
+        XCTAssertEqual(extensionSettings.translationEngine, .ai)
+        XCTAssertEqual(extensionSettings.target, .japanese)
+        XCTAssertEqual(extensionSettings.overlayTextScale, 1.2)
+        XCTAssertEqual(try extensionSettings.readAPIKey(for: .translation), "fixture-key-shared")
+        try main.removeService(a.id)
+        extensionSettings.refreshSharedPreferences()
+        XCTAssertTrue(extensionSettings.serviceCatalog.services.isEmpty)
+        XCTAssertEqual(extensionSettings.translationEngine, .apple)
+        XCTAssertFalse(defaults.dictionaryRepresentation().description.contains("fixture-key-shared"))
+        XCTAssertFalse(other.dictionaryRepresentation().description.contains("fixture-key-shared"))
+    }
+
+    func testExplicitTransferWorksWhenBothSharedEntitlementsAreMissing() throws {
+        let a = service("本地导入服务")
+        try settings.saveService(a, keyReplacement: "fixture-transfer-key")
+        try settings.selectService(a.id, for: .translation)
+        settings.grantConsent(for: .translation)
+        settings.interfaceLanguage = .korean
+        let now = Date(), token = try settings.configurationTransfer(now: now)
+        let otherName = suite + ".isolated", other = UserDefaults(suiteName: otherName)!
+        defer { other.removePersistentDomain(forName: otherName) }
+        let isolated = AppSettings(defaults: other, keyStore: ServiceTestKeys())
+        try isolated.importConfiguration(token, now: now.addingTimeInterval(20))
+        XCTAssertEqual(isolated.serviceCatalog, settings.serviceCatalog)
+        XCTAssertEqual(isolated.interfaceLanguage, .korean)
+        XCTAssertEqual(try isolated.readAPIKey(for: .translation), "fixture-transfer-key")
+        XCTAssertFalse(isolated.hasConsent(for: .translation), "Transfer must not silently authorize cloud uploads")
+        XCTAssertFalse(other.dictionaryRepresentation().description.contains("fixture-transfer-key"))
+        XCTAssertThrowsError(try isolated.importConfiguration(token, now: now.addingTimeInterval(61)))
+        XCTAssertThrowsError(try isolated.importConfiguration("wrong token"))
+    }
+
+    func testAlreadyChineseScreensDoNotStartAnUnsupportedIdentitySession() {
+        XCTAssertTrue(AppState.alreadyInTargetLanguage("请打开设置并选择你需要的翻译语言。", target: .chinese))
+        XCTAssertTrue(AppState.alreadyInTargetLanguage("10:22 90%", target: .chinese))
+        XCTAssertFalse(AppState.alreadyInTargetLanguage("This delicious cake is made with fresh fruit.", target: .chinese))
+    }
+
+    func testVerticalOverlayUsesOriginalGlyphWidthAndNeverPaintsTruncatedText() throws {
+        let block = RecognizedBlock(id: UUID(), original: "面白い形ですね", translation: "形状很有趣呢", boundingBox: CGRect(x: 0.6, y: 0.5, width: 0.03, height: 0.2), confidence: 1, sourceLineHeight: 0.02, flow: .vertical, sourceColumnWidth: 0.03)
+        let layout = ScreenshotRendering.textLayout(for: block, canvasSize: CGSize(width: 390, height: 844), textScale: 1)
+        XCTAssertLessThan(layout.fontSize, 12)
+        XCTAssertNotNil(layout.vertical)
+        XCTAssertTrue(layout.canRender)
+        XCTAssertEqual(ScreenshotRendering.textLayout(for: block, canvasSize: CGSize(width: 390, height: 844), textScale: 1.4).fontSize, layout.fontSize * 1.4, accuracy: 0.001)
+        var long = block; long.translation = String(repeating: "这是一段非常长的译文", count: 50)
+        let cannotFit = ScreenshotRendering.textLayout(for: long, canvasSize: CGSize(width: 390, height: 844), textScale: 1)
+        XCTAssertFalse(cannotFit.canRender)
+        let document = TranslationDocument(id: UUID(), image: image(), blocks: [long], source: .japanese, target: .chinese, createdAt: Date())
+        let rendered = ScreenshotRendering.translatedImage(document, palette: [:], textScale: 1)
+        let baseline = ScreenshotRendering.translatedImage(TranslationDocument(id: document.id, image: document.image, blocks: [], source: .japanese, target: .chinese, createdAt: Date()), palette: [:], textScale: 1)
+        XCTAssertEqual(rendered.pngData(), baseline.pngData(), "An unrenderable translation must leave every original pixel unchanged")
+    }
+
+    func testRealVisionReadsSmallUprightJapaneseVerticalColumns() async throws {
+        executionTimeAllowance = 180
+        let size = CGSize(width: 900, height: 1600)
+        let format = UIGraphicsImageRendererFormat(); format.scale = 1; format.opaque = true
+        let originals = ["このケーキは", "おいしいです", "一口食べますか"]
+        let image = UIGraphicsImageRenderer(size: size, format: format).image { renderer in
+            UIColor.white.setFill(); renderer.fill(CGRect(origin: .zero, size: size))
+            for (index, text) in originals.enumerated() {
+                for (row, glyph) in text.enumerated() {
+                    (String(glyph) as NSString).draw(at: CGPoint(x: 640 - index * 44, y: 180 + row * 34), withAttributes: [.font: UIFont.systemFont(ofSize: 28), .foregroundColor: UIColor.black])
+                }
+            }
+        }
+        let attachment = XCTAttachment(image: image); attachment.name = "竖排日文小字原图"; attachment.lifetime = .keepAlways; add(attachment)
+        let blocks = try await ScreenReader.recognize(in: image, source: .japanese)
+        let text = blocks.map(\.original).joined()
+        let recognized = XCTAttachment(string: text); recognized.name = "真实Vision竖排识别"; recognized.lifetime = .keepAlways; add(recognized)
+        XCTAssertTrue(text.contains("ケーキ"), text)
+        XCTAssertTrue(text.contains("おいしい"), text)
+        XCTAssertTrue(blocks.contains { $0.flow == .vertical }, text)
+        let paragraphs = TranslationPlanner.paragraphs(blocks, preference: .quality)
+        var translated = paragraphs
+        for index in translated.indices where translated[index].flow == .vertical { translated[index].translation = "这块蛋糕真好吃" }
+        let document = TranslationDocument(id: UUID(), image: image, blocks: translated, source: .japanese, target: .chinese, createdAt: Date())
+        let result = ScreenshotRendering.translatedImage(document, palette: ScreenshotRendering.palette(for: document), textScale: 1)
+        let output = XCTAttachment(image: result); output.name = "竖排译文完整字形覆盖"; output.lifetime = .keepAlways; add(output)
+        for block in translated where block.flow == .vertical {
+            let layout = ScreenshotRendering.textLayout(for: block, canvasSize: size, textScale: 1)
+            XCTAssertLessThan(layout.fontSize, 40, "Column height must not become font size")
+        }
+    }
+
     func testSystemLanguageIsTheDefaultAndSelectionIsPersistent() {
         XCTAssertEqual(settings.interfaceLanguage, .system)
         settings.interfaceLanguage = .english
@@ -336,7 +466,7 @@ final class InterfaceAndServiceTests: XCTestCase {
         return (image, blocks, translations)
     }
 
-    private func attach<Content: View>(_ content: Content, name: String) async {
+    @discardableResult private func attach<Content: View>(_ content: Content, name: String, size: CGSize = CGSize(width: 390, height: 844)) async -> UIImage {
         // Hosting in a real window also captures List/Form/NavigationStack, whose
         // UIKit-backed views aren't drawn by SwiftUI's ImageRenderer.
         let scenes = UIApplication.shared.connectedScenes.compactMap { $0 as? UIWindowScene }
@@ -344,7 +474,7 @@ final class InterfaceAndServiceTests: XCTestCase {
         let window: UIWindow
         if let scene = previousWindow?.windowScene ?? scenes.first { window = UIWindow(windowScene: scene) }
         else { window = UIWindow(frame: CGRect(x: 0, y: 0, width: 390, height: 844)) }
-        window.frame = CGRect(x: 0, y: 0, width: 390, height: 844)
+        window.frame = CGRect(origin: .zero, size: size)
         let host = UIHostingController(rootView: content)
         window.rootViewController = host
         window.makeKeyAndVisible()
@@ -359,6 +489,7 @@ final class InterfaceAndServiceTests: XCTestCase {
         let attachment = XCTAttachment(image: image)
         attachment.name = name; attachment.lifetime = .keepAlways
         add(attachment)
+        return image
     }
 }
 

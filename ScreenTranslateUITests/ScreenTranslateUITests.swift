@@ -1,4 +1,5 @@
 import XCTest
+import UIKit
 
 final class ScreenTranslateUITests: XCTestCase {
     override func setUpWithError() throws { continueAfterFailure = false; executionTimeAllowance = 300 }
@@ -67,6 +68,26 @@ final class ScreenTranslateUITests: XCTestCase {
         XCTAssertTrue(app.tabBars.buttons["History"].waitForExistence(timeout: 10), app.debugDescription)
         toggle.switches.firstMatch.tap()
         XCTAssertFalse(app.tabBars.buttons["History"].exists)
+    }
+
+    func testInterfaceAdaptsToPortraitAndLandscape() throws {
+        let app = XCUIApplication()
+        app.launchArguments = ["--ui-test-reset", "-AppleLanguages", "(en)", "-AppleLocale", "en_US"]
+        app.launch()
+        defer { XCUIDevice.shared.orientation = .portrait }
+        for orientation in [UIDeviceOrientation.portrait, .landscapeLeft] {
+            XCUIDevice.shared.orientation = orientation
+            let settings = app.buttons["Settings"].firstMatch
+            XCTAssertTrue(settings.waitForExistence(timeout: 20))
+            settings.tap()
+            let source = app.staticTexts["OCR Engine"].firstMatch
+            XCTAssertTrue(source.waitForExistence(timeout: 10))
+            XCTAssertTrue(source.isHittable)
+            XCTAssertGreaterThanOrEqual(source.frame.minX, app.frame.minX)
+            XCTAssertLessThanOrEqual(source.frame.maxX, app.frame.maxX)
+            let capture = XCTAttachment(screenshot: app.screenshot())
+            capture.name = "设备横竖屏-\(orientation.rawValue)"; capture.lifetime = .keepAlways; add(capture)
+        }
     }
 
     private func openExtension(_ app: XCUIApplication, source: XCUIElement) {

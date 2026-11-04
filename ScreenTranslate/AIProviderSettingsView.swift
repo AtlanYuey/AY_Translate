@@ -100,44 +100,75 @@ struct AIServiceEditor: View {
     @Environment(\.dismiss) private var dismiss
     @State var service: SavedAIService
     var didSave: (() -> Void)?
-    @State private var newKey = ""
-    @State private var hasSavedKey = false
+    @State private var key = ""
+    @State private var loadedKey = ""
+    @State private var loadedEndpoint: URL?
+    @State private var initialized = false
+    @State private var models: [String] = []
+    @State private var discovering = false
+    @State private var discoveryError: String?
+    @State private var modelSelection = "__other__"
+    @State private var discoveryRevision = 0
+    @State private var probeID = "en"
+    @State private var probeResult: String?
+    @State private var testing = false
+    @State private var testTask: Task<Void, Never>?
     @State private var error: String?
+
+    private var discoveryIdentity: String { service.configuration.baseURL + "\n" + key + "\n" + String(discoveryRevision) }
+    private var probes: [TranslationProbe] { TranslationProbe.samples(excluding: settings.target.rawValue) }
+    private var probe: TranslationProbe { probes.first { $0.id == probeID } ?? probes[0] }
 
     var body: some View {
         Form {
             Section("Service Details") {
                 TextField("Service Name", text: $service.name)
+                    .keyboardType(.default).textInputAutocapitalization(.never).autocorrectionDisabled()
                 LabeledContent("Provider") { Text(LocalizedStringKey(service.preset.name)) }
-                TextField("Base URL", text: $service.configuration.baseURL)
-                    .keyboardType(.URL).textInputAutocapitalization(.never).autocorrectionDisabled()
-                TextField("Model Name", text: $service.configuration.model)
-                    .textInputAutocapitalization(.never).autocorrectionDisabled()
+                TextField("Base URL", text: $service.configuration.baseURL, axis: .vertical)
+                    .keyboardType(.default).textInputAutocapitalization(.never).autocorrectionDisabled()
+                    .accessibilityIdentifier("service.url")
+                TextField("API Key (optional for keyless services)", text: $key, axis: .vertical)
+                    .keyboardType(.default).textInputAutocapitalization(.never).autocorrectionDisabled()
+                    .privacySensitive().accessibilityIdentifier("service.key")
             }
             Section {
-                Toggle("Supports Image Input", isOn: $service.supportsVision)
-            } footer: {
-                Text("Enable only for a vision-capable model. DeepSeek's text models cannot perform image OCR. Model availability depends on your provider.")
-            }
-            Section {
-                SecureField(settings.text(hasSavedKey ? "New API Key (blank keeps saved key)" : "API Key (optional for keyless services)"), text: $newKey)
-                    .textInputAutocapitalization(.never).autocorrectionDisabled().privacySensitive()
-                Label(LocalizedStringKey(hasSavedKey ? "A key is stored securely" : "No saved key"), systemImage: hasSavedKey ? "key.fill" : "key")
-                    .font(.footnote).foregroundStyle(.secondary)
-                if hasSavedKey {
-                    Button("Delete Saved API Key", role: .destructive) {
-                        do { try settings.deleteAPIKey(forService: service.id); hasSavedKey = false; newKey = "" }
-                        catch { self.error = error.localizedDescription }
-                    }
+                if !models.isEmpty {
+                    Picker("Model", selection: $modelSelection) {
+                        ForEach(models, id: \.self) { Text(verbatim: $0).tag($0) }
+                        Text("Other Model").tag("__other__")
+                    }.accessibilityIdentifier("service.models")
                 }
-            } header: { Text("Device Keychain") } footer: {
-                Text("Keys are stored separately for every saved service and never sync to iCloud. Changing the endpoint clears this service's old key unless you enter a replacement.")
+                if modelSelection == "__other__" || models.isEmpty {
+                    TextField("Model Name", text: $service.configuration.model)
+                        .keyboardType(.default).textInputAutocapitalization(.never).autocorrectionDisabled()
+                        .accessibilityIdentifier("service.custom-model")
+                }
+                Button { discoveryRevision += 1 } label: {
+                    HStack { Label("Fetch Available Models", systemImage: "arrow.clockwise"); Spacer(); if discovering { ProgressView() } }
+                }.disabled(discovering)
+                if let discoveryError { Text(settings.text(discoveryError)).font(.footnote).foregroundStyle(.secondary) }
+                Toggle("Supports Image Input", isOn: $service.supportsVision)
+            } header: { Text("Model") } footer: {
+                Text("Pasting a key fetches the provider’s model list. If listing is unavailable, choose Other Model and enter its ID. Enable image input only for a vision-capable model.")
             }
             Section {
-                Text("Saving does not send a request. Select a service for OCR or translation; sharing requires your permission. Apple engines remain free without a key.")
-                Text("Your provider controls availability, pricing and data retention. A free app does not make external API usage free.")
-                    .foregroundStyle(.secondary)
-            } header: { Text("Sharing & Cost") }
+                Picker("Test Phrase", selection: $probeID) {
+                    ForEach(probes) { Text(verbatim: $0.languageName).tag($0.id) }
+                }
+                Text(verbatim: probe.text).textSelection(.enabled)
+                LabeledContent("Target Language", value: settings.target.nativeName)
+                if let probeResult { Text(verbatim: probeResult).textSelection(.enabled).accessibilityIdentifier("service.test-result") }
+                Button(action: testTranslation) {
+                    HStack { Label("Test Translation", systemImage: "play.fill"); Spacer(); if testing { ProgressView() } }
+                }.disabled(testing).accessibilityIdentifier("service.test")
+            } header: { Text("Test Translation") } footer: {
+                Text("Test sends only the selected sample to this endpoint with the current key and model. Provider fees may apply. Saving alone sends no translation request.")
+            }
+            Section {
+                Text("The key stays visible for checking pasted text. It is saved only in this device’s Keychain, separately for each service.")
+                Text("Changing the endpoint clears a previously saved key. Paste a replacement for the new destination.")
+            } header: { Text("Device Keychain") }
         }
         .navigationTitle("Edit AI Service")
         .navigationBarTitleDisplayMode(.inline)
@@ -146,20 +177,75 @@ struct AIServiceEditor: View {
             ToolbarItem(placement: .confirmationAction) { Button("Save", action: save) }
         }
         .task {
-            do { hasSavedKey = try !settings.readAPIKey(forService: service.id).isEmpty }
-            catch { self.error = error.localizedDescription }
+            guard !initialized else { return }
+            do {
+                loadedKey = try settings.readAPIKey(forService: service.id)
+                key = loadedKey
+                loadedEndpoint = try? service.configuration.endpoint()
+                initialized = true
+            } catch { self.error = error.localizedDescription }
         }
-        .onDisappear { newKey = "" }
+        .task(id: discoveryIdentity) {
+            guard initialized, !key.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty || discoveryRevision > 0 else { return }
+            let identity = discoveryIdentity
+            do {
+                try await Task.sleep(for: .milliseconds(700))
+                discovering = true
+                discoveryError = nil
+                let available = try await OpenAIClient().models(configuration: service.configuration, apiKey: key)
+                guard !Task.isCancelled, identity == discoveryIdentity else { return }
+                models = available
+                if service.configuration.model.isEmpty, let first = available.first { service.configuration.model = first }
+                modelSelection = available.contains(service.configuration.model) ? service.configuration.model : "__other__"
+            } catch is CancellationError { }
+            catch { if identity == discoveryIdentity { discoveryError = error.localizedDescription } }
+            if identity == discoveryIdentity { discovering = false }
+        }
+        .onChange(of: modelSelection) { _, value in
+            if value != "__other__" { service.configuration.model = value }
+        }
+        .onChange(of: service.configuration.baseURL) { _, _ in
+            models = []; modelSelection = "__other__"; discoveryError = nil; discovering = false
+            // Do not send a saved credential automatically to an edited host/path.
+            if (try? service.configuration.endpoint()) != loadedEndpoint, key == loadedKey { key = "" }
+            cancelTest()
+        }
+        .onChange(of: key) { _, _ in cancelTest() }
+        .onChange(of: service.configuration.model) { _, _ in cancelTest() }
+        .onChange(of: probeID) { _, _ in cancelTest() }
+        .onChange(of: settings.target) { _, _ in cancelTest() }
+        .onDisappear { cancelTest(); key = ""; loadedKey = "" }
         .alert("Could Not Save", isPresented: Binding(get: { error != nil }, set: { if !$0 { error = nil } })) {
             Button("OK", role: .cancel) { error = nil }
         } message: { Text(settings.text(error ?? "")) }
     }
 
+    private func cancelTest() { testTask?.cancel(); testTask = nil; testing = false; probeResult = nil }
+
+    private func testTranslation() {
+        cancelTest()
+        let sample = probe, configuration = service.configuration, apiKey = key, target = settings.target
+        let block = RecognizedBlock(id: UUID(), original: sample.text, translation: sample.text, boundingBox: .zero, confidence: 1, placement: .textOnly)
+        testing = true
+        testTask = Task {
+            do {
+                let result = try await OpenAIClient().translate([block], source: sample.languageName, target: target.name,
+                    preference: settings.preference, configuration: configuration, apiKey: apiKey)
+                guard !Task.isCancelled else { return }
+                probeResult = result[block.id]
+            } catch {
+                guard !Task.isCancelled else { return }
+                probeResult = settings.text(error.localizedDescription)
+            }
+            testing = false
+        }
+    }
+
     private func save() {
         do {
             service.name = service.name.trimmingCharacters(in: .whitespacesAndNewlines)
-            try settings.saveService(service, keyReplacement: newKey.isEmpty ? nil : newKey)
-            newKey = ""
+            try settings.saveService(service, keyReplacement: key == loadedKey ? nil : key)
+            key = ""; loadedKey = ""
             didSave?()
             dismiss()
         } catch { self.error = error.localizedDescription }

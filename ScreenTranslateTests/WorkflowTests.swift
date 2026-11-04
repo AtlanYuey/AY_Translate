@@ -15,6 +15,7 @@ final class WorkflowTests: XCTestCase {
         defaults = UserDefaults(suiteName: suite)!
         keys = MemoryKeys()
         settings = AppSettings(defaults: defaults, keyStore: keys)
+        settings.target = .chinese
         historyURL = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString).appendingPathComponent("history.json")
     }
 
@@ -76,6 +77,8 @@ final class WorkflowTests: XCTestCase {
         try await waitUntil { if case .failed = state.phase { return true }; return false }
         XCTAssertTrue(state.hasSourceImage)
         XCTAssertNil(state.document)
+        XCTAssertNotNil(state.displayedDocument, "Even failed OCR must retain a displayable original image")
+        XCTAssertEqual(state.displayedDocument?.image.size, image().size)
         state.retry(using: .appleVision)
         try await waitUntil { state.phase == .translating }
         XCTAssertEqual(attempts, 2)

@@ -23,6 +23,9 @@ struct ScreenTranslateApp: App {
             preferences.set(false, forKey: "saveTranslationHistory")
             preferences.set("appleVision", forKey: "ocrEngine")
             preferences.set("apple", forKey: "translationEngine")
+            // Isolate UI-test defaults from a previous shared-Keychain snapshot.
+            try? KeychainStore().save("", for: .sharedPreferences)
+            preferences.removeObject(forKey: "preferences.bridge.bootstrapped")
             preferences.synchronize()
             UserDefaults.standard.set(true, forKey: "hasCompletedOnboarding")
         }

@@ -294,6 +294,53 @@ jobs:
           if-no-files-found: warn
           retention-days: 14
 
+  ipad:
+    if: inputs.inspect_run_id == ''
+    name: Check iPad portrait and landscape
+    runs-on: ${{ inputs.runner || 'macos-26-intel' }}
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+      - name: Choose an available iPad simulator
+        id: simulator
+        shell: bash
+        run: |
+          set -euo pipefail
+          xcodebuild -version
+          xcrun simctl list devices available --json > "$RUNNER_TEMP/ipad-simulators.json"
+          echo "destination=$(python3 .github/scripts/simulator-destination.py iPad < "$RUNNER_TEMP/ipad-simulators.json")" >> "$GITHUB_OUTPUT"
+      - name: Test iPad layout on a real simulator
+        env:
+          TEST_DESTINATION: ${{ steps.simulator.outputs.destination }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          xcodebuild test -project "$PROJECT" -scheme "$SCHEME" \
+            -configuration Debug -destination "$TEST_DESTINATION" -parallel-testing-enabled NO -jobs 3 \
+            -derivedDataPath "$RUNNER_TEMP/iPadDerivedData" -resultBundlePath "$RUNNER_TEMP/iPadResults.xcresult" \
+            -only-testing:ScreenTranslateUITests/ScreenTranslateUITests/testInterfaceAdaptsToPortraitAndLandscape \
+            -test-timeouts-enabled YES -default-test-execution-time-allowance 120 -maximum-test-execution-time-allowance 300 \
+            CODE_SIGNING_ALLOWED=YES CODE_SIGNING_REQUIRED=NO CODE_SIGN_IDENTITY="-" DEVELOPMENT_TEAM="" \
+            2>&1 | tee "$RUNNER_TEMP/ipad-tests.log"
+      - name: Export iPad screenshots
+        if: always()
+        shell: bash
+        run: |
+          if [[ -d "$RUNNER_TEMP/iPadResults.xcresult" ]]; then
+            xcrun xcresulttool export attachments --path "$RUNNER_TEMP/iPadResults.xcresult" --output-path "$RUNNER_TEMP/ipad-screenshots"
+          fi
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: ipad-validation-${{ github.run_id }}-${{ github.run_attempt }}
+          path: |
+            ${{ runner.temp }}/ipad-tests.log
+            ${{ runner.temp }}/iPadResults.xcresult
+            ${{ runner.temp }}/ipad-screenshots
+            ${{ runner.temp }}/ipad-simulators.json
+          if-no-files-found: warn
+          retention-days: 14
+
   release:
     if: startsWith(github.ref, 'refs/tags/v')
     needs: build

@@ -50,6 +50,11 @@ nonisolated struct AIServiceConfiguration: Codable, Equatable, Sendable {
         }
     }
 
+    func modelsEndpoint() throws -> URL {
+        let chat = try endpoint()
+        return chat.deletingLastPathComponent().deletingLastPathComponent().appendingPathComponent("models")
+    }
+
     /// Consent is scoped to the exact destination and model, not just a boolean.
     var consentID: String {
         guard let endpoint = try? endpoint() else { return "" }

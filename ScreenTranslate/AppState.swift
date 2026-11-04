@@ -27,12 +27,20 @@ final class AppState: ObservableObject {
     var hasSourceImage: Bool { sourceImage != nil }
 
     private let services: ProcessingServices
-    private var sourceImage: UIImage?
+    @Published private(set) var sourceImage: UIImage?
+    private var previewID = UUID()
+    /// A failed OCR/translation must never replace the user's image with a blank screen.
+    var displayedDocument: TranslationDocument? {
+        if let document { return document }
+        guard let sourceImage else { return nil }
+        return TranslationDocument(id: previewID, image: sourceImage, blocks: [], source: settings.source, target: settings.target, createdAt: Date())
+    }
     private var activeProcessID: UUID?
     private var processingTask: Task<Void, Never>?
     private var pendingConsentIDs: [AIProfile: String] = [:]
     private var cachedAppleConfiguration: TranslationSession.Configuration?
     private var cachedAppleLanguages = ""
+    private var pendingAppleIDs = Set<UUID>()
 
     init(settings: AppSettings, history: HistoryStore, services: ProcessingServices? = nil) {
         self.settings = settings
@@ -43,6 +51,7 @@ final class AppState: ObservableObject {
     func process(_ image: UIImage) {
         cancelCurrentWork()
         let processID = UUID()
+        previewID = processID
         activeProcessID = processID
         sourceImage = image // Retain for OCR failure/retry; released on Close.
         document = nil
@@ -122,6 +131,9 @@ final class AppState: ObservableObject {
                     translatedBlockCount = blocks.count
                     finish(processID)
                 } else if translator == .apple {
+                    pendingAppleIDs = Set(blocks.filter { !Self.alreadyInTargetLanguage($0.original, target: target) }.map(\.id))
+                    translatedBlockCount = blocks.count - pendingAppleIDs.count
+                    if pendingAppleIDs.isEmpty { finish(processID); return }
                     phase = .translating
                     appleRequestID = processID
                     let signature = source.rawValue + ":" + target.rawValue + ":" + preference.rawValue
@@ -175,7 +187,7 @@ final class AppState: ObservableObject {
         guard let processID, isActive(processID), appleRequestID == processID,
               phase == .translating, var current = document else { return }
         do {
-            let requests = current.blocks.map { TranslationSession.Request(sourceText: $0.original, clientIdentifier: $0.id.uuidString) }
+            let requests = current.blocks.filter { pendingAppleIDs.contains($0.id) }.map { TranslationSession.Request(sourceText: $0.original, clientIdentifier: $0.id.uuidString) }
             let indices = Dictionary(uniqueKeysWithValues: current.blocks.indices.map { (current.blocks[$0].id.uuidString, $0) })
             var completed = Set<String>()
             for try await response in session.translate(batch: requests) {
@@ -183,7 +195,7 @@ final class AppState: ObservableObject {
                 guard let key = response.clientIdentifier, let index = indices[key],
                       !response.targetText.isEmpty, completed.insert(key).inserted else { continue }
                 current.blocks[index].translation = response.targetText
-                translatedBlockCount = completed.count
+                translatedBlockCount = current.blocks.count - pendingAppleIDs.count + completed.count
                 document = current
             }
             guard isActive(processID) else { return }
@@ -191,6 +203,14 @@ final class AppState: ObservableObject {
             finish(processID)
         } catch {
             guard isActive(processID) else { return }
+            // Keep completed regions and all remaining originals visible. A
+            // single unsupported label must not discard an otherwise useful image.
+            if current.blocks.contains(where: { $0.translation != $0.original }) {
+                notice = "Some regions could not be translated. Their original text is preserved; tap a translated region to read it in full."
+                document = current
+                finish(processID)
+                return
+            }
             let detected = NLLanguageRecognizer.dominantLanguage(for: current.originalText)
             let source = current.source.localeLanguage ?? detected.map { Locale.Language(identifier: $0.rawValue) }
             if let source, let target = current.target.localeLanguage,
@@ -203,6 +223,15 @@ final class AppState: ObservableObject {
                 phase = .failed(AppLocalization.formatted("Translation couldn’t be completed: %@", settings.text(error.localizedDescription), language: settings.interfaceLanguage))
             }
         }
+    }
+
+    static func alreadyInTargetLanguage(_ text: String, target: AppLanguage) -> Bool {
+        guard text.unicodeScalars.contains(where: CharacterSet.letters.contains) else { return true }
+        let recognizer = NLLanguageRecognizer()
+        recognizer.processString(String(text.prefix(8_000)))
+        let hypotheses = recognizer.languageHypotheses(withMaximum: 1)
+        guard let (language, confidence) = hypotheses.first, confidence >= 0.85 else { return false }
+        return Locale.Language(identifier: language.rawValue).minimalIdentifier == target.localeLanguage?.minimalIdentifier
     }
 
     func retry(using engine: OCREngine? = nil) {
@@ -259,5 +288,6 @@ final class AppState: ObservableObject {
         processingTask = nil
         translationConfiguration = nil
         appleRequestID = nil
+        pendingAppleIDs = []
     }
 }

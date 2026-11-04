@@ -7,7 +7,7 @@ nonisolated enum TranslationPlanner {
     /// Join likely wrapped prose before either translator sees it. Keep columns,
     /// short UI labels, unpositioned text, and widely separated rows independent.
     static func paragraphs(_ blocks: [RecognizedBlock], preference: TranslationPreference) -> [RecognizedBlock] {
-        let positioned = blocks.filter { $0.placement == .overlay }.sorted {
+        let positioned = blocks.filter { $0.placement == .overlay && $0.flow == .horizontal }.sorted {
             if $0.boundingBox.midY == $1.boundingBox.midY {
                 return $0.boundingBox.minX < $1.boundingBox.minX
             }
@@ -32,7 +32,36 @@ nonisolated enum TranslationPlanner {
             }
             lastLine = block
         }
-        return result + blocks.filter { $0.placement == .textOnly }
+        return result + verticalParagraphs(blocks.filter { $0.placement == .overlay && $0.flow == .vertical }) + blocks.filter { $0.placement == .textOnly }
+    }
+
+    private static func verticalParagraphs(_ blocks: [RecognizedBlock]) -> [RecognizedBlock] {
+        var remaining = blocks.sorted { $0.boundingBox.maxX > $1.boundingBox.maxX }
+        var result: [RecognizedBlock] = []
+        while !remaining.isEmpty {
+            var group = remaining.removeFirst()
+            var previous = group
+            var count: CGFloat = 1
+            // Adjacent columns within one bubble, never a jump across panels.
+            while let index = remaining.firstIndex(where: { candidate in
+                let a = previous.boundingBox, b = candidate.boundingBox
+                let overlap = max(0, min(a.maxY, b.maxY) - max(a.minY, b.minY))
+                let width = max(previous.originalColumnWidth, candidate.originalColumnWidth)
+                let gap = a.minX - b.maxX
+                return gap >= -width * 0.2 && gap <= width * 1.1
+                    && overlap / max(0.0001, min(a.height, b.height)) >= 0.65
+                    && min(previous.originalColumnWidth, candidate.originalColumnWidth) / max(0.0001, width) >= 0.6
+                    && !"。！？!?".contains(previous.original.last ?? " ")
+            }), count < 8 {
+                let next = remaining.remove(at: index)
+                let text = group.original + "\n" + next.original
+                let columnWidth = (group.originalColumnWidth * count + next.originalColumnWidth) / (count + 1)
+                group = RecognizedBlock(id: group.id, original: text, translation: text, boundingBox: group.boundingBox.union(next.boundingBox), confidence: min(group.confidence, next.confidence), sourceLineHeight: min(group.originalLineHeight, next.originalLineHeight), flow: .vertical, sourceColumnWidth: columnWidth)
+                previous = next; count += 1
+            }
+            result.append(group)
+        }
+        return result
     }
 
     private static func canJoin(_ a: RecognizedBlock, _ b: RecognizedBlock) -> Bool {

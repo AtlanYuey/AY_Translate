@@ -35,6 +35,33 @@ final class OpenAIClientTests: XCTestCase {
         String(decoding: try JSONSerialization.data(withJSONObject: ["translations": [["id": block.id.uuidString, "text": text]]]), as: UTF8.self)
     }
 
+    func testModelDiscoveryUsesGETAndWorksWithoutAChosenModel() async throws {
+        let service = client { request in
+            XCTAssertEqual(request.url?.path, "/custom/v1/models")
+            XCTAssertEqual(request.httpMethod, "GET")
+            XCTAssertEqual(request.value(forHTTPHeaderField: "Authorization"), "Bearer fixture-key")
+            XCTAssertNil(request.httpBody)
+            return (200, Data("{\"data\":[{\"id\":\"model-b\"},{\"id\":\"model-a\"},{\"id\":\"model-a\"}]}".utf8))
+        }
+        let result = try await service.models(configuration: .init(baseURL: "https://example.test/custom/v1", model: ""), apiKey: "fixture-key")
+        XCTAssertEqual(result, ["model-a", "model-b"])
+    }
+
+    func testModelDiscoverySanitizesAuthenticationErrors() async {
+        let service = client { _ in (401, Data("do not display provider body".utf8)) }
+        do { _ = try await service.models(configuration: configuration, apiKey: "fixture-key"); XCTFail("Expected authentication failure") }
+        catch { XCTAssertEqual(error as? AIServiceError, .http(401)); XCTAssertFalse(error.localizedDescription.contains("provider body")) }
+    }
+
+    func testEveryTargetHasAtLeastFiveForeignTranslationProbes() {
+        for target in ["en", "zh-Hans", "ja", "ko", "es", "fr", "de", "ar", "pt", "ru"] {
+            let samples = TranslationProbe.samples(excluding: target)
+            XCTAssertGreaterThanOrEqual(samples.count, 5)
+            XCTAssertFalse(samples.contains { target.hasPrefix($0.id) })
+            XCTAssertTrue(samples.allSatisfy { $0.text.count > 20 })
+        }
+    }
+
     func testEndpointPreservesProviderPrefixAndAcceptsFullPath() throws {
         XCTAssertEqual(try configuration.endpoint().absoluteString, "https://example.test/custom/v1/chat/completions")
         for path in ["https://example.test/v1/", "https://example.test/v1/chat/completions"] {

@@ -15,8 +15,9 @@ struct TranslationResultView: View {
     @State private var palette: [UUID: SampledColor] = [:]
     @State private var imageZoom: CGFloat = 1
     @State private var isClosing = false
+    @State private var showsRecovery = false
 
-    private var showsImage: Bool { appState.phase == .ready && appState.document != nil && mode != .text }
+    private var showsImage: Bool { appState.displayedDocument != nil && (mode != .text || appState.document == nil) }
     private var usesRootDismissGesture: Bool { !showsImage && mode != .text && imageZoom <= 1.01 }
 
     var body: some View {
@@ -27,8 +28,8 @@ struct TranslationResultView: View {
                 resultContent
                     .frame(maxWidth: .infinity, maxHeight: .infinity)
                 controls
-                    .padding(.trailing, 18)
-                    .padding(.bottom, max(geometry.safeAreaInsets.bottom, 12) + 12)
+                    .padding(.trailing, 12)
+                    .padding(.bottom, max(geometry.safeAreaInsets.bottom, 8) + 6)
             }
             .accessibilityElement(children: .contain)
             .accessibilityIdentifier("result.canvas")
@@ -62,6 +63,11 @@ struct TranslationResultView: View {
                 }
             }
         }
+        .sheet(isPresented: $showsRecovery) {
+            if case .failed(let message) = appState.phase {
+                failureView(message).presentationDetents([.medium, .large])
+            }
+        }
         .alert("Recognition Note", isPresented: $showsNotice) { Button("OK", role: .cancel) {} } message: {
             Text(settings.text(appState.notice ?? ""))
         }
@@ -69,7 +75,7 @@ struct TranslationResultView: View {
             palette = [:]
             imageZoom = 1
             guard let document = appState.document else { return }
-            mode = document.blocks.contains(where: { $0.placement == .overlay }) ? settings.defaultResultMode : .text
+            mode = settings.defaultResultMode
         }
         .task(id: appState.document?.id) {
             guard let document = appState.document else { return }
@@ -80,15 +86,9 @@ struct TranslationResultView: View {
     }
 
     @ViewBuilder private var resultContent: some View {
-        switch appState.phase {
-        case .awaitingConsent: consentView
-        case .reading, .translating, .preparing:
-            ProcessingView(phase: appState.phase, completed: appState.translatedBlockCount, total: appState.totalBlockCount)
-                .foregroundStyle(.white)
-        case .failed(let message): failureView(message)
-        case .ready:
-            if let document = appState.document {
-                if mode == .text {
+        if let document = appState.displayedDocument, appState.phase != .awaitingConsent {
+            ZStack(alignment: .top) {
+                if mode == .text && appState.document != nil {
                     FullTextContent(document: document).contentMargins(.bottom, 90)
                 } else {
                     ZoomableScreenshot(document: document, showsOriginal: mode == .original, appearance: settings.appearance,
@@ -96,14 +96,57 @@ struct TranslationResultView: View {
                                        zoomChanged: { imageZoom = $0 }, dismissAction: close) { selectedBlock = $0 }
                         .id(document.id)
                 }
+                switch appState.phase {
+                case .failed:
+                    Button { showsRecovery = true } label: {
+                        Label("Translation incomplete · Original preserved", systemImage: "exclamationmark.circle")
+                            .font(.footnote).padding(.horizontal, 12).padding(.vertical, 8)
+                    }.buttonStyle(.plain).glassEffect(.regular.interactive(), in: Capsule()).padding(.top, 14)
+                case .reading, .translating, .preparing:
+                    HStack(spacing: 8) {
+                        ProgressView().controlSize(.small)
+                        Text(LocalizedStringKey(appState.phase == .reading ? "Reading screen…" : "Translating…")).font(.footnote)
+                    }.padding(.horizontal, 12).padding(.vertical, 8)
+                        .glassEffect(.regular, in: Capsule()).padding(.top, 14)
+                default: EmptyView()
+                }
             }
-        case .idle: EmptyView()
+        } else {
+            switch appState.phase {
+            case .awaitingConsent: consentView
+            case .failed(let message): failureView(message)
+            case .idle: EmptyView()
+            default: ProgressView()
+            }
         }
     }
 
     private var controls: some View {
-        HStack(spacing: 10) {
-            Menu {
+        HStack(spacing: 2) {
+            if appState.document != nil {
+                Menu {
+                    resultMenu
+                } label: {
+                    Image(systemName: mode == .original ? "text.viewfinder" : "rectangle.on.rectangle").floatingResultIcon()
+                } primaryAction: {
+                    mode = mode == .original ? .overlay : .original
+                }
+                .accessibilityLabel(LocalizedStringKey(mode == .original ? "Show Translation" : "Show Original"))
+                .accessibilityHint("Touch and hold for copy, engines and settings")
+                .accessibilityIdentifier("result.original")
+            } else {
+                Menu { resultMenu } label: { Image(systemName: "ellipsis").floatingResultIcon() }
+                    .accessibilityLabel("More Actions").accessibilityIdentifier("result.more")
+            }
+            Button(action: close) { Image(systemName: "xmark").floatingResultIcon() }
+                .accessibilityLabel("Close").accessibilityIdentifier("result.close")
+        }
+        .padding(3)
+        .buttonStyle(.plain)
+        .glassEffect(.regular.interactive(), in: Capsule())
+    }
+
+    @ViewBuilder private var resultMenu: some View {
                 if let document = appState.document {
                     Button("Copy Translation", systemImage: "doc.on.doc") { UIPasteboard.general.string = document.translatedText }
                     Button("Copy Original", systemImage: "doc.on.doc") { UIPasteboard.general.string = document.originalText }
@@ -114,21 +157,11 @@ struct TranslationResultView: View {
                 engineMenu(.ocr)
                 engineMenu(.translation)
                 Button("Settings", systemImage: "slider.horizontal.3") { showsSettings = true }
-                if appState.notice != nil { Button("Recognition Note", systemImage: "info.circle") { showsNotice = true } }
-            } label: {
-                Image(systemName: appState.notice == nil ? "ellipsis" : "ellipsis.circle").floatingResultIcon()
-            }
-            .accessibilityLabel("More Actions").accessibilityIdentifier("result.more")
-            if appState.phase == .ready, appState.document != nil {
-                Button { mode = mode == .original ? .overlay : .original } label: {
-                    Image(systemName: mode == .original ? "text.viewfinder" : "rectangle.on.rectangle").floatingResultIcon()
+                if case .failed = appState.phase {
+                    Button("Translation Details", systemImage: "exclamationmark.circle") { showsRecovery = true }
+                    Button("Try Again", systemImage: "arrow.clockwise") { appState.retry() }
                 }
-                .accessibilityLabel(LocalizedStringKey(mode == .original ? "Show Translation" : "Show Original"))
-                .accessibilityIdentifier("result.original")
-            }
-            Button(action: close) { Image(systemName: "xmark").floatingResultIcon() }
-                .accessibilityLabel("Close").accessibilityIdentifier("result.close")
-        }
+                if appState.notice != nil { Button("Recognition Note", systemImage: "info.circle") { showsNotice = true } }
     }
 
     private func engineMenu(_ profile: AIProfile) -> some View {
@@ -186,10 +219,8 @@ struct TranslationResultView: View {
 
 private extension Image {
     func floatingResultIcon() -> some View {
-        self.font(.system(size: 18, weight: .semibold))
-            .foregroundStyle(.primary).frame(width: 48, height: 48)
-            .background(.regularMaterial, in: Circle())
-            .shadow(color: .black.opacity(0.12), radius: 8, y: 3)
+        self.font(.system(size: 17, weight: .medium))
+            .foregroundStyle(.primary).frame(width: 44, height: 44).contentShape(Rectangle())
     }
 }
 
@@ -282,24 +313,27 @@ private struct OverlayTextView: View {
     var body: some View {
         let layout = ScreenshotRendering.textLayout(for: block, canvasSize: canvasSize, textScale: textScale,
                                                    text: revealsOriginal ? block.original : block.translation)
-        Text(revealsOriginal ? block.original : block.translation)
-            .font(.system(size: layout.fontSize, weight: .medium))
-            .lineLimit(layout.lineLimit)
-            .truncationMode(.tail)
-            .multilineTextAlignment(isRTL ? .trailing : .leading)
-            .frame(width: layout.textRect.width, height: layout.textRect.height, alignment: isRTL ? .topTrailing : .topLeading)
-            .foregroundStyle(appearance == .readable || !color.usesDarkText ? Color.white : Color.black)
-            .background {
-                background.frame(width: layout.sourceRect.width + layout.coverPadding * 2,
-                                 height: layout.sourceRect.height + layout.coverPadding * 2)
+        Canvas { context, _ in
+            guard layout.canRender, !revealsOriginal else { return }
+            let local = ScreenshotRendering.textLayout(for: block, canvasSize: canvasSize, textScale: textScale)
+            context.withCGContext { cg in
+                cg.translateBy(x: -local.textRect.minX, y: -local.textRect.minY)
+                if appearance != .minimal {
+                    let fill = appearance == .readable ? UIColor.black : UIColor(red: color.red, green: color.green, blue: color.blue, alpha: 1)
+                    cg.setFillColor(fill.cgColor)
+                    cg.fill(local.sourceRect.insetBy(dx: -local.coverPadding, dy: -local.coverPadding))
+                }
+                ScreenshotRendering.drawText(block.translation, layout: local,
+                    color: appearance == .readable || !color.usesDarkText ? .white : .black, isRTL: isRTL, in: cg)
             }
-            .clipped()
-            .position(x: layout.textRect.midX, y: layout.textRect.midY)
-            .environment(\.layoutDirection, isRTL ? .rightToLeft : .leftToRight)
-            .onTapGesture(perform: onTap)
-            .onLongPressGesture(minimumDuration: 0.15, pressing: { revealsOriginal = $0 }, perform: {})
-            .accessibilityLabel("\(block.original), \(block.translation)")
-            .accessibilityHint("Tap to read and copy the full translation")
+        }
+        .frame(width: layout.textRect.width, height: layout.textRect.height)
+        .contentShape(Rectangle())
+        .position(x: layout.textRect.midX, y: layout.textRect.midY)
+        .onTapGesture(perform: onTap)
+        .onLongPressGesture(minimumDuration: 0.15, pressing: { revealsOriginal = $0 }, perform: {})
+        .accessibilityLabel("\(block.original), \(block.translation)")
+        .accessibilityHint("Tap to read and copy the full translation")
     }
 
     @ViewBuilder private var background: some View {

@@ -1,4 +1,5 @@
 import SwiftUI
+import UniformTypeIdentifiers
 
 struct SettingsView: View {
     @EnvironmentObject private var settings: AppSettings
@@ -7,6 +8,7 @@ struct SettingsView: View {
     @State private var showsPrivacy = false
     @State private var showsAbout = false
     @State private var permissionsCleared = false
+    @State private var transferMessage: String?
 
     var body: some View {
         Form {
@@ -45,12 +47,32 @@ struct SettingsView: View {
                 NavigationLink { AIServicesView() } label: {
                     LabeledContent("AI Services", value: String(settings.serviceCatalog.services.count))
                 }
-                #if SCREEN_TRANSLATE_SHARE_EXTENSION
                 if SharedAppContainer.url == nil {
-                    Text("This installation cannot share settings with the main app. Configure engines here; Apple engines remain available.")
+                    Text("Settings also sync through the shared Keychain. If your signing tool removes both sharing permissions, copy configuration from the main app and paste it here.")
                         .font(.footnote).foregroundStyle(.secondary)
                 }
+                Button { settings.refreshSharedPreferences() } label: { Label("Refresh Shared Settings", systemImage: "arrow.clockwise") }
+                #if !SCREEN_TRANSLATE_SHARE_EXTENSION
+                Button {
+                    do {
+                        let token = try settings.configurationTransfer()
+                        UIPasteboard.general.setItems([[UTType.utf8PlainText.identifier: token]], options: [.localOnly: true, .expirationDate: Date().addingTimeInterval(60)])
+                        transferMessage = "Configuration copied for 60 seconds. It includes API keys, stays on this device, and can be pasted in the translation sheet’s settings."
+                    } catch { transferMessage = error.localizedDescription }
+                } label: { Label("Copy Configuration & API Keys", systemImage: "doc.on.clipboard") }
                 #endif
+                HStack {
+                    Text("Import Configuration")
+                    Spacer()
+                    PasteButton(payloadType: String.self) { tokens in
+                        do {
+                            guard let token = tokens.first else { return }
+                            try settings.importConfiguration(token)
+                            transferMessage = "Configuration imported. Your saved AI services are now available here."
+                        } catch { transferMessage = error.localizedDescription }
+                    }
+                }
+                if let message = settings.synchronizationError { Text(settings.text(message)).font(.footnote).foregroundStyle(.orange) }
             } footer: { Text("Save multiple named providers and switch instantly. Each API key stays in its own Keychain entry.") }
             Section("Display") {
                 Picker("Default Result View", selection: $settings.defaultResultMode) {
@@ -61,13 +83,13 @@ struct SettingsView: View {
                 }
                 LabeledContent("Text Size", value: settings.overlayTextScale.formatted(.percent.precision(.fractionLength(0))))
                 Slider(value: $settings.overlayTextScale, in: 0.8...1.8, step: 0.1).accessibilityLabel("Translation text size")
-                Text("The result fills the screen. Use the floating original icon to compare, and More for copy, full text or settings.")
+                Text("Tap the original icon to compare. Touch and hold it for copy, full text, engines and settings.")
                     .font(.footnote).foregroundStyle(.secondary)
             }
             #if !SCREEN_TRANSLATE_SHARE_EXTENSION
             Section("Quick Actions") {
                 Button { showsShortcutSetup = true } label: { Label("Action Button & Shortcuts", systemImage: "button.programmable") }
-                Text("The screenshot shortcut opens the full-screen translator above your current app. Close or swipe up to continue where you were.")
+                Text("The screenshot shortcut presents the translated image above your current app. Close or swipe up to continue where you were.")
                     .font(.footnote).foregroundStyle(.secondary)
             }
             #endif
@@ -94,6 +116,9 @@ struct SettingsView: View {
         .alert("Cloud permission revoked", isPresented: $permissionsCleared) { Button("OK", role: .cancel) {} } message: {
             Text("The next AI operation will ask before sending data. Requests already in progress are not recalled.")
         }
+        .alert("Configuration Sync", isPresented: Binding(get: { transferMessage != nil }, set: { if !$0 { transferMessage = nil } })) {
+            Button("OK", role: .cancel) { transferMessage = nil }
+        } message: { Text(settings.text(transferMessage ?? "")) }
     }
 
     private func engineName(_ profile: AIProfile) -> String {

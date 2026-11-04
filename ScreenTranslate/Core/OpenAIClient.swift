@@ -26,6 +26,32 @@ nonisolated struct OpenAIClient: Sendable {
         }
     }
 
+    /// Query the user's configured provider only. No model name is required for discovery.
+    func models(configuration: AIServiceConfiguration, apiKey: String) async throws -> [String] {
+        var request = URLRequest(url: try configuration.modelsEndpoint())
+        request.httpMethod = "GET"
+        request.setValue("application/json", forHTTPHeaderField: "Accept")
+        let key = apiKey.trimmingCharacters(in: .whitespacesAndNewlines)
+        if !key.isEmpty { request.setValue("Bearer " + key, forHTTPHeaderField: "Authorization") }
+        let data: Data, response: URLResponse
+        do { (data, response) = try await session.data(for: request) }
+        catch {
+            if Task.isCancelled || (error as? URLError)?.code == .cancelled { throw CancellationError() }
+            throw AIServiceError.transport
+        }
+        try Task.checkCancellation()
+        guard let response = response as? HTTPURLResponse else { throw AIServiceError.invalidResponse }
+        guard (200..<300).contains(response.statusCode) else { throw AIServiceError.http(response.statusCode) }
+        guard data.count <= 2_000_000 else { throw AIServiceError.responseTooLarge }
+        struct Model: Decodable { var id: String?; var name: String? }
+        struct List: Decodable { var data: [Model]?; var models: [Model]? }
+        guard let result = try? JSONDecoder().decode(List.self, from: data),
+              let entries = result.data ?? result.models, entries.count <= 10_000 else { throw AIServiceError.invalidResponse }
+        let names = Set(entries.compactMap { $0.id ?? $0.name }.filter { !$0.isEmpty && $0.count <= 256 }).sorted()
+        guard !names.isEmpty else { throw AIServiceError.invalidResponse }
+        return names
+    }
+
     func recognize(imageData: Data, anchors: [RecognizedBlock], configuration: AIServiceConfiguration, apiKey: String) async throws -> OCRResult {
         struct Anchor: Encodable { let id: String; let text: String; let box: [Double] }
         struct Output: Decodable { let regions: [AIRecognizedRegion] }

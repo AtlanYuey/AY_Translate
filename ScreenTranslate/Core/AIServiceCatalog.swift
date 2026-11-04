@@ -104,12 +104,13 @@ nonisolated enum ServiceCatalogError: LocalizedError {
 
 nonisolated enum APIKeySlot: Hashable, Sendable {
     // Legacy slots are kept only to migrate credentials from the previous version.
-    case ocr, translation, service(UUID)
+    case ocr, translation, service(UUID), sharedPreferences
     var account: String {
         switch self {
         case .ocr: "ocr"
         case .translation: "translation"
         case .service(let id): "service." + id.uuidString
+        case .sharedPreferences: "shared-preferences.v1"
         }
     }
 }
