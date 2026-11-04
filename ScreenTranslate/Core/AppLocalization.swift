@@ -2,7 +2,8 @@ import Foundation
 
 nonisolated enum AppLocalization {
     static var language: InterfaceLanguage {
-        InterfaceLanguage(rawValue: UserDefaults.standard.string(forKey: "interfaceLanguage") ?? "") ?? .simplifiedChinese
+        let shared = (Bundle.main.object(forInfoDictionaryKey: "SharedAppGroup") as? String).flatMap(UserDefaults.init(suiteName:))
+        return InterfaceLanguage(rawValue: shared?.string(forKey: "interfaceLanguage") ?? UserDefaults.standard.string(forKey: "interfaceLanguage") ?? "") ?? .system
     }
 
     static func text(_ key: String, language: InterfaceLanguage? = nil, bundle: Bundle = .main) -> String {

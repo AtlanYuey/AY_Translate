@@ -12,7 +12,10 @@ struct SettingsView: View {
         Form {
             Section("Interface") {
                 Picker("App Language", selection: $settings.interfaceLanguage) {
-                    ForEach(InterfaceLanguage.allCases) { Text(LocalizedStringKey($0.name)).tag($0) }
+                    ForEach(InterfaceLanguage.allCases) { language in
+                        if language == .system { Text("Follow System").tag(language) }
+                        else { Text(verbatim: language.name).tag(language) }
+                    }
                 }
             }
             Section {
@@ -55,11 +58,13 @@ struct SettingsView: View {
                 Text("The result fills the screen. Use the floating original icon to compare, and More for copy, full text or settings.")
                     .font(.footnote).foregroundStyle(.secondary)
             }
+            #if !SCREEN_TRANSLATE_SHARE_EXTENSION
             Section("Quick Actions") {
                 Button { showsShortcutSetup = true } label: { Label("Action Button & Shortcuts", systemImage: "button.programmable") }
                 Text("Lightweight shortcut results stay above your current app. Dismiss the system preview to return; open the app for pinch, pan and detailed reading.")
                     .font(.footnote).foregroundStyle(.secondary)
             }
+            #endif
             Section {
                 Toggle("Save Translation History", isOn: $settings.savesHistory)
                     .onChange(of: settings.savesHistory) { _, enabled in if !enabled { history.clear() } }
@@ -74,7 +79,9 @@ struct SettingsView: View {
             }
         }
         .navigationTitle("Settings")
+        #if !SCREEN_TRANSLATE_SHARE_EXTENSION
         .sheet(isPresented: $showsShortcutSetup) { ShortcutSetupView() }
+        #endif
         .sheet(isPresented: $showsPrivacy) { PrivacyView() }
         .sheet(isPresented: $showsAbout) { AboutView() }
         .alert("Cloud permission revoked", isPresented: $permissionsCleared) { Button("OK", role: .cancel) {} } message: {

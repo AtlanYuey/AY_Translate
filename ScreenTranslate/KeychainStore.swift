@@ -9,8 +9,8 @@ protocol APIKeyStoring {
 struct KeychainStore: APIKeyStoring {
     private let service: String
 
-    init(service: String = (Bundle.main.bundleIdentifier ?? "ScreenTranslate") + ".ai-keys") {
-        self.service = service
+    init(service: String? = nil) {
+        self.service = service ?? SharedAppContainer.hostIdentifier + ".ai-keys"
     }
 
     func read(_ profile: APIKeySlot) throws -> String {
@@ -46,7 +46,11 @@ struct KeychainStore: APIKeyStoring {
     }
 
     private func query(_ profile: APIKeySlot) -> [String: Any] {
-        [kSecClass as String: kSecClassGenericPassword, kSecAttrService as String: service, kSecAttrAccount as String: profile.account, kSecAttrSynchronizable as String: false]
+        var query: [String: Any] = [kSecClass as String: kSecClassGenericPassword, kSecAttrService as String: service, kSecAttrAccount as String: profile.account, kSecAttrSynchronizable as String: false]
+        #if !targetEnvironment(simulator)
+        if let group = Bundle.main.object(forInfoDictionaryKey: "SharedKeychainGroup") as? String, !group.isEmpty { query[kSecAttrAccessGroup as String] = group }
+        #endif
+        return query
     }
 }
 

@@ -9,7 +9,6 @@ struct ContentView: View {
     @Environment(\.scenePhase) private var scenePhase
     @AppStorage("hasCompletedOnboarding") private var hasCompletedOnboarding = false
     @State private var selectedTab = 0
-    @State private var activeShortcutSession: ShortcutSession?
     @State private var showsOnboarding = false
     @State private var showsFirstSetup = false
 
@@ -21,11 +20,10 @@ struct ContentView: View {
             .tabItem { Label("Translate", systemImage: "viewfinder") }
             .tag(0)
 
-            NavigationStack {
-                HistoryView()
+            if settings.savesHistory {
+                NavigationStack { HistoryView() }
+                    .tabItem { Label("History", systemImage: "clock") }.tag(1)
             }
-            .tabItem { Label("History", systemImage: "clock") }
-            .tag(1)
 
             NavigationStack {
                 SettingsView()
@@ -47,47 +45,30 @@ struct ContentView: View {
         .sheet(isPresented: $showsFirstSetup) {
             ShortcutSetupView()
         }
-        .fullScreenCover(isPresented: resultPresented) {
-            if let session = activeShortcutSession {
-                TranslationResultView().environmentObject(session.state)
-            } else { TranslationResultView() }
+        .fullScreenCover(isPresented: $appState.presentsResult) { TranslationResultView() }
+        .onChange(of: settings.savesHistory) { _, enabled in
+            if !enabled && selectedTab == 1 { selectedTab = 0 }
         }
         .task {
             if !hasCompletedOnboarding {
                 showsOnboarding = true
             }
             loadPendingShortcutImage()
-            loadShortcutSession()
         }
         .onChange(of: scenePhase) { _, phase in
-            if phase == .active { loadPendingShortcutImage(); loadShortcutSession() }
+            if phase == .active {
+                settings.refreshSharedPreferences()
+                appState.history.load()
+                loadPendingShortcutImage()
+            }
         }
-        .onReceive(NotificationCenter.default.publisher(for: .shortcutForegroundRequested)) { _ in loadShortcutSession() }
         .onReceive(NotificationCenter.default.publisher(for: .pendingScreenshotReady)) { _ in
             loadPendingShortcutImage()
         }
     }
 
-    private var resultPresented: Binding<Bool> {
-        Binding(get: { activeShortcutSession != nil || appState.presentsResult }, set: { value in
-            if !value {
-                if let session = activeShortcutSession { ShortcutSessionStore.shared.clear(id: session.id) }
-                activeShortcutSession = nil
-                appState.closeResult()
-            }
-        })
-    }
-
-    private func loadShortcutSession() {
-        guard let session = ShortcutSessionStore.shared.takeForegroundRequest() else { return }
-        showsOnboarding = false
-        activeShortcutSession = session
-    }
-
     private func loadPendingShortcutImage() {
         if let image = PendingScreenshotStore.take() {
-            if let session = activeShortcutSession { session.state.closeResult() }
-            activeShortcutSession = nil
             appState.process(image)
         }
     }

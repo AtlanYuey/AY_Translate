@@ -165,11 +165,12 @@ final class AppSettings: ObservableObject {
 
     private let defaults: UserDefaults
 
-    init(defaults: UserDefaults = .standard, keyStore: (any APIKeyStoring)? = nil) {
+    init(defaults: UserDefaults? = nil, keyStore: (any APIKeyStoring)? = nil) {
+        let defaults = defaults ?? SharedAppContainer.preferences
         self.defaults = defaults
         self.keyStore = keyStore ?? KeychainStore()
         source = AppLanguage(rawValue: defaults.string(forKey: Keys.source) ?? "") ?? .automatic
-        target = AppLanguage(rawValue: defaults.string(forKey: Keys.target) ?? "") ?? .english
+        target = AppLanguage(rawValue: defaults.string(forKey: Keys.target) ?? "") ?? AppLanguage(rawValue: InterfaceLanguage.system.resolvedIdentifier()) ?? .english
         appearance = TranslationAppearance(rawValue: defaults.string(forKey: Keys.appearance) ?? "") ?? .natural
         savesHistory = defaults.bool(forKey: Keys.savesHistory)
         ocrEngine = OCREngine(rawValue: defaults.string(forKey: "ocrEngine") ?? "") ?? .appleVision
@@ -179,11 +180,20 @@ final class AppSettings: ObservableObject {
         overlayTextScale = textScale == 0 ? 1 : min(1.8, max(0.8, textScale))
         defaultResultMode = ResultDisplayMode(rawValue: defaults.string(forKey: "defaultResultMode") ?? "") ?? .overlay
         serviceCatalog = defaults.data(forKey: "ai.services.v1").flatMap { try? JSONDecoder().decode(AIServiceCatalog.self, from: $0) } ?? AIServiceCatalog()
-        interfaceLanguage = InterfaceLanguage(rawValue: defaults.string(forKey: "interfaceLanguage") ?? "") ?? .simplifiedChinese
+        interfaceLanguage = InterfaceLanguage(rawValue: defaults.string(forKey: "interfaceLanguage") ?? "") ?? .system
         migrateLegacyServices()
     }
 
     func text(_ key: String) -> String { AppLocalization.text(key, language: interfaceLanguage) }
+    var interfaceLayoutDirection: LayoutDirection { interfaceLanguage.resolvedIdentifier() == "ar" ? .rightToLeft : .leftToRight }
+
+    func refreshSharedPreferences() {
+        let saved = AppSettings(defaults: defaults, keyStore: keyStore)
+        source = saved.source; target = saved.target; appearance = saved.appearance
+        savesHistory = saved.savesHistory; ocrEngine = saved.ocrEngine; translationEngine = saved.translationEngine
+        preference = saved.preference; overlayTextScale = saved.overlayTextScale; defaultResultMode = saved.defaultResultMode
+        interfaceLanguage = saved.interfaceLanguage; serviceCatalog = saved.serviceCatalog; serviceMigrationError = saved.serviceMigrationError
+    }
 
     func configuration(for profile: AIProfile) -> AIServiceConfiguration {
         serviceCatalog.selected(for: profile)?.configuration ?? AIServiceConfiguration()
@@ -333,7 +343,7 @@ final class HistoryStore: ObservableObject {
 
     init(fileURL: URL? = nil) {
         let folder = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask)[0]
-        self.fileURL = fileURL ?? folder.appendingPathComponent("translation-history.json")
+        self.fileURL = fileURL ?? (SharedAppContainer.url ?? folder).appendingPathComponent("translation-history.json")
         load()
     }
 
@@ -363,7 +373,7 @@ final class HistoryStore: ObservableObject {
         save()
     }
 
-    private func load() {
+    func load() {
         guard let data = try? Data(contentsOf: fileURL),
               let decoded = try? JSONDecoder().decode([HistoryItem].self, from: data) else { return }
         items = decoded

@@ -28,6 +28,7 @@ struct ScreenTranslateApp: App {
                 .environmentObject(history)
                 .environmentObject(appState)
                 .environment(\.locale, settings.interfaceLocale)
+                .environment(\.layoutDirection, settings.interfaceLayoutDirection)
         }
     }
 }

@@ -58,6 +58,18 @@ jobs:
           set -euo pipefail
           swift test --jobs 3 2>&1 | tee "$RUNNER_TEMP/core-tests.log"
 
+      - name: Check signed Shortcut generation support
+        continue-on-error: true
+        shell: bash
+        run: |
+          python3 - <<'PYTHON'
+          import os, plistlib
+          from pathlib import Path
+          workflow = {"WFWorkflowActions": [{"WFWorkflowActionIdentifier": "is.workflow.actions.takescreenshot", "WFWorkflowActionParameters": {}}], "WFWorkflowClientVersion": "3036.0.4", "WFWorkflowMinimumClientVersion": 900, "WFWorkflowIcon": {"WFWorkflowIconStartColor": 4282601983, "WFWorkflowIconGlyphNumber": 59511}, "WFWorkflowImportQuestions": [], "WFWorkflowTypes": ["NCWidget"], "WFWorkflowInputContentItemClasses": ["WFImageContentItem"]}
+          Path(os.environ["RUNNER_TEMP"], "ShortcutProbe.shortcut").write_bytes(plistlib.dumps(workflow))
+          PYTHON
+          shortcuts sign --mode anyone --input "$RUNNER_TEMP/ShortcutProbe.shortcut" --output "$RUNNER_TEMP/ShortcutProbe-signed.shortcut" 2>&1 | tee "$RUNNER_TEMP/shortcut-sign.log"
+
       - name: Resolve version and artifact name
         id: metadata
         shell: bash
@@ -194,6 +206,8 @@ jobs:
             ${{ runner.temp }}/TestBuild.xcresult
             ${{ runner.temp }}/BuildResults.xcresult
             ${{ runner.temp }}/interface-screenshots
+            ${{ runner.temp }}/shortcut-sign.log
+            ${{ runner.temp }}/ShortcutProbe-signed.shortcut
           if-no-files-found: warn
           retention-days: 14
 

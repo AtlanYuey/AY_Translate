@@ -3,6 +3,7 @@ import Translation
 import UIKit
 
 struct TranslationResultView: View {
+    var onClose: (() -> Void)? = nil
     @EnvironmentObject private var appState: AppState
     @EnvironmentObject private var settings: AppSettings
     @Environment(\.dismiss) private var dismiss
@@ -131,9 +132,8 @@ struct TranslationResultView: View {
     }
 
     private func close() {
-        ShortcutSessionStore.shared.clear(state: appState)
         appState.closeResult()
-        dismiss()
+        if let onClose { onClose() } else { dismiss() }
     }
 
     private var consentView: some View {

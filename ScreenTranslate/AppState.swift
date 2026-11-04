@@ -200,6 +200,12 @@ final class AppState: ObservableObject {
         process(image)
     }
 
+    func failImport(_ error: Error) {
+        closeResult()
+        presentsResult = true
+        phase = .failed(error.localizedDescription)
+    }
+
     /// The background shortcut can avoid an unsupported same-language session
     /// after local language detection. No cloud request is needed in this case.
     func completeIdentityTranslation(processID: UUID) {

@@ -39,8 +39,8 @@ final class InterfaceAndServiceTests: XCTestCase {
         ProcessingServices(vision: { _, _ in regions }, aiOCR: { _, _, _, _ in XCTFail("Unexpected cloud OCR"); throw AIServiceError.transport }, aiTranslation: { _, _, _, _, _, _ in XCTFail("Unexpected cloud translation"); throw AIServiceError.transport })
     }
 
-    func testChineseIsTheDefaultAndInterfaceLanguageIsPersistent() {
-        XCTAssertEqual(settings.interfaceLanguage, .simplifiedChinese)
+    func testSystemLanguageIsTheDefaultAndSelectionIsPersistent() {
+        XCTAssertEqual(settings.interfaceLanguage, .system)
         settings.interfaceLanguage = .english
         XCTAssertEqual(AppSettings(defaults: defaults, keyStore: keys).interfaceLanguage, .english)
         settings.interfaceLanguage = .system
@@ -136,30 +136,6 @@ final class InterfaceAndServiceTests: XCTestCase {
         XCTAssertEqual(rendered.size.width, 390)
     }
 
-    func testLightweightPreviewUsesInstalledRouteWithoutForegroundOrRepeatedOCR() async throws {
-        let region = region()
-        var reads = 0, translations = 0
-        var injected = services([region])
-        injected.vision = { _, _ in reads += 1; return [region] }
-        let store = ShortcutSessionStore(settings: settings, services: injected, installedTranslator: { state in
-            translations += 1
-            state.completeIdentityTranslation(processID: try XCTUnwrap(state.appleRequestID))
-            return true
-        })
-        let id = try await store.start(image())
-        let session = try XCTUnwrap(store.session(id: id))
-        XCTAssertEqual(session.state.phase, .ready)
-        XCTAssertNotNil(session.renderedImage)
-        XCTAssertNil(store.takeForegroundRequest())
-        try await store.advance(id: id)
-        XCTAssertEqual(reads, 1)
-        XCTAssertEqual(translations, 1)
-        store.clear(id: id)
-        XCTAssertNil(store.session(id: id))
-        XCTAssertNil(session.state.document)
-        XCTAssertNil(session.renderedImage)
-    }
-
     func testLongOverlayTextFitsBeforeTruncatingAndKeepsReadableMinimum() {
         let rect = CGRect(x: 0, y: 0, width: 180, height: 60)
         let short = ScreenshotRendering.fittedFontSize(for: "你好", in: rect, textScale: 1)
@@ -169,56 +145,8 @@ final class InterfaceAndServiceTests: XCTestCase {
         XCTAssertGreaterThanOrEqual(ScreenshotRendering.fittedFontSize(for: "很长的译文", in: CGRect(x: 0, y: 0, width: 20, height: 10), textScale: 0.8), 12)
     }
 
-    func testMissingLanguageModelsOffersAppContinuationWithoutDiscardingScreenshot() async throws {
-        let store = ShortcutSessionStore(settings: settings, services: services([region()]), installedTranslator: { _ in false })
-        let id = try await store.start(image())
-        let session = try XCTUnwrap(store.session(id: id))
-        XCTAssertEqual(session.continuation, .languageModels)
-        XCTAssertTrue(session.state.hasSourceImage)
-        store.requestForeground(id: id)
-        XCTAssertTrue(store.takeForegroundRequest() === session)
-        XCTAssertNil(store.session(id: id))
-        let next = try await store.start(image())
-        XCTAssertTrue(session.state.hasSourceImage, "A new preview must not close the editor that took ownership")
-        session.state.closeResult()
-        store.clear(id: next)
-    }
-
-    func testPreviewAndEditorShareOptInHistoryWithoutRestoringDeletedItems() async throws {
-        let folder = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
-        defer { try? FileManager.default.removeItem(at: folder) }
-        let history = HistoryStore(fileURL: folder.appendingPathComponent("history.json"))
-        settings.savesHistory = true; settings.source = .english; settings.target = .english
-        let store = ShortcutSessionStore(settings: settings, history: history, services: services([region()]))
-        let first = try await store.start(image())
-        let session = try XCTUnwrap(store.session(id: first))
-        let documentID = try XCTUnwrap(session.state.document?.id)
-        XCTAssertTrue(session.state.history === history)
-        XCTAssertEqual(history.items.count, 1)
-        store.requestForeground(id: first)
-        XCTAssertTrue(store.takeForegroundRequest()?.state.history === history)
-        XCTAssertEqual(history.items.count, 1, "Continuing in the editor must not save a duplicate")
-        history.clear()
-        XCTAssertTrue(HistoryStore(fileURL: folder.appendingPathComponent("history.json")).items.isEmpty)
-        let next = try await store.start(image())
-        XCTAssertEqual(history.items.count, 1)
-        XCTAssertNotEqual(history.items.first?.id, documentID, "A new preview must not restore cleared history")
-        XCTAssertEqual(HistoryStore(fileURL: folder.appendingPathComponent("history.json")).items.map(\.id), history.items.map(\.id))
-        session.state.closeResult(); store.clear(id: next)
-    }
-
-    func testOldSnippetCannotCloseOrExposeANewerScreenshot() async throws {
-        settings.source = .english; settings.target = .english
-        let store = ShortcutSessionStore(settings: settings, services: services([region()]))
-        let first = try await store.start(image())
-        let second = try await store.start(image())
-        XCTAssertNil(store.session(id: first))
-        store.clear(id: first)
-        XCTAssertNotNil(store.session(id: second))
-        store.clear(id: second)
-    }
-
     func testChineseFullScreenAndSettingsSnapshots() async throws {
+        settings.interfaceLanguage = .simplifiedChinese
         settings.source = .english; settings.target = .chinese
         let fixture = snapshotFixture()
         let provider = service("本地测试替身")

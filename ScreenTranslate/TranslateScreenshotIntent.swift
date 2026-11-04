@@ -34,9 +34,9 @@ enum PendingScreenshotStore {
 struct TranslateScreenshotIntent: AppIntent {
     static let title: LocalizedStringResource = "Translate Screenshot"
     static let description = IntentDescription(
-        "Receives Take Screenshot and shows a lightweight translation preview without switching apps."
+        "Opens the screenshot in the full editor. Use the installed Screenshot → Share shortcut for an overlay above your current app."
     )
-    static let supportedModes: IntentModes = .background
+    static let supportedModes: IntentModes = .foreground(.immediate)
 
     @Parameter(
         title: "Screenshot",
@@ -51,11 +51,9 @@ struct TranslateScreenshotIntent: AppIntent {
         Summary("Translate \(\.$screenshot)")
     }
 
-    @MainActor
-    func perform() async throws -> some IntentResult & ShowsSnippetIntent {
-        guard let image = UIImage(data: screenshot.data) else { throw ScreenReadingError.invalidImage }
-        let id = try await ShortcutSessionStore.shared.start(image)
-        return .result(snippetIntent: ScreenTranslationSnippetIntent(id: id))
+    func perform() async throws -> some IntentResult {
+        try PendingScreenshotStore.save(screenshot.data)
+        return .result()
     }
 
 }

@@ -9,10 +9,19 @@ nonisolated enum ResultDisplayMode: String, CaseIterable, Identifiable, Sendable
 }
 
 nonisolated enum InterfaceLanguage: String, CaseIterable, Codable, Identifiable, Sendable {
+    case system = "system"
     case simplifiedChinese = "zh-Hans"
     case traditionalChinese = "zh-Hant"
     case english = "en"
-    case system = "system"
+    case spanish = "es"
+    case japanese = "ja"
+    case korean = "ko"
+    case french = "fr"
+    case german = "de"
+    case italian = "it"
+    case portuguese = "pt"
+    case russian = "ru"
+    case arabic = "ar"
     var id: Self { self }
     var name: String {
         switch self {
@@ -20,6 +29,15 @@ nonisolated enum InterfaceLanguage: String, CaseIterable, Codable, Identifiable,
         case .traditionalChinese: "繁體中文"
         case .english: "English"
         case .system: "Follow System"
+        case .spanish: "Español"
+        case .japanese: "日本語"
+        case .korean: "한국어"
+        case .french: "Français"
+        case .german: "Deutsch"
+        case .italian: "Italiano"
+        case .portuguese: "Português"
+        case .russian: "Русский"
+        case .arabic: "العربية"
         }
     }
 
@@ -30,7 +48,7 @@ nonisolated enum InterfaceLanguage: String, CaseIterable, Codable, Identifiable,
             if normalized.hasPrefix("zh") {
                 return normalized.contains("hant") || normalized.hasPrefix("zh-tw") || normalized.hasPrefix("zh-hk") || normalized.hasPrefix("zh-mo") ? "zh-Hant" : "zh-Hans"
             }
-            if normalized.hasPrefix("en") { return "en" }
+            if let match = Self.allCases.first(where: { $0 != .system && normalized.split(separator: "-").first == Substring($0.rawValue) }) { return match.rawValue }
         }
         return "en"
     }

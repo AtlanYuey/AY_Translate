@@ -1,0 +1,37 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<key>CFBundleDisplayName</key>
+	<string>Translate Screen</string>
+	<key>ContainingAppBundleIdentifier</key>
+	<string>com.bahaanajjar.ScreenTranslate</string>
+	<key>NSExtension</key>
+	<dict>
+		<key>NSExtensionActionWantsFullScreenPresentation</key>
+		<true/>
+		<key>NSExtensionAttributes</key>
+		<dict>
+			<key>NSExtensionActivationRule</key>
+			<dict>
+				<key>NSExtensionActivationSupportsAttachmentsWithMaxCount</key>
+				<integer>1</integer>
+				<key>NSExtensionActivationSupportsImageWithMaxCount</key>
+				<integer>1</integer>
+			</dict>
+			<key>NSExtensionServiceAllowsFinderPreviewItem</key>
+			<true/>
+			<key>NSExtensionServiceAllowsTouchBarItem</key>
+			<true/>
+		</dict>
+		<key>NSExtensionPointIdentifier</key>
+		<string>com.apple.ui-services</string>
+		<key>NSExtensionPrincipalClass</key>
+		<string>$(PRODUCT_MODULE_NAME).ShareViewController</string>
+	</dict>
+	<key>SharedAppGroup</key>
+	<string>group.com.bahaanajjar.ScreenTranslate</string>
+	<key>SharedKeychainGroup</key>
+	<string>$(AppIdentifierPrefix)com.bahaanajjar.ScreenTranslate</string>
+</dict>
+</plist>

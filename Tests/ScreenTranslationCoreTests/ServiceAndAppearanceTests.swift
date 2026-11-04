@@ -102,7 +102,10 @@ final class ServiceAndAppearanceTests: XCTestCase {
         }
         XCTAssertEqual(InterfaceLanguage.system.resolvedIdentifier(preferredLanguages: ["zh-CN"]), "zh-Hans")
         XCTAssertEqual(InterfaceLanguage.system.resolvedIdentifier(preferredLanguages: ["en-GB"]), "en")
-        XCTAssertEqual(InterfaceLanguage.system.resolvedIdentifier(preferredLanguages: ["ja-JP"]), "en")
+        XCTAssertEqual(InterfaceLanguage.system.resolvedIdentifier(preferredLanguages: ["ja-JP"]), "ja")
+        XCTAssertEqual(InterfaceLanguage.system.resolvedIdentifier(preferredLanguages: ["es-ES"]), "es")
+        XCTAssertEqual(InterfaceLanguage.system.resolvedIdentifier(preferredLanguages: ["ko-KR"]), "ko")
+        XCTAssertEqual(InterfaceLanguage.system.resolvedIdentifier(preferredLanguages: ["pl-PL"]), "en")
     }
 
     func testBackgroundSamplerUsesSurroundingsInsteadOfDarkGlyphPixels() {
