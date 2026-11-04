@@ -57,11 +57,17 @@ enum ScreenReader {
                 let columns = VerticalOCRGeometry.columns(glyphBoxes, imageSize: size)
                 for column in columns.prefix(32) {
                     try Task.checkCancellation()
+                    let box = column.reduce(CGRect.null) { $0.union($1) }
+                    // Aligned first characters in ordinary horizontal rows can
+                    // look like a column. Never overwrite those verified rows.
+                    let existing = blocks.filter { overlap($0.boundingBox, box) > 0.7 }
+                    guard !existing.contains(where: { $0.flow == .horizontal && $0.boundingBox.width > box.width * 1.5 }) else { continue }
                     guard let strip = stripImage(cgImage, glyphs: column) else { continue }
                     let recognized = try read(strip, language: language ?? "ja")
                     let text = recognized.sorted { $0.boundingBox.minX < $1.boundingBox.minX }.map(\.original).joined()
-                    guard text.count >= 2, VerticalTextLayout.supports(text) else { continue }
-                    let box = column.reduce(CGRect.null) { $0.union($1) }
+                    guard text.count >= 2, VerticalTextLayout.supports(text),
+                          (recognized.map(\.confidence).min() ?? 0) >= 0.4,
+                          text.count >= (existing.map { $0.original.filter { !$0.isWhitespace }.count }.max() ?? 0) else { continue }
                     let width = column.map(\.width).sorted()[column.count / 2]
                     let height = column.map(\.height).sorted()[column.count / 2]
                     // Remove fragments only after a complete local transcription

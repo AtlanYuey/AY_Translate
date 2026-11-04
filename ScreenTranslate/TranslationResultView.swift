@@ -205,11 +205,11 @@ struct TranslationResultView: View {
                 Image(systemName: "exclamationmark.triangle").font(.largeTitle).foregroundStyle(.secondary)
                 Text(settings.text(message)).font(.headline).multilineTextAlignment(.center)
                 if appState.hasSourceImage {
-                    Button("Try Again") { appState.retry() }.buttonStyle(.borderedProminent)
-                    Button("Use Free Apple Engines") { appState.useAppleEngines() }
+                    Button("Try Again") { showsRecovery = false; appState.retry() }.buttonStyle(.borderedProminent)
+                    Button("Use Free Apple Engines") { showsRecovery = false; appState.useAppleEngines() }
                 }
                 if appState.document != nil {
-                    Button("Read Recognized Text") { mode = .text; appState.viewRecognizedText() }
+                    Button("Read Recognized Text") { showsRecovery = false; mode = .text; appState.viewRecognizedText() }
                 }
                 Button("Configure Engines") { showsSettings = true }
             }.padding(30).padding(.vertical, 70)
