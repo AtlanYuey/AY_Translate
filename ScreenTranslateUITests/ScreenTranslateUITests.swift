@@ -21,16 +21,10 @@ final class ScreenTranslateUITests: XCTestCase {
         }
         let canvas = app.otherElements["result.canvas"]
         XCTAssertTrue(canvas.waitForExistence(timeout: 10))
-        let dimensions = XCTAttachment(string: "Share canvas: \(canvas.frame); source screen: \(app.frame)")
+        let canvasFrame = canvas.frame, screenFrame = app.frame
+        let dimensions = XCTAttachment(string: "Share canvas: \(canvasFrame); source screen: \(screenFrame)")
         dimensions.name = "系统Share容器尺寸"; dimensions.lifetime = .keepAlways; add(dimensions)
-        XCTAssertGreaterThanOrEqual(canvas.frame.width, app.frame.width * 0.97)
-        // The user has explicitly prioritized fixing Share discovery and font
-        // scaling first. Keep the full-screen requirement visible as a known
-        // failure, without preventing the functional return/toggle checks below.
-        // Only this assertion is expected; all interaction failures still fail CI.
-        XCTExpectFailure("Known layout issue: iOS UIActivity hosts this Share extension in a sheet; borderless full-screen presentation is deferred") {
-            XCTAssertGreaterThanOrEqual(canvas.frame.height, app.frame.height * 0.97)
-        }
+        XCTAssertGreaterThanOrEqual(canvasFrame.width, screenFrame.width * 0.97)
         XCTAssertFalse(source.isHittable)
         original.tap()
         let changed = XCTNSPredicateExpectation(predicate: NSPredicate(format: "label == %@", "Show Translation"), object: original)
@@ -46,7 +40,15 @@ final class ScreenTranslateUITests: XCTestCase {
         XCTAssertTrue(original.waitForExistence(timeout: 120))
         app.coordinate(withNormalizedOffset: CGVector(dx: 0.12, dy: 0.94))
             .press(forDuration: 0.05, thenDragTo: app.coordinate(withNormalizedOffset: CGVector(dx: 0.12, dy: 0.60)))
-        if !waitUntilHittable(source) { failWithScreenshot(app, name: "上滑后返回失败") }
+        guard waitUntilHittable(source) else { failWithScreenshot(app, name: "上滑后返回失败"); return }
+        let proof = XCTAttachment(string: "{\"recognized\":true,\"originalToggled\":true,\"closeReturnedToSource\":true,\"swipeReturnedToSource\":true}")
+        proof.name = "ShareInteractionCompleted"; proof.lifetime = .keepAlways; add(proof)
+        // continueAfterFailure=false can end a test even at an expected failure.
+        // Keep this last, after every interaction and its exported completion
+        // proof. CI checks that proof independently of XCTest's pass status.
+        XCTExpectFailure("Known layout issue: iOS UIActivity hosts this Share extension in a sheet; borderless full-screen presentation is deferred") {
+            XCTAssertGreaterThanOrEqual(canvasFrame.height, screenFrame.height * 0.97)
+        }
     }
 
     func testHistoryTabOnlyExistsWhenHistorySavingIsEnabled() throws {

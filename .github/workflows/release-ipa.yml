@@ -223,6 +223,13 @@ jobs:
               || echo "::warning::Screenshot export failed; attachments remain in the test result bundle."
           fi
 
+      - name: Verify Share UI completed every interaction
+        if: always()
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 .github/scripts/verify-share-ui-report.py "$RUNNER_TEMP/interface-screenshots" | tee "$RUNNER_TEMP/share-ui-completion.json"
+
       - name: Record Shortcuts simulator coverage
         if: always() && steps.simulator.outputs.destination != ''
         env:
@@ -282,6 +289,7 @@ jobs:
             ${{ runner.temp }}/shortcut-verification.json
             ${{ runner.temp }}/shortcut-package-verification.json
             ${{ runner.temp }}/shortcut-host-coverage.json
+            ${{ runner.temp }}/share-ui-completion.json
             Shortcuts/TranslateScreen.unsigned.plist
           if-no-files-found: warn
           retention-days: 14
