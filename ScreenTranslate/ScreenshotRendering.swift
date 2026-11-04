@@ -4,8 +4,6 @@ import UIKit
 
 @MainActor
 enum ScreenshotRendering {
-    private static let context = CIContext(options: [.cacheIntermediates: false])
-
     /// Fit longer translations before truncating, with a readable lower bound.
     /// The full editor still offers the complete text on tap at that bound.
     static func fittedFontSize(for text: String, in rect: CGRect, textScale: Double) -> CGFloat {
@@ -27,7 +25,20 @@ enum ScreenshotRendering {
     }
 
     static func palette(for document: TranslationDocument) -> [UUID: SampledColor] {
-        guard document.image.size.width > 0, document.image.size.height > 0 else { return [:] }
+        guard let image = uprightImage(for: document) else { return [:] }
+        return sampledPalette(image: image, blocks: document.blocks)
+    }
+
+    static func paletteAsync(for document: TranslationDocument) async -> [UUID: SampledColor] {
+        guard let image = uprightImage(for: document) else { return [:] }
+        let blocks = document.blocks
+        return await Task.detached(priority: .userInitiated) {
+            sampledPalette(image: image, blocks: blocks)
+        }.value
+    }
+
+    private static func uprightImage(for document: TranslationDocument) -> CGImage? {
+        guard document.image.size.width > 0, document.image.size.height > 0 else { return nil }
         let factor = min(1, 640 / max(document.image.size.width, document.image.size.height))
         let size = CGSize(width: max(1, floor(document.image.size.width * factor)), height: max(1, floor(document.image.size.height * factor)))
         let format = UIGraphicsImageRendererFormat()
@@ -37,15 +48,21 @@ enum ScreenshotRendering {
             UIColor.white.setFill(); renderer.fill(CGRect(origin: .zero, size: size))
             document.image.draw(in: CGRect(origin: .zero, size: size))
         }
-        guard let cgImage = upright.cgImage else { return [:] }
-        let width = cgImage.width, height = cgImage.height
+        return upright.cgImage
+    }
+
+    private nonisolated static func sampledPalette(image: CGImage, blocks: [RecognizedBlock]) -> [UUID: SampledColor] {
+        // The bitmap is at most 640px on its longest edge. CPU rendering avoids
+        // compiling a Metal pipeline on the extension's UI thread for this copy.
+        let context = CIContext(options: [.cacheIntermediates: false, .useSoftwareRenderer: true])
+        let width = image.width, height = image.height
         var bytes = [UInt8](repeating: 0, count: width * height * 4)
         bytes.withUnsafeMutableBytes { buffer in
-            context.render(CIImage(cgImage: cgImage), toBitmap: buffer.baseAddress!, rowBytes: width * 4,
+            context.render(CIImage(cgImage: image), toBitmap: buffer.baseAddress!, rowBytes: width * 4,
                            bounds: CGRect(x: 0, y: 0, width: width, height: height), format: .RGBA8,
                            colorSpace: CGColorSpaceCreateDeviceRGB())
         }
-        return Dictionary(uniqueKeysWithValues: document.blocks.filter { $0.placement == .overlay }.map {
+        return Dictionary(uniqueKeysWithValues: blocks.filter { $0.placement == .overlay }.map {
             ($0.id, BackgroundSampling.sample(pixels: bytes, width: width, height: height, region: $0.boundingBox))
         })
     }

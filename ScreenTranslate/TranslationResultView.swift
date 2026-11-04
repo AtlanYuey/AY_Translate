@@ -17,6 +17,7 @@ struct TranslationResultView: View {
     @State private var isClosing = false
 
     private var showsImage: Bool { appState.phase == .ready && appState.document != nil && mode != .text }
+    private var usesRootDismissGesture: Bool { !showsImage && mode != .text && imageZoom <= 1.01 }
 
     var body: some View {
         let requestID = appState.appleRequestID
@@ -35,13 +36,13 @@ struct TranslationResultView: View {
                 // The image handles its own drag to avoid competing parent and
                 // child recognizers. This fallback also lets loading/error
                 // screens be dismissed from their bottom margin.
-                if !showsImage, mode != .text, imageZoom <= 1.01,
+                if usesRootDismissGesture,
                    value.startLocation.y > geometry.size.height - 110,
                    value.translation.height < -100,
                    abs(value.translation.width) < abs(value.translation.height) * 0.65 {
                     close()
                 }
-            })
+            }, including: usesRootDismissGesture ? .all : .subviews)
         }
         .ignoresSafeArea()
         .statusBarHidden(true)
@@ -64,11 +65,17 @@ struct TranslationResultView: View {
         .alert("Recognition Note", isPresented: $showsNotice) { Button("OK", role: .cancel) {} } message: {
             Text(settings.text(appState.notice ?? ""))
         }
+        .onChange(of: appState.document?.id, initial: true) { _, _ in
+            palette = [:]
+            imageZoom = 1
+            guard let document = appState.document else { return }
+            mode = document.blocks.contains(where: { $0.placement == .overlay }) ? settings.defaultResultMode : .text
+        }
         .task(id: appState.document?.id) {
             guard let document = appState.document else { return }
-            palette = ScreenshotRendering.palette(for: document)
-            imageZoom = 1
-            mode = document.blocks.contains(where: { $0.placement == .overlay }) ? settings.defaultResultMode : .text
+            let colors = await ScreenshotRendering.paletteAsync(for: document)
+            guard !Task.isCancelled, appState.document?.id == document.id else { return }
+            palette = colors
         }
     }
 

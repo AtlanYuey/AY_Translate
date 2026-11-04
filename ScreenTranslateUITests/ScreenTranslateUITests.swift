@@ -23,7 +23,11 @@ final class ScreenTranslateUITests: XCTestCase {
         XCTAssertGreaterThanOrEqual(canvas.frame.width, app.frame.width * 0.97)
         XCTAssertFalse(source.isHittable)
         original.tap()
-        XCTAssertEqual(original.label, "Show Translation")
+        let changed = XCTNSPredicateExpectation(predicate: NSPredicate(format: "label == %@", "Show Translation"), object: original)
+        guard XCTWaiter.wait(for: [changed], timeout: 15) == .completed else {
+            failWithScreenshot(app, name: "原图切换未响应")
+            return
+        }
         let attachment = XCTAttachment(screenshot: app.screenshot())
         attachment.name = "真实系统扩展-全屏覆盖来源界面"; attachment.lifetime = .keepAlways; add(attachment)
         app.buttons["result.close"].tap()
