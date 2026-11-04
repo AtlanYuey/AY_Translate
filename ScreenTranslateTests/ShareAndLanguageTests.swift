@@ -70,7 +70,7 @@ final class ShareAndLanguageTests: XCTestCase {
         XCTAssertEqual(loaded.cgImage?.height, image.cgImage?.height)
     }
 
-    func testIPAEmbedsAShortcutsDiscoverableFullScreenShareExtension() throws {
+    func testIPAEmbedsAShortcutsDiscoverableShareExtensionAndRequestsFullScreen() throws {
         let path = Bundle.main.bundleURL.appendingPathComponent("PlugIns/ScreenTranslateShare.appex/Info.plist")
         let plist = try XCTUnwrap(PropertyListSerialization.propertyList(from: Data(contentsOf: path), format: nil) as? [String: Any])
         let settings = try XCTUnwrap(plist["NSExtension"] as? [String: Any])

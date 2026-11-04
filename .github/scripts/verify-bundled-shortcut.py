@@ -104,4 +104,4 @@ print(json.dumps({"sha256": hashlib.sha256(blob).hexdigest(), "appleCertificateC
                   "archiveSignature": "verified", "matchesReviewedActions": True,
                   "actions": expected_ids, "appIdentifier": app_id,
                   "extensionPoint": registration["NSExtensionPointIdentifier"],
-                  "fullScreen": True, "compiledPackage": arguments.app is not None}, indent=2))
+                  "fullScreenRequested": True, "compiledPackage": arguments.app is not None}, indent=2))

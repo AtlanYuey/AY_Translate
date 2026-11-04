@@ -51,8 +51,9 @@ enum ScreenshotRendering {
         // CTLine includes actual fallback glyphs (e.g. Chinese/Japanese), unlike
         // capHeight alone. Bound measurement work on long model responses.
         let sample = String(text.prefix(256)).replacingOccurrences(of: "\n", with: " ")
+        let referenceFont = UIFont.systemFont(ofSize: 100, weight: .medium)
         let line = CTLineCreateWithAttributedString(NSAttributedString(string: sample, attributes: [
-            .font: UIFont.systemFont(ofSize: 100, weight: .medium)
+            .font: referenceFont
         ]) as CFAttributedString)
         let height = CTLineGetImageBounds(line, nil).height
         var ascent: CGFloat = 0, descent: CGFloat = 0, leading: CGFloat = 0
@@ -60,7 +61,9 @@ enum ScreenshotRendering {
         let inkRatio = height.isFinite && height > 0 ? min(1.5, max(0.5, height / 100)) : 1
         // Fallback CJK/Arabic fonts can have different ascent and descent from
         // UIFont.systemFont. Measure the actual text, including those runs.
-        let lineHeight = (ascent + descent + leading) / 100
+        // Text/NSString also reserve the primary font's line height when every
+        // visible glyph comes from a fallback font. Use the larger of the two.
+        let lineHeight = max(referenceFont.lineHeight, ascent + descent + leading) / 100
         return GlyphMetrics(inkRatio: inkRatio, lineHeightRatio: lineHeight.isFinite ? max(inkRatio, lineHeight) : 1.5)
     }
 

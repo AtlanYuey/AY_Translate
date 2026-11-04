@@ -1,7 +1,8 @@
 import SwiftUI
 import UIKit
 
-/// A full-screen Share extension, discoverable by Shortcuts' Share with App.
+/// A Share extension, discoverable by Shortcuts' Share with App, requesting
+/// full-screen presentation. The system host can still choose a sheet.
 /// It is hosted above the invoking app. Completing
 /// the extension request returns to that host; it never foregrounds our app.
 @MainActor

@@ -17,7 +17,7 @@ See foreign text → press the Action Button → see the translated screen.
 
 ## 1.2.1：修复快捷指令共享与原位字号
 
-修正扩展注册类型为真正的 Share 扩展，解决“截屏 → 与屏幕翻译共享”报告“App 没有共享扩展”的问题，同时保留全屏结果与关闭后返回宿主。译文字号按每条原文的行高和图片缩放估算，标题和小字保持各自比例；字号设置按此相对缩放，移除小图中强制 12pt 的下限。
+修正扩展注册类型为真正的 Share 扩展，解决“截屏 → 与屏幕翻译共享”报告“App 没有共享扩展”的问题。译文字号按每条原文的行高和图片缩放估算，标题和小字保持各自比例；字号设置按此相对缩放，移除小图中强制 12pt 的下限。当前系统活动面板中的 Share 结果仍以卡片呈现，无边框全屏效果列为后续工作；CI 明确记录这一条预期尺寸失败，同时检查识别、切换和返回来源界面。
 
 默认跟随系统语言，提供十二种界面语言及本地文字名；包含应用图标，历史标签仅在保存历史开启时显示。
 
@@ -87,7 +87,7 @@ Layout-preserving overlays
 ```
 
 1. Shortcuts captures the current screen.
-2. The full-screen Share extension receives the screenshot through `NSItemProvider`, above the invoking app.
+2. The Share extension receives the screenshot through `NSItemProvider`, above the invoking app. The current UIActivity host still presents it in a system sheet; borderless full-screen presentation remains unfinished.
 3. Vision recognizes text and returns normalized bounding boxes.
 4. Apple's Translation framework translates the recognized blocks in a batch.
 5. SwiftUI renders the translated blocks over the original image using their detected positions. Close or swipe up to finish the extension and return to its host.
@@ -105,12 +105,12 @@ For manual setup or a build with a changed bundle identifier, create this workfl
 5. Open **Settings → Action Button → Shortcut**.
 6. Select `Translate Screen`.
 
-Use **Take Screenshot → Share with Translate Screen** for the full-screen Share extension. Install version 1.2.1 or later: version 1.2 incorrectly registered an Action extension, which does not satisfy Shortcuts' “Share with App” lookup. Existing two-action shortcuts can be kept if signing preserves the app identifier. Apple Translation prepares models through system UI. The legacy **Translate Screenshot in App** action remains a foreground fallback.
+Use **Take Screenshot → Share with Translate Screen** for the Share extension. Install version 1.2.1 or later: version 1.2 incorrectly registered an Action extension, which does not satisfy Shortcuts' “Share with App” lookup. Existing two-action shortcuts can be kept if signing preserves the app identifier. Apple Translation prepares models through system UI. The legacy **Translate Screenshot in App** action remains a foreground fallback.
 
 The resulting workflow is:
 
 ```text
-Take Screenshot → Share with Translate Screen → Full-screen extension → Return to host
+Take Screenshot → Share with Translate Screen → Extension result → Return to host
 ```
 
 No photo picker, conditional action, or separate Open action is required. iOS asks you to confirm importing the shortcut; third-party apps cannot silently capture the contents of other apps. If signing changes the app's bundle identifier, regenerate the signed template with the matching `WFAppIdentifier` or use the manual setup above.
@@ -199,7 +199,7 @@ To test IPA creation without publishing a release, open **Actions → Build IPA 
 | `ScreenTranslateApp.swift` | App entry point and shared dependency setup |
 | `ContentView.swift` | Home screen, screenshot import, processing, and translation result UI |
 | `OnboardingView.swift` | First-run onboarding and Action Button setup guide |
-| `ScreenTranslateShare/ShareViewController.swift` | Full-screen Share extension used by the screenshot sharing workflow |
+| `ScreenTranslateShare/ShareViewController.swift` | Share extension used by the screenshot sharing workflow |
 | `TranslateScreenshotIntent.swift` | Alternative foreground App Intent for older shortcuts |
 | `TranslationEngine.swift` | Vision text recognition and bounding-box extraction |
 | `AppState.swift` | Translation workflow and UI state coordination |
