@@ -5,6 +5,27 @@ import CoreGraphics
 @testable import ScreenTranslationCore
 
 final class RestorationAndSyncTests: XCTestCase {
+    func testResizingARepairDoesNotRevealSourceInkThroughTransparentEdges() {
+        for background: UInt8 in [255, 30] {
+            var source = [UInt8](repeating: background, count: 9 * 9 * 4)
+            for i in stride(from: 3, to: source.count, by: 4) { source[i] = 255 }
+            let ink = (4 * 9 + 4) * 4, cleanNeighbor = ink + 4, otherInk = ink + 8
+            for c in 0..<3 { source[ink + c] = 255 - background; source[otherInk + c] = 255 - background }
+            var repaired = source
+            for c in 0..<3 { repaired[ink + c] = background }
+            let patch = TextInkRestoration.Patch(pixels: repaired, width: 9, height: 9, changedPixels: 1)
+            let overlay = TextInkRestoration.compositingPixels(original: source, patch: patch)
+            // Linear resampling between repaired ink and clean background,
+            // followed by premultiplied-alpha compositing over resized source.
+            let sourceSample = (Double(source[ink]) + Double(source[cleanNeighbor])) / 2
+            let overlaySample = (Double(overlay[ink]) + Double(overlay[cleanNeighbor])) / 2
+            let alpha = (Double(overlay[ink + 3]) + Double(overlay[cleanNeighbor + 3])) / 510
+            XCTAssertEqual(overlaySample + sourceSample * (1 - alpha), Double(background), accuracy: 0.01)
+            XCTAssertEqual(overlay[otherInk + 3], 0, "Do not repaint another region's original ink")
+            XCTAssertEqual(overlay[3], 0, "Do not make the whole sampling rectangle opaque")
+        }
+    }
+
     func testRestoresInkWithoutFlatteningUnderlyingGradientOrUntouchedArtwork() {
         let w = 80, h = 60
         var source = [UInt8](repeating: 255, count: w * h * 4)

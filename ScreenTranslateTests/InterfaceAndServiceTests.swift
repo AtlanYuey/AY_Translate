@@ -502,6 +502,16 @@ final class InterfaceAndServiceTests: XCTestCase {
         XCTAssertLessThan(small.fontSize, 6)
         let document = TranslationDocument(id: UUID(), image: image, blocks: [title, body], source: .spanish, target: .chinese, createdAt: Date())
         let rendered = ScreenshotRendering.translatedImage(document, palette: [:], textScale: 1)
+        let restorations = await ScreenshotRendering.restorationsAsync(for: document)
+        let cleanFormat = UIGraphicsImageRendererFormat(); cleanFormat.scale = rendered.scale; cleanFormat.opaque = true
+        let cleaned = UIGraphicsImageRenderer(size: rendered.size, format: cleanFormat).image { renderer in
+            image.draw(in: CGRect(origin: .zero, size: rendered.size))
+            for block in document.blocks {
+                ScreenshotRendering.drawRestoration(restorations[block.id], canvas: rendered.size, in: renderer.cgContext)
+            }
+        }
+        XCTAssertTrue(try inkRowHeights(cleaned, threshold: 230).isEmpty,
+                      "Resizing the restoration must not leave the old letters as gray outlines")
         let originalInk = try inkRowHeights(image)
         let translatedInk = try inkRowHeights(rendered)
         let pixelScale = CGFloat(try XCTUnwrap(rendered.cgImage).width) / CGFloat(try XCTUnwrap(image.cgImage).width)
@@ -514,6 +524,7 @@ final class InterfaceAndServiceTests: XCTestCase {
             XCTAssertEqual(CGFloat(translated), expected, accuracy: max(1, expected * 0.20), measurements)
         }
         for (name, screenshot) in [("横屏原图-44与22字号", image),
+                                    ("横屏背景恢复-无缩放残边", cleaned),
                                     ("横屏译图-保留标题正文比例", rendered)] {
             let attachment = XCTAttachment(image: screenshot)
             attachment.name = name; attachment.lifetime = .keepAlways; add(attachment)
@@ -522,7 +533,7 @@ final class InterfaceAndServiceTests: XCTestCase {
 
     /// Measure actual rendered pixels independently of the layout calculation.
     /// The fixture has two black text rows on white, with no borders or graphics.
-    private func inkRowHeights(_ image: UIImage) throws -> [Int] {
+    private func inkRowHeights(_ image: UIImage, threshold: UInt8 = 128) throws -> [Int] {
         let cgImage = try XCTUnwrap(image.cgImage)
         let width = cgImage.width, height = cgImage.height
         let rowBytes = (width + 15) / 16 * 16
@@ -534,7 +545,7 @@ final class InterfaceAndServiceTests: XCTestCase {
             context.draw(cgImage, in: CGRect(x: 0, y: 0, width: width, height: height))
         }
         var ranges: [ClosedRange<Int>] = []
-        for row in 0..<height where pixels[(row * rowBytes)..<(row * rowBytes + width)].contains(where: { $0 < 128 }) {
+        for row in 0..<height where pixels[(row * rowBytes)..<(row * rowBytes + width)].contains(where: { $0 < threshold }) {
             if let previous = ranges.last, row - previous.upperBound <= 3 {
                 ranges[ranges.count - 1] = previous.lowerBound...row
             } else { ranges.append(row...row) }

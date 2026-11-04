@@ -13,6 +13,35 @@ nonisolated enum TextInkRestoration {
         let changedPixels: Int
     }
 
+    /// Keep a narrow band of unchanged, matching background opaque around
+    /// repaired pixels. Otherwise resizing source and patch separately filters
+    /// the old ink into translucent patch edges, producing a ghost outline.
+    static func compositingPixels(original: [UInt8], patch: Patch) -> [UInt8] {
+        let width = patch.width, height = patch.height
+        guard width > 0, height > 0, original.count == width * height * 4,
+              patch.pixels.count == original.count else { return patch.pixels }
+        var covered = [Bool](repeating: false, count: width * height)
+        for i in covered.indices where (0..<3).contains(where: { original[i * 4 + $0] != patch.pixels[i * 4 + $0] }) {
+            covered[i] = true
+            let x = i % width, y = i / width
+            for yy in max(0, y - 2)...min(height - 1, y + 2) {
+                for xx in max(0, x - 2)...min(width - 1, x + 2) {
+                    let j = yy * width + xx
+                    // Never reintroduce nearby original ink or artwork from
+                    // another region into an overlapping restoration layer.
+                    if (0..<3).allSatisfy({ abs(Int(original[j * 4 + $0]) - Int(patch.pixels[i * 4 + $0])) <= 12 }) {
+                        covered[j] = true
+                    }
+                }
+            }
+        }
+        var result = patch.pixels
+        for i in covered.indices where !covered[i] {
+            for c in 0..<4 { result[i * 4 + c] = 0 }
+        }
+        return result
+    }
+
     static func restore(pixels: [UInt8], width: Int, height: Int, glyphs: [CGRect], glyphSize: Double) -> Patch {
         guard width > 2, height > 2, width * height <= 1_000_000, pixels.count == width * height * 4 else {
             return Patch(pixels: pixels, width: width, height: height, changedPixels: 0)

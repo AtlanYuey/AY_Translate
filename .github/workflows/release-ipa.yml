@@ -236,6 +236,21 @@ jobs:
             CODE_SIGNING_ALLOWED=YES CODE_SIGNING_REQUIRED=NO CODE_SIGN_IDENTITY="-" DEVELOPMENT_TEAM="" \
             2>&1 | tee "$RUNNER_TEMP/ios-tests.log"
 
+      - name: Restart simulator services before UI automation
+        if: ${{ !cancelled() && steps.hosted_tests.outcome != 'skipped' }}
+        timeout-minutes: 10
+        env:
+          TEST_DESTINATION: ${{ steps.simulator.outputs.destination }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          # Hosted tests create and dismiss multiple UIWindows. Start UI
+          # automation with fresh SpringBoard/Accessibility services while
+          # retaining the installed build and diagnostic results.
+          UDID="${TEST_DESTINATION##*id=}"
+          xcrun simctl shutdown "$UDID"
+          xcrun simctl bootstatus "$UDID" -b
+
       - name: Test the real system Share interface and adaptive UI
         if: ${{ !cancelled() && steps.hosted_tests.outcome != 'skipped' }}
         timeout-minutes: 20

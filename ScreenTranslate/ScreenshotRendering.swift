@@ -193,12 +193,7 @@ enum ScreenshotRendering {
                        width: $0.width * width, height: $0.height * height).insetBy(dx: -1, dy: -1)
             }
             let patch = TextInkRestoration.restore(pixels: bytes, width: crop.width, height: crop.height, glyphs: glyphs, glyphSize: font)
-            var transparent = patch.pixels
-            // Overlapping sampling margins must never paint original pixels
-            // over another region's already restored background/translation.
-            for i in stride(from: 0, to: transparent.count, by: 4) where transparent[i..<i+3] == bytes[i..<i+3] {
-                transparent[i] = 0; transparent[i+1] = 0; transparent[i+2] = 0; transparent[i+3] = 0
-            }
+            let transparent = TextInkRestoration.compositingPixels(original: bytes, patch: patch)
             guard patch.changedPixels > 0, let provider = CGDataProvider(data: Data(transparent) as CFData),
                   let restored = CGImage(width: crop.width, height: crop.height, bitsPerComponent: 8, bitsPerPixel: 32, bytesPerRow: crop.width * 4,
                     space: CGColorSpaceCreateDeviceRGB(), bitmapInfo: CGBitmapInfo(rawValue: CGImageAlphaInfo.premultipliedLast.rawValue), provider: provider,
