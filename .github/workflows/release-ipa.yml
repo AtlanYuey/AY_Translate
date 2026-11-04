@@ -290,7 +290,33 @@ jobs:
             ${{ runner.temp }}/shortcut-package-verification.json
             ${{ runner.temp }}/shortcut-host-coverage.json
             ${{ runner.temp }}/share-ui-completion.json
+            ${{ runner.temp }}/vision-core
             Shortcuts/TranslateScreen.unsigned.plist
+          if-no-files-found: warn
+          retention-days: 14
+
+  vision:
+    if: inputs.inspect_run_id == ''
+    name: Verify native Vision on macOS 15 Intel
+    runs-on: macos-15-intel
+    timeout-minutes: 15
+    env:
+      DEVELOPER_DIR: /Applications/Xcode_26.3.app/Contents/Developer
+    steps:
+      - uses: actions/checkout@v4
+      - name: Run the production recognizer on real Japanese and small text
+        shell: bash
+        run: |
+          set -euo pipefail
+          xcodebuild -version
+          swift test --jobs 3 --filter VisionCoreTests 2>&1 | tee "$RUNNER_TEMP/vision-core-tests.log"
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: native-vision-${{ github.run_id }}-${{ github.run_attempt }}
+          path: |
+            ${{ runner.temp }}/vision-core-tests.log
+            ${{ runner.temp }}/vision-core
           if-no-files-found: warn
           retention-days: 14
 
@@ -343,7 +369,7 @@ jobs:
 
   release:
     if: startsWith(github.ref, 'refs/tags/v')
-    needs: build
+    needs: [build, vision, ipad]
     runs-on: ubuntu-latest
     permissions:
       contents: write

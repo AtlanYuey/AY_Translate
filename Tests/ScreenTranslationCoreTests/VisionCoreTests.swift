@@ -1,0 +1,81 @@
+#if canImport(Vision) && canImport(CoreGraphics)
+import Foundation
+import CoreGraphics
+import CoreText
+import ImageIO
+import UniformTypeIdentifiers
+import XCTest
+@testable import ScreenTranslationCore
+
+final class VisionCoreTests: XCTestCase {
+    func testRealVisionFindsTextBelowItsDefaultHeightThreshold() async throws {
+        let context = try canvas()
+        draw("Small text survives", x: 140, y: 220, font: "Helvetica", size: 22, context: context)
+        let image = try XCTUnwrap(context.makeImage())
+        try record(image, blocks: [], name: "small-text")
+        let blocks = try await VisionTextRecognizer.recognize(image, language: "en-US")
+        try record(image, blocks: blocks, name: "small-text")
+        XCTAssertTrue(blocks.map(\.original).joined().lowercased().filter { !$0.isWhitespace }.contains("smalltextsurvives"))
+        XCTAssertTrue(blocks.allSatisfy { $0.boundingBox.minX >= 0 && $0.boundingBox.maxX <= 1 && $0.boundingBox.minY >= 0 && $0.boundingBox.maxY <= 1 })
+    }
+
+    func testRealVisionReadsUprightJapaneseColumns() async throws {
+        let context = try canvas()
+        for (column, text) in ["このケーキは", "おいしいです", "一口食べますか"].enumerated() {
+            for (row, glyph) in text.enumerated() {
+                draw(String(glyph), x: CGFloat(640 - column * 44), y: CGFloat(180 + row * 34), font: "HiraginoSans-W3", size: 28, context: context)
+            }
+        }
+        let image = try XCTUnwrap(context.makeImage())
+        try record(image, blocks: [], name: "japanese-vertical")
+        let blocks = try await VisionTextRecognizer.recognize(image, language: "ja")
+        try record(image, blocks: blocks, name: "japanese-vertical")
+        let text = blocks.map(\.original).joined()
+        XCTAssertTrue(text.contains("ケーキ"), text)
+        XCTAssertTrue(text.contains("おいしい"), text)
+        XCTAssertTrue(blocks.contains { $0.flow == .vertical }, text)
+    }
+
+    func testRealVisionKeepsOrdinaryJapaneseRowsHorizontal() async throws {
+        let context = try canvas()
+        for (row, text) in ["この文章は横書きです。", "文字の向きを保ちます。", "画像を正しく翻訳します。"].enumerated() {
+            draw(text, x: 120, y: CGFloat(200 + row * 44), font: "HiraginoSans-W3", size: 28, context: context)
+        }
+        let image = try XCTUnwrap(context.makeImage())
+        try record(image, blocks: [], name: "japanese-horizontal")
+        let blocks = try await VisionTextRecognizer.recognize(image, language: "ja")
+        try record(image, blocks: blocks, name: "japanese-horizontal")
+        XCTAssertFalse(blocks.isEmpty)
+        XCTAssertFalse(blocks.contains { $0.flow == .vertical }, blocks.map(\.original).joined(separator: "\n"))
+    }
+
+    private func canvas() throws -> CGContext {
+        let context = try XCTUnwrap(CGContext(data: nil, width: 900, height: 1600, bitsPerComponent: 8, bytesPerRow: 0,
+            space: CGColorSpaceCreateDeviceRGB(), bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue))
+        context.setFillColor(CGColor(gray: 1, alpha: 1))
+        context.fill(CGRect(x: 0, y: 0, width: 900, height: 1600))
+        return context
+    }
+
+    private func draw(_ text: String, x: CGFloat, y: CGFloat, font: String, size: CGFloat, context: CGContext) {
+        let line = CTLineCreateWithAttributedString(NSAttributedString(string: text, attributes: [
+            NSAttributedString.Key(kCTFontAttributeName as String): CTFontCreateWithName(font as CFString, size, nil),
+            NSAttributedString.Key(kCTForegroundColorAttributeName as String): CGColor(gray: 0, alpha: 1)
+        ]) as CFAttributedString)
+        context.textPosition = CGPoint(x: x, y: 1600 - y - size)
+        CTLineDraw(line, context)
+    }
+
+    private func record(_ image: CGImage, blocks: [RecognizedBlock], name: String) throws {
+        let folder = URL(fileURLWithPath: ProcessInfo.processInfo.environment["RUNNER_TEMP"] ?? NSTemporaryDirectory()).appendingPathComponent("vision-core")
+        try FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)
+        let destination = try XCTUnwrap(CGImageDestinationCreateWithURL(folder.appendingPathComponent(name + ".png") as CFURL, UTType.png.identifier as CFString, 1, nil))
+        CGImageDestinationAddImage(destination, image, nil)
+        XCTAssertTrue(CGImageDestinationFinalize(destination))
+        let regions: [[String: Any]] = blocks.map {
+            ["text": $0.original, "box": OCRAlignment.topLeftBox($0.boundingBox), "flow": $0.flow == .vertical ? "vertical" : "horizontal", "confidence": $0.confidence]
+        }
+        try JSONSerialization.data(withJSONObject: regions, options: [.prettyPrinted, .sortedKeys]).write(to: folder.appendingPathComponent(name + ".json"))
+    }
+}
+#endif
