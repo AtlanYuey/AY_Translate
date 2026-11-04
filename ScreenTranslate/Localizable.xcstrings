@@ -14335,31 +14335,31 @@
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "创建“屏幕翻译”快捷指令"
+            "value": "创建“Translate Screen”快捷指令"
           }
         },
         "zh-Hant": {
           "stringUnit": {
             "state": "translated",
-            "value": "建立“螢幕翻譯”快捷指令"
+            "value": "建立“Translate Screen”快捷指令"
           }
         },
         "ja": {
           "stringUnit": {
             "state": "translated",
-            "value": "「画面の翻訳」を作成"
+            "value": "「Translate Screen」を作成"
           }
         },
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Créer un écran"
+            "value": "Créer « Translate Screen »"
           }
         },
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "Crear “Pantalla de traducción”"
+            "value": "Crear «Translate Screen»"
           }
         },
         "ko": {
@@ -14371,31 +14371,31 @@
         "pt": {
           "stringUnit": {
             "state": "translated",
-            "value": "Criar \"Translate Screen\""
+            "value": "Criar «Translate Screen»"
           }
         },
         "it": {
           "stringUnit": {
             "state": "translated",
-            "value": "Creare “Schermo di trasferimento”"
+            "value": "Crea “Translate Screen”"
           }
         },
         "de": {
           "stringUnit": {
             "state": "translated",
-            "value": "Erstellen Sie \"Translate Screen\""
+            "value": "„Translate Screen“ erstellen"
           }
         },
         "ar": {
           "stringUnit": {
             "state": "translated",
-            "value": "Create “Translate Screen”"
+            "value": "إنشاء «Translate Screen»"
           }
         },
         "ru": {
           "stringUnit": {
             "state": "translated",
-            "value": "Создание «Переводного экрана»"
+            "value": "Создать «Translate Screen»"
           }
         }
       }
@@ -14566,67 +14566,67 @@
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "打开“设置 › 操作按钮 › 快捷指令”，选择“屏幕翻译”。"
+            "value": "打开“设置 › 操作按钮 › 快捷指令”，选择“Translate Screen”。"
           }
         },
         "zh-Hant": {
           "stringUnit": {
             "state": "translated",
-            "value": "開啟“設定 › 操作按鈕 › 快捷指令”，選擇“螢幕翻譯”。"
+            "value": "開啟“設定 › 操作按鈕 › 快捷指令”，選擇“Translate Screen”。"
           }
         },
         "ja": {
           "stringUnit": {
             "state": "translated",
-            "value": "設定を開く › アクションボタン › ショートカット, 選択します。 “画面を翻訳します。”."
+            "value": "「設定」›「アクションボタン」›「ショートカット」で「Translate Screen」を選択します。"
           }
         },
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Ouvrir les paramètres › Bouton d'action › Raccourcir, puis sélectionner l'écran."
+            "value": "Dans Réglages › Bouton Action › Raccourci, sélectionnez « Translate Screen »."
           }
         },
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "Abrir configuración › Botón de acción › Atajo, a continuación, seleccione “Translate Screen”."
+            "value": "Abre Ajustes › Botón de acción › Atajo y selecciona «Translate Screen»."
           }
         },
         "ko": {
           "stringUnit": {
             "state": "translated",
-            "value": "설정 열기 › 동작 버튼 › 단축키, 다음 \"Translate Screen\"을 선택합니다."
+            "value": "설정 › 동작 버튼 › 단축어에서 “Translate Screen”을 선택하세요."
           }
         },
         "pt": {
           "stringUnit": {
             "state": "translated",
-            "value": "Abrir configurações › Botão de ação › Atalho, em seguida, selecione \"Translate Screen\"."
+            "value": "Abre Definições › Botão Ação › Atalho e escolhe «Translate Screen»."
           }
         },
         "it": {
           "stringUnit": {
             "state": "translated",
-            "value": "Aprire le impostazioni › Pulsante d'azione › Scorciatoia, quindi selezionare \"Schermo di trasferimento\"."
+            "value": "Apri Impostazioni › Tasto Azione › Comando rapido e scegli “Translate Screen”."
           }
         },
         "de": {
           "stringUnit": {
             "state": "translated",
-            "value": "Öffnen Sie Einstellungen › Aktionsknopf › Shortcut, dann wählen Sie \"Bildschirm übersetzen\"."
+            "value": "Öffne Einstellungen › Aktionstaste › Kurzbefehl und wähle „Translate Screen“."
           }
         },
         "ar": {
           "stringUnit": {
             "state": "translated",
-            "value": "Open Settings  ⁇  Action Button  ⁇  Shortcut, then select “Translate Screen”."
+            "value": "افتح الإعدادات › زر الإجراءات › الاختصار، ثم اختر «Translate Screen»."
           }
         },
         "ru": {
           "stringUnit": {
             "state": "translated",
-            "value": "Откройте настройки › Кнопка действия › Ярлык, затем выберите «Перевести экран»."
+            "value": "Откройте «Настройки» › «Кнопка действия» › «Быстрая команда» и выберите «Translate Screen»."
           }
         }
       }
