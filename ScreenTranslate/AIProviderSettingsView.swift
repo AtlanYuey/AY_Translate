@@ -173,7 +173,7 @@ struct AIServiceEditor: View {
         .navigationTitle("Edit AI Service")
         .navigationBarTitleDisplayMode(.inline)
         .toolbar {
-            ToolbarItem(placement: .cancellationAction) { Button("Cancel") { dismiss() } }
+            ToolbarItem(placement: .cancellationAction) { Button("Cancel") { key = ""; loadedKey = ""; dismiss() } }
             ToolbarItem(placement: .confirmationAction) { Button("Save", action: save) }
         }
         .task {
@@ -214,7 +214,9 @@ struct AIServiceEditor: View {
         .onChange(of: service.configuration.model) { _, _ in cancelTest() }
         .onChange(of: probeID) { _, _ in cancelTest() }
         .onChange(of: settings.target) { _, _ in cancelTest() }
-        .onDisappear { cancelTest(); key = ""; loadedKey = "" }
+        // Form pickers can push another page. Keep unsaved pasted credentials
+        // while choosing a model; explicit Save/Cancel ends the editing session.
+        .onDisappear { cancelTest() }
         .alert("Could Not Save", isPresented: Binding(get: { error != nil }, set: { if !$0 { error = nil } })) {
             Button("OK", role: .cancel) { error = nil }
         } message: { Text(settings.text(error ?? "")) }

@@ -345,14 +345,14 @@ final class AppSettings: ObservableObject {
     private func persist(_ value: Any, forKey key: String) {
         defaults.set(value, forKey: key)
         guard syncThroughKeychain else { return }
-        do { try PreferencesBridge.update(value, key: key, store: keyStore); synchronizationError = nil }
+        do { try PreferencesBridge.update(value, key: key, defaults: defaults, store: keyStore); synchronizationError = nil }
         catch { synchronizationError = error.localizedDescription }
     }
 
     private func removePreference(forKey key: String) {
         defaults.removeObject(forKey: key)
         guard syncThroughKeychain else { return }
-        do { try PreferencesBridge.update(nil, key: key, store: keyStore) }
+        do { try PreferencesBridge.update(nil, key: key, defaults: defaults, store: keyStore) }
         catch { synchronizationError = error.localizedDescription }
     }
 

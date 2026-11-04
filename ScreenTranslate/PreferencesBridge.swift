@@ -22,7 +22,7 @@ enum PreferencesBridge {
 
     static func synchronize(_ defaults: UserDefaults, store: any APIKeyStoring) throws {
         var shared = try read(from: store)
-        if !defaults.bool(forKey: "preferences.bridge.bootstrapped") {
+        if shared.isEmpty || !defaults.bool(forKey: "preferences.bridge.bootstrapped") {
             let localCatalog = defaults.data(forKey: "ai.services.v1").flatMap { try? JSONDecoder().decode(AIServiceCatalog.self, from: $0) }
             let remoteCatalog = (shared["ai.services.v1"] as? Data).flatMap { try? JSONDecoder().decode(AIServiceCatalog.self, from: $0) }
             let upgradingConfiguredApp = localCatalog?.services.isEmpty == false && remoteCatalog?.services.isEmpty != false
@@ -43,8 +43,11 @@ enum PreferencesBridge {
         for (key, value) in shared { defaults.set(value, forKey: key) }
     }
 
-    static func update(_ value: Any?, key: String, store: any APIKeyStoring) throws {
+    static func update(_ value: Any?, key: String, defaults: UserDefaults, store: any APIKeyStoring) throws {
         var shared = try read(from: store)
+        // Re-signing can make the old shared item inaccessible. Losing the
+        // mirror must not erase the still-valid local service catalog.
+        if shared.isEmpty { shared = defaults.dictionaryRepresentation().filter { SharedAppContainer.isPreferenceKey($0.key) } }
         shared[key] = value
         try write(shared, to: store)
     }
