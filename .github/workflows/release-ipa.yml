@@ -60,6 +60,13 @@ jobs:
           for kind in ['summary', 'tests']:
               output = subprocess.check_output(['xcrun', 'xcresulttool', 'get', 'test-results', kind, '--path', str(bundle)])
               (root / ('inspection-' + kind + '.json')).write_bytes(output)
+          predicate = 'process == "ScreenTranslateShare" OR process == "ScreenTranslate" OR eventMessage CONTAINS[c] "gesture gate" OR eventMessage CONTAINS[c] "com.bahaanajjar.ScreenTranslate.ShareExtension"'
+          for index, archive in enumerate((root / 'exported-diagnostics').rglob('*.logarchive')):
+              try:
+                  output = subprocess.check_output(['log', 'show', '--archive', str(archive), '--style', 'compact', '--info', '--debug', '--predicate', predicate], timeout=90)
+                  (root / ('inspection-system-' + str(index) + '.log')).write_bytes(output)
+              except subprocess.SubprocessError as error:
+                  print('::warning::Could not decode one unified log archive:', error)
           PYTHON
       - uses: actions/upload-artifact@v4
         if: always()
@@ -68,6 +75,7 @@ jobs:
           path: |
             ${{ runner.temp }}/exported-diagnostics
             ${{ runner.temp }}/inspection-*.json
+            ${{ runner.temp }}/inspection-*.log
           if-no-files-found: error
           retention-days: 7
 
