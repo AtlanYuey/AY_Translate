@@ -46,6 +46,30 @@ final class ShareAndLanguageTests: XCTestCase {
         catch { XCTAssertEqual(error as? SharedImageError, .noImage) }
     }
 
+    func testRealUIImageObjectProviderLoadsWithoutRequiringEncodedData() async throws {
+        let image = UIGraphicsImageRenderer(size: CGSize(width: 40, height: 80)).image { context in
+            UIColor.blue.setFill(); context.fill(CGRect(x: 0, y: 0, width: 40, height: 80))
+        }
+        let item = NSExtensionItem(); item.attachments = [NSItemProvider(object: image)]
+        let loaded = try await SharedImageLoader.load(from: [item])
+        XCTAssertEqual(loaded.cgImage?.width, image.cgImage?.width)
+        XCTAssertEqual(loaded.cgImage?.height, image.cgImage?.height)
+    }
+
+    func testSharedFileURLLoadsAnImageFromItsProvider() async throws {
+        let image = UIGraphicsImageRenderer(size: CGSize(width: 40, height: 80)).image { context in
+            UIColor.green.setFill(); context.fill(CGRect(x: 0, y: 0, width: 40, height: 80))
+        }
+        let url = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString + ".png")
+        try XCTUnwrap(image.pngData()).write(to: url)
+        defer { try? FileManager.default.removeItem(at: url) }
+        let item = NSExtensionItem()
+        item.attachments = [NSItemProvider(item: url as NSURL, typeIdentifier: UTType.png.identifier)]
+        let loaded = try await SharedImageLoader.load(from: [item])
+        XCTAssertEqual(loaded.cgImage?.width, image.cgImage?.width)
+        XCTAssertEqual(loaded.cgImage?.height, image.cgImage?.height)
+    }
+
     func testIPAEmbedsAFullScreenActionExtensionWithSharedIdentifiers() throws {
         let path = Bundle.main.bundleURL.appendingPathComponent("PlugIns/ScreenTranslateShare.appex/Info.plist")
         let plist = try XCTUnwrap(PropertyListSerialization.propertyList(from: Data(contentsOf: path), format: nil) as? [String: Any])

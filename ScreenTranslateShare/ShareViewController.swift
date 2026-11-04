@@ -27,7 +27,13 @@ final class ShareViewController: UIViewController {
             host.view.topAnchor.constraint(equalTo: view.topAnchor), host.view.bottomAnchor.constraint(equalTo: view.bottomAnchor)
         ])
         host.didMove(toParent: self)
+    }
+
+    override func viewDidAppear(_ animated: Bool) {
+        super.viewDidAppear(animated)
+        guard loading == nil, !completed else { return }
         let items = extensionContext?.inputItems.compactMap { $0 as? NSExtensionItem } ?? []
+        let state = self.state
         loading = Task { [weak self, weak state] in
             do {
                 let image = try await SharedImageLoader.load(from: items)

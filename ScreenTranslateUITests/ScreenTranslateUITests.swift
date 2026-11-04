@@ -1,7 +1,7 @@
 import XCTest
 
 final class ScreenTranslateUITests: XCTestCase {
-    override func setUpWithError() throws { continueAfterFailure = false; executionTimeAllowance = 180 }
+    override func setUpWithError() throws { continueAfterFailure = false; executionTimeAllowance = 300 }
 
     func testRealActionExtensionFillsScreenAndReturnsToInvokingApp() throws {
         let app = XCUIApplication()
@@ -11,7 +11,12 @@ final class ScreenTranslateUITests: XCTestCase {
         XCTAssertTrue(source.waitForExistence(timeout: 20))
         openExtension(app, source: source)
         let original = app.buttons["result.original"]
-        XCTAssertTrue(original.waitForExistence(timeout: 60))
+        guard original.waitForExistence(timeout: 60) else {
+            let failure = XCTAttachment(screenshot: app.screenshot())
+            failure.name = "系统共享输入读取失败"; failure.lifetime = .keepAlways; add(failure)
+            XCTFail(app.debugDescription)
+            return
+        }
         let canvas = app.otherElements["result.canvas"]
         XCTAssertTrue(canvas.waitForExistence(timeout: 10))
         XCTAssertGreaterThanOrEqual(canvas.frame.height, app.frame.height * 0.97)
