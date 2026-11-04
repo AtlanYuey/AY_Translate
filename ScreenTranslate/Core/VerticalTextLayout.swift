@@ -59,7 +59,8 @@ nonisolated enum VerticalOCRGeometry {
             // CJK horizontal prose has roughly square, closely spaced glyphs.
             // Sparse rows across adjacent vertical columns are not reliable
             // horizontal text, even when Vision returns a horizontal box.
-            if !VerticalTextLayout.supports(block.original) || advance <= height * 1.3 {
+            let rowShaped = block.boundingBox.width * imageSize.width >= height * 1.4
+            if count >= 2 && (!VerticalTextLayout.supports(block.original) || (rowShaped && advance <= height * 1.3)) {
                 return (true, [])
             }
             fragments.insert(block.id)

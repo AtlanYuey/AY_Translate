@@ -34,8 +34,16 @@ nonisolated enum VisionTextRecognizer {
                 // A supplemental detector failure must not discard successful OCR.
                 try? VNImageRequestHandler(cgImage: cgImage).perform([detection])
                 let glyphBoxes = (detection.results ?? []).flatMap { $0.characterBoxes ?? [] }.map(\.boundingBox)
-                let columns = VerticalOCRGeometry.columns(glyphBoxes, imageSize: size)
-                for column in columns.prefix(32) {
+                var columns = VerticalOCRGeometry.columns(glyphBoxes, imageSize: size)
+                if let raster = grayscaleImage(cgImage) {
+                    let inkColumns = VerticalInkDetector.columns(grayscale: raster.bytes, width: raster.width, height: raster.height)
+                    for candidate in inkColumns {
+                        let box = candidate.reduce(CGRect.null) { $0.union($1) }
+                        if !columns.contains(where: { overlap($0.reduce(CGRect.null) { $0.union($1) }, box) >= 0.7 }) { columns.append(candidate) }
+                    }
+                }
+                var attempts = 0
+                for column in columns {
                     try Task.checkCancellation()
                     let box = column.reduce(CGRect.null) { $0.union($1) }
                     // Aligned first characters in ordinary horizontal rows can
@@ -43,6 +51,8 @@ nonisolated enum VisionTextRecognizer {
                     let existing = blocks.filter { overlap($0.boundingBox, box) > 0.7 }
                     let conflicts = VerticalOCRGeometry.horizontalConflicts(column: column, blocks: blocks, imageSize: size)
                     guard !conflicts.protected else { continue }
+                    guard attempts < 32 else { break }
+                    attempts += 1
                     guard let strip = stripImage(cgImage, glyphs: column) else { continue }
                     let recognized = try read(strip, language: language ?? "ja")
                     let text = recognized.sorted { $0.boundingBox.minX < $1.boundingBox.minX }.map(\.original).joined()
@@ -120,6 +130,19 @@ nonisolated enum VisionTextRecognizer {
             context.draw(glyph, in: CGRect(x: CGFloat(index * 48) + (48 - w) / 2, y: (64 - h) / 2, width: w, height: h))
         }
         return context.makeImage()
+    }
+
+    private static func grayscaleImage(_ image: CGImage) -> (bytes: [UInt8], width: Int, height: Int)? {
+        let factor = min(1, 1600 / Double(max(image.width, image.height)))
+        let width = max(1, Int(Double(image.width) * factor)), height = max(1, Int(Double(image.height) * factor))
+        var bytes = [UInt8](repeating: 255, count: width * height)
+        let rendered = bytes.withUnsafeMutableBytes { buffer -> Bool in
+            guard let context = CGContext(data: buffer.baseAddress, width: width, height: height, bitsPerComponent: 8, bytesPerRow: width,
+                space: CGColorSpaceCreateDeviceGray(), bitmapInfo: CGImageAlphaInfo.none.rawValue) else { return false }
+            context.draw(image, in: CGRect(x: 0, y: 0, width: width, height: height))
+            return true
+        }
+        return rendered ? (bytes, width, height) : nil
     }
 }
 
