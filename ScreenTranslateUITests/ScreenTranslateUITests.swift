@@ -77,6 +77,12 @@ final class ScreenTranslateUITests: XCTestCase {
         defer { XCUIDevice.shared.orientation = .portrait }
         for orientation in [UIDeviceOrientation.portrait, .landscapeLeft] {
             XCUIDevice.shared.orientation = orientation
+            let landscape = orientation == .landscapeLeft
+            let rotated = XCTNSPredicateExpectation(predicate: NSPredicate { _, _ in
+                let frame = app.windows.firstMatch.frame
+                return landscape ? frame.width > frame.height : frame.height > frame.width
+            }, object: nil)
+            XCTAssertEqual(XCTWaiter.wait(for: [rotated], timeout: 20), .completed, "The window must finish rotating before reviewing its layout")
             let settings = app.buttons["Settings"].firstMatch
             XCTAssertTrue(settings.waitForExistence(timeout: 20))
             settings.tap()
@@ -85,8 +91,14 @@ final class ScreenTranslateUITests: XCTestCase {
             XCTAssertTrue(source.isHittable)
             XCTAssertGreaterThanOrEqual(source.frame.minX, app.frame.minX)
             XCTAssertLessThanOrEqual(source.frame.maxX, app.frame.maxX)
-            let capture = XCTAttachment(screenshot: app.screenshot())
+            let value = app.staticTexts["Apple Vision · Free"].firstMatch
+            XCTAssertTrue(value.waitForExistence(timeout: 10))
+            XCTAssertTrue(value.isHittable)
+            XCTAssertLessThanOrEqual(value.frame.maxX, app.windows.firstMatch.frame.maxX, "Trailing controls must remain in the visible window")
+            let capture = XCTAttachment(screenshot: XCUIScreen.main.screenshot())
             capture.name = "设备横竖屏-\(orientation.rawValue)"; capture.lifetime = .keepAlways; add(capture)
+            let dimensions = XCTAttachment(string: "orientation=\(orientation.rawValue); window=\(app.windows.firstMatch.frame); app=\(app.frame); trailingValue=\(value.frame)")
+            dimensions.name = "横竖屏窗口与边界-\(orientation.rawValue)"; dimensions.lifetime = .keepAlways; add(dimensions)
         }
     }
 
