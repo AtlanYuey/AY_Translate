@@ -10,12 +10,23 @@ final class ShareViewController: UIViewController {
     private var loading: Task<Void, Never>?
     private var completed = false
 
+    override init(nibName nibNameOrNil: String?, bundle nibBundleOrNil: Bundle?) {
+        super.init(nibName: nibNameOrNil, bundle: nibBundleOrNil)
+        modalPresentationStyle = .fullScreen
+    }
+
+    required init?(coder: NSCoder) {
+        super.init(coder: coder)
+        modalPresentationStyle = .fullScreen
+    }
+
     override var prefersStatusBarHidden: Bool { true }
     override var prefersHomeIndicatorAutoHidden: Bool { true }
 
     override func viewDidLoad() {
         super.viewDidLoad()
-        modalPresentationStyle = .fullScreen
+        // Configure presentation in init, before the system presents the
+        // principal controller. viewDidLoad can run after adaptation to a sheet.
         view.backgroundColor = .black
         let settings = AppSettings.shared
         let state = AppState(settings: settings, history: .shared)
