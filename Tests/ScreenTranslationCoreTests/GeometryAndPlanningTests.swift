@@ -51,6 +51,17 @@ final class GeometryAndPlanningTests: XCTestCase {
         XCTAssertEqual(result.map(\.count).sorted(), [3, 6])
     }
 
+    func testCompleteInkColumnReplacesPartialNativeRunWithoutMergingBubbles() {
+        let complete = (0..<7).map { CGRect(x: 0.6, y: 0.8 - Double($0) * 0.025, width: 0.02, height: 0.02) }
+        let partial = Array(complete[2...5])
+        let distant = (0..<3).map { CGRect(x: 0.6, y: 0.2 - Double($0) * 0.025, width: 0.02, height: 0.02) }
+        let result = VerticalOCRGeometry.mergingColumns([partial, distant], supplemental: [complete])
+        XCTAssertEqual(result.count, 2)
+        XCTAssertTrue(result.contains(complete))
+        XCTAssertTrue(result.contains(distant))
+        XCTAssertEqual(VerticalOCRGeometry.mergingColumns([complete], supplemental: [partial]), [complete])
+    }
+
     func testVerticalSupplementDoesNotReinterpretAlignedHorizontalRows() {
         let column = (0..<4).map { CGRect(x: 0.2, y: 0.8 - Double($0) * 0.03, width: 0.02, height: 0.02) }
         let horizontal = RecognizedBlock(id: UUID(), original: "这是一段正常的横排文字", translation: "", boundingBox: CGRect(x: 0.2, y: 0.8, width: 0.24, height: 0.02), confidence: 1)

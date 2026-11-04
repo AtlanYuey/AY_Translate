@@ -2,7 +2,7 @@ import XCTest
 import UIKit
 
 final class ScreenTranslateUITests: XCTestCase {
-    override func setUpWithError() throws { continueAfterFailure = false; executionTimeAllowance = 300 }
+    override func setUpWithError() throws { continueAfterFailure = false; executionTimeAllowance = 600 }
 
     func testRealShareExtensionRecognizesTogglesAndReturnsToInvokingApp() throws {
         let app = XCUIApplication()
@@ -91,8 +91,10 @@ final class ScreenTranslateUITests: XCTestCase {
             XCTAssertTrue(source.isHittable)
             XCTAssertGreaterThanOrEqual(source.frame.minX, app.frame.minX)
             XCTAssertLessThanOrEqual(source.frame.maxX, app.frame.maxX)
-            let value = app.staticTexts["Apple Vision · Free"].firstMatch
-            XCTAssertTrue(value.waitForExistence(timeout: 10))
+            // LabeledContent exposes the combined title and value, not a
+            // separate StaticText for its trailing value, on iPadOS 26.
+            let value = app.staticTexts["OCR Engine, Apple Vision · Free"].firstMatch
+            XCTAssertTrue(value.waitForExistence(timeout: 10), app.debugDescription)
             XCTAssertTrue(value.isHittable)
             XCTAssertLessThanOrEqual(value.frame.maxX, app.windows.firstMatch.frame.maxX, "Trailing controls must remain in the visible window")
             let capture = XCTAttachment(screenshot: XCUIScreen.main.screenshot())

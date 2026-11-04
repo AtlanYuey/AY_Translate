@@ -51,6 +51,32 @@ nonisolated struct VerticalTextLayout: Sendable {
 /// Locate candidate upright vertical columns using locally detected character
 /// boxes. Stitching these glyphs into a horizontal strip preserves orientation.
 nonisolated enum VerticalOCRGeometry {
+    /// A partial native detection must not suppress a complete local column
+    /// just because most of the smaller box overlaps it. Keep the longer,
+    /// more complete run; separate bubbles at the same x remain independent.
+    static func mergingColumns(_ native: [[CGRect]], supplemental: [[CGRect]]) -> [[CGRect]] {
+        var result = native
+        for candidate in supplemental {
+            let box = candidate.reduce(CGRect.null) { $0.union($1) }
+            let matches = result.indices.filter { index in
+                let other = result[index].reduce(CGRect.null) { $0.union($1) }
+                let intersection = other.intersection(box)
+                return !intersection.isNull && abs(other.midX - box.midX) < max(other.width, box.width) * 0.6
+                    && intersection.width * intersection.height >= min(other.width * other.height, box.width * box.height) * 0.7
+            }
+            if matches.isEmpty { result.append(candidate); continue }
+            let canReplace = matches.allSatisfy { index in
+                let other = result[index].reduce(CGRect.null) { $0.union($1) }
+                return candidate.count >= result[index].count && box.height >= other.height * 1.05
+            }
+            if canReplace {
+                for index in matches.reversed() { result.remove(at: index) }
+                result.append(candidate)
+            }
+        }
+        return result
+    }
+
     static func horizontalConflicts(column: [CGRect], blocks: [RecognizedBlock], imageSize: CGSize) -> (protected: Bool, fragmentedRows: Set<UUID>) {
         var fragments = Set<UUID>()
         for block in blocks where block.flow == .horizontal {

@@ -37,10 +37,7 @@ nonisolated enum VisionTextRecognizer {
                 var columns = VerticalOCRGeometry.columns(glyphBoxes, imageSize: size)
                 if let raster = grayscaleImage(cgImage) {
                     let inkColumns = VerticalInkDetector.columns(grayscale: raster.bytes, width: raster.width, height: raster.height)
-                    for candidate in inkColumns {
-                        let box = candidate.reduce(CGRect.null) { $0.union($1) }
-                        if !columns.contains(where: { overlap($0.reduce(CGRect.null) { $0.union($1) }, box) >= 0.7 }) { columns.append(candidate) }
-                    }
+                    columns = VerticalOCRGeometry.mergingColumns(columns, supplemental: inkColumns)
                 }
                 var attempts = 0
                 for column in columns {
@@ -117,7 +114,7 @@ nonisolated enum VisionTextRecognizer {
         }
     }
 
-    private nonisolated static func stripImage(_ image: CGImage, glyphs: [CGRect]) -> CGImage? {
+    nonisolated static func stripImage(_ image: CGImage, glyphs: [CGRect]) -> CGImage? {
         guard !glyphs.isEmpty, glyphs.count <= 80,
               let context = CGContext(data: nil, width: glyphs.count * 48, height: 64, bitsPerComponent: 8, bytesPerRow: 0,
                   space: CGColorSpaceCreateDeviceRGB(), bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue) else { return nil }
@@ -132,7 +129,7 @@ nonisolated enum VisionTextRecognizer {
         return context.makeImage()
     }
 
-    private static func grayscaleImage(_ image: CGImage) -> (bytes: [UInt8], width: Int, height: Int)? {
+    static func grayscaleImage(_ image: CGImage) -> (bytes: [UInt8], width: Int, height: Int)? {
         let factor = min(1, 1600 / Double(max(image.width, image.height)))
         let width = max(1, Int(Double(image.width) * factor)), height = max(1, Int(Double(image.height) * factor))
         var bytes = [UInt8](repeating: 255, count: width * height)

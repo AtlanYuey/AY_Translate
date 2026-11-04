@@ -186,6 +186,7 @@ struct AIServiceEditor: View {
             } catch { self.error = error.localizedDescription }
         }
         .task(id: discoveryIdentity) {
+            discovering = false
             guard initialized, !key.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty || discoveryRevision > 0 else { return }
             let identity = discoveryIdentity
             do {

@@ -162,6 +162,17 @@ final class InterfaceAndServiceTests: XCTestCase {
         let blocks = try await ScreenReader.recognize(in: image, source: .automatic)
         let text = blocks.map(\.original).joined()
         let recognized = XCTAttachment(string: text); recognized.name = "真实Vision竖排识别"; recognized.lifetime = .keepAlways; add(recognized)
+        if let cgImage = image.cgImage, let raster = VisionTextRecognizer.grayscaleImage(cgImage) {
+            let columns = VerticalInkDetector.columns(grayscale: raster.bytes, width: raster.width, height: raster.height)
+            let detail = XCTAttachment(string: "inkColumns=\(columns.map(\.count)); blocks=\(blocks.map { "\($0.original): \($0.boundingBox); \($0.flow)" })")
+            detail.name = "iOS竖排列定位与识别坐标"; detail.lifetime = .keepAlways; add(detail)
+            for (index, column) in columns.enumerated() {
+                if let strip = VisionTextRecognizer.stripImage(cgImage, glyphs: column) {
+                    let capture = XCTAttachment(image: UIImage(cgImage: strip))
+                    capture.name = "iOS本地竖排列重排-\(index)"; capture.lifetime = .keepAlways; add(capture)
+                }
+            }
+        }
         XCTAssertTrue(text.contains("ケーキ"), text)
         XCTAssertTrue(text.contains("おいしい"), text)
         XCTAssertTrue(blocks.contains { $0.flow == .vertical }, text)

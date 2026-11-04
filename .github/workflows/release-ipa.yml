@@ -83,7 +83,7 @@ jobs:
     if: inputs.inspect_run_id == ''
     name: Test and build unsigned IPA
     runs-on: ${{ inputs.runner || 'macos-26-intel' }}
-    timeout-minutes: 45
+    timeout-minutes: 60
     outputs:
       version: ${{ steps.metadata.outputs.version }}
       ipa_name: ${{ steps.metadata.outputs.ipa_name }}
@@ -195,8 +195,38 @@ jobs:
             CODE_SIGNING_ALLOWED=YES CODE_SIGNING_REQUIRED=NO CODE_SIGN_IDENTITY="-" DEVELOPMENT_TEAM="" \
             2>&1 | tee "$RUNNER_TEMP/ios-test-build.log"
 
-      - name: Test iOS workflow, Vision, Keychain and system extension interface
-        timeout-minutes: 25
+      - name: Boot the selected iPhone before measuring test time
+        timeout-minutes: 15
+        env:
+          TEST_DESTINATION: ${{ steps.simulator.outputs.destination }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          UDID="${TEST_DESTINATION##*id=}"
+          xcrun simctl bootstatus "$UDID" -b
+
+      - name: Test iOS workflow, Vision and Keychain
+        timeout-minutes: 15
+        id: hosted_tests
+        env:
+          TEST_DESTINATION: ${{ steps.simulator.outputs.destination }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          xcodebuild test-without-building -project "$PROJECT" -scheme "$SCHEME" \
+            -configuration Debug -destination "$TEST_DESTINATION" \
+            -parallel-testing-enabled NO -jobs 3 \
+            -derivedDataPath "$RUNNER_TEMP/DerivedData" \
+            -resultBundlePath "$RUNNER_TEMP/HostedResults.xcresult" \
+            -only-testing:ScreenTranslateTests \
+            -test-timeouts-enabled YES -default-test-execution-time-allowance 180 \
+            -maximum-test-execution-time-allowance 300 \
+            CODE_SIGNING_ALLOWED=YES CODE_SIGNING_REQUIRED=NO CODE_SIGN_IDENTITY="-" DEVELOPMENT_TEAM="" \
+            2>&1 | tee "$RUNNER_TEMP/ios-tests.log"
+
+      - name: Test the real system Share interface and adaptive UI
+        if: ${{ !cancelled() && steps.hosted_tests.outcome != 'skipped' }}
+        timeout-minutes: 20
         env:
           TEST_DESTINATION: ${{ steps.simulator.outputs.destination }}
         shell: bash
@@ -207,10 +237,11 @@ jobs:
             -parallel-testing-enabled NO -jobs 3 \
             -derivedDataPath "$RUNNER_TEMP/DerivedData" \
             -resultBundlePath "$RUNNER_TEMP/TestResults.xcresult" \
-            -test-timeouts-enabled YES -default-test-execution-time-allowance 60 \
-            -maximum-test-execution-time-allowance 300 \
+            -only-testing:ScreenTranslateUITests \
+            -test-timeouts-enabled YES -default-test-execution-time-allowance 180 \
+            -maximum-test-execution-time-allowance 600 \
             CODE_SIGNING_ALLOWED=YES CODE_SIGNING_REQUIRED=NO CODE_SIGN_IDENTITY="-" DEVELOPMENT_TEAM="" \
-            2>&1 | tee "$RUNNER_TEMP/ios-tests.log"
+            2>&1 | tee "$RUNNER_TEMP/ios-ui-tests.log"
 
       - name: Export interface review screenshots
         if: always()
@@ -221,6 +252,12 @@ jobs:
               --path "$RUNNER_TEMP/TestResults.xcresult" \
               --output-path "$RUNNER_TEMP/interface-screenshots" \
               || echo "::warning::Screenshot export failed; attachments remain in the test result bundle."
+          fi
+          if [[ -d "$RUNNER_TEMP/HostedResults.xcresult" ]]; then
+            xcrun xcresulttool export attachments \
+              --path "$RUNNER_TEMP/HostedResults.xcresult" \
+              --output-path "$RUNNER_TEMP/hosted-screenshots" \
+              || echo "::warning::Hosted test attachments remain in their result bundle."
           fi
 
       - name: Verify Share UI completed every interaction
@@ -280,12 +317,15 @@ jobs:
           path: |
             ${{ runner.temp }}/core-tests.log
             ${{ runner.temp }}/ios-tests.log
+            ${{ runner.temp }}/ios-ui-tests.log
             ${{ runner.temp }}/ios-test-build.log
             ${{ runner.temp }}/ios-build.log
             ${{ runner.temp }}/TestResults.xcresult
+            ${{ runner.temp }}/HostedResults.xcresult
             ${{ runner.temp }}/TestBuild.xcresult
             ${{ runner.temp }}/BuildResults.xcresult
             ${{ runner.temp }}/interface-screenshots
+            ${{ runner.temp }}/hosted-screenshots
             ${{ runner.temp }}/shortcut-verification.json
             ${{ runner.temp }}/shortcut-package-verification.json
             ${{ runner.temp }}/shortcut-host-coverage.json
@@ -324,7 +364,7 @@ jobs:
     if: inputs.inspect_run_id == ''
     name: Check iPad portrait and landscape
     runs-on: ${{ inputs.runner || 'macos-26-intel' }}
-    timeout-minutes: 25
+    timeout-minutes: 35
     steps:
       - uses: actions/checkout@v4
       - name: Choose an available iPad simulator
@@ -335,6 +375,15 @@ jobs:
           xcodebuild -version
           xcrun simctl list devices available --json > "$RUNNER_TEMP/ipad-simulators.json"
           echo "destination=$(python3 .github/scripts/simulator-destination.py iPad < "$RUNNER_TEMP/ipad-simulators.json")" >> "$GITHUB_OUTPUT"
+      - name: Boot the selected iPad
+        timeout-minutes: 15
+        env:
+          TEST_DESTINATION: ${{ steps.simulator.outputs.destination }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          UDID="${TEST_DESTINATION##*id=}"
+          xcrun simctl bootstatus "$UDID" -b
       - name: Test iPad layout on a real simulator
         env:
           TEST_DESTINATION: ${{ steps.simulator.outputs.destination }}
@@ -345,7 +394,7 @@ jobs:
             -configuration Debug -destination "$TEST_DESTINATION" -parallel-testing-enabled NO -jobs 3 \
             -derivedDataPath "$RUNNER_TEMP/iPadDerivedData" -resultBundlePath "$RUNNER_TEMP/iPadResults.xcresult" \
             -only-testing:ScreenTranslateUITests/ScreenTranslateUITests/testInterfaceAdaptsToPortraitAndLandscape \
-            -test-timeouts-enabled YES -default-test-execution-time-allowance 120 -maximum-test-execution-time-allowance 300 \
+            -test-timeouts-enabled YES -default-test-execution-time-allowance 180 -maximum-test-execution-time-allowance 600 \
             CODE_SIGNING_ALLOWED=YES CODE_SIGNING_REQUIRED=NO CODE_SIGN_IDENTITY="-" DEVELOPMENT_TEAM="" \
             2>&1 | tee "$RUNNER_TEMP/ipad-tests.log"
       - name: Export iPad screenshots
