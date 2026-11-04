@@ -16,6 +16,7 @@ struct TranslationResultView: View {
     @State private var imageZoom: CGFloat = 1
     @State private var isClosing = false
     @State private var showsRecovery = false
+    @State private var settingsAfterRecovery = false
 
     private var showsImage: Bool { appState.displayedDocument != nil && (mode != .text || appState.document == nil) }
     private var usesRootDismissGesture: Bool { !showsImage && mode != .text && imageZoom <= 1.01 }
@@ -63,7 +64,10 @@ struct TranslationResultView: View {
                 }
             }
         }
-        .sheet(isPresented: $showsRecovery) {
+        .sheet(isPresented: $showsRecovery, onDismiss: {
+            if settingsAfterRecovery && !isClosing { showsSettings = true }
+            settingsAfterRecovery = false
+        }) {
             if case .failed(let message) = appState.phase {
                 failureView(message).presentationDetents([.medium, .large])
             }
@@ -211,7 +215,10 @@ struct TranslationResultView: View {
                 if appState.document != nil {
                     Button("Read Recognized Text") { showsRecovery = false; mode = .text; appState.viewRecognizedText() }
                 }
-                Button("Configure Engines") { showsSettings = true }
+                Button("Configure Engines") {
+                    if showsRecovery { settingsAfterRecovery = true; showsRecovery = false }
+                    else { showsSettings = true }
+                }
             }.padding(30).padding(.vertical, 70)
         }.background(Color(uiColor: .systemBackground))
     }
