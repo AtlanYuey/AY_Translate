@@ -33,6 +33,7 @@
          <TestableReference skipped="NO" parallelizable="NO">
             <BuildableReference BuildableIdentifier="primary" BlueprintIdentifier="A10000000000000000000003" BuildableName="ScreenTranslateTests.xctest" BlueprintName="ScreenTranslateTests" ReferencedContainer="container:ScreenTranslate.xcodeproj"/>
          </TestableReference>
+      <TestableReference skipped="NO" parallelizable="NO"><BuildableReference BuildableIdentifier="primary" BlueprintIdentifier="C30000000000000000000007" BuildableName="ScreenTranslateUITests.xctest" BlueprintName="ScreenTranslateUITests" ReferencedContainer="container:ScreenTranslate.xcodeproj"/></TestableReference>
       </Testables>
    </TestAction>
    <LaunchAction

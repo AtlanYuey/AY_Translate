@@ -29,6 +29,7 @@ B20000000000000000000004 = {isa = PBXContainerItemProxy; containerPortal = 1D480
 		1D480246301A3A6C004AB49D /* ScreenTranslate.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = ScreenTranslate.app; sourceTree = BUILT_PRODUCTS_DIR; };
         A10000000000000000000001 /* ScreenTranslateTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; path = ScreenTranslateTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 B20000000000000000000002 = {isa = PBXFileReference; explicitFileType = "wrapper.app-extension"; path = ScreenTranslateShare.appex; sourceTree = BUILT_PRODUCTS_DIR;};
+C30000000000000000000001 = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; path = ScreenTranslateUITests.xctest; sourceTree = BUILT_PRODUCTS_DIR;};
 /* End PBXFileReference section */
 
 /* Begin PBXFileSystemSynchronizedRootGroup section */
@@ -40,6 +41,7 @@ B20000000000000000000002 = {isa = PBXFileReference; explicitFileType = "wrapper.
 		};
         A10000000000000000000002 /* ScreenTranslateTests */ = {isa = PBXFileSystemSynchronizedRootGroup; path = ScreenTranslateTests; sourceTree = "<group>"; };
 B2000000000000000000000A = {isa = PBXFileSystemSynchronizedRootGroup; exceptions = (B20000000000000000000009); path = ScreenTranslateShare; sourceTree = "<group>";};
+C30000000000000000000002 = {isa = PBXFileSystemSynchronizedRootGroup; path = ScreenTranslateUITests; sourceTree = "<group>";};
 /* End PBXFileSystemSynchronizedRootGroup section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -52,12 +54,14 @@ B2000000000000000000000A = {isa = PBXFileSystemSynchronizedRootGroup; exceptions
 		};
         A10000000000000000000005 = {isa = PBXFrameworksBuildPhase; buildActionMask = 2147483647; files = (); runOnlyForDeploymentPostprocessing = 0; };
 B2000000000000000000000C = {isa = PBXFrameworksBuildPhase; buildActionMask = 2147483647; files = (); runOnlyForDeploymentPostprocessing = 0;};
+C30000000000000000000004 = {isa = PBXFrameworksBuildPhase; buildActionMask = 2147483647; files = (); runOnlyForDeploymentPostprocessing = 0;};
 /* End PBXFrameworksBuildPhase section */
 
 /* Begin PBXGroup section */
 		1D48023D301A3A6C004AB49D = {
 			isa = PBXGroup;
 			children = (
+                C30000000000000000000002,
 				1D480248301A3A6C004AB49D /* ScreenTranslate */,
                 B2000000000000000000000A /* ScreenTranslateShare */,
                 A10000000000000000000002 /* ScreenTranslateTests */,
@@ -114,6 +118,7 @@ B2000000000000000000000C = {isa = PBXFrameworksBuildPhase; buildActionMask = 214
             productType = "com.apple.product-type.bundle.unit-test";
         };
 B20000000000000000000005 = {isa = PBXNativeTarget; buildConfigurationList = B2000000000000000000000E; buildPhases = (B2000000000000000000000B, B2000000000000000000000C, B2000000000000000000000D); buildRules = (); dependencies = (); fileSystemSynchronizedGroups = (1D480248301A3A6C004AB49D, B2000000000000000000000A); name = ScreenTranslateShare; productName = ScreenTranslateShare; productReference = B20000000000000000000002; productType = "com.apple.product-type.app-extension";};
+C30000000000000000000007 = {isa = PBXNativeTarget; buildConfigurationList = C30000000000000000000008; buildPhases = (C30000000000000000000003,C30000000000000000000004,C30000000000000000000005); dependencies = (C30000000000000000000006); fileSystemSynchronizedGroups = (C30000000000000000000002); name = ScreenTranslateUITests; productName = ScreenTranslateUITests; productReference = C30000000000000000000001; productType = "com.apple.product-type.bundle.ui-testing";};
 /* End PBXNativeTarget section */
 
 /* Begin PBXProject section */
@@ -124,6 +129,7 @@ B20000000000000000000005 = {isa = PBXNativeTarget; buildConfigurationList = B200
 				LastSwiftUpdateCheck = 2660;
 				LastUpgradeCheck = 2660;
 				TargetAttributes = {
+                    C30000000000000000000007 = {CreatedOnToolsVersion = 26.6; TestTargetID = 1D480245301A3A6C004AB49D; };
                     A10000000000000000000003 = {CreatedOnToolsVersion = 26.6; TestTargetID = 1D480245301A3A6C004AB49D; };
 					1D480245301A3A6C004AB49D = {
 						CreatedOnToolsVersion = 26.6;
@@ -137,6 +143,7 @@ B20000000000000000000005 = {isa = PBXNativeTarget; buildConfigurationList = B200
 				en,
 				"zh-Hans",
 				"zh-Hant",
+                es, ja, ko, fr, de, it, pt, ru, ar,
 				Base,
 			);
 			mainGroup = 1D48023D301A3A6C004AB49D;
@@ -146,6 +153,7 @@ B20000000000000000000005 = {isa = PBXNativeTarget; buildConfigurationList = B200
 			projectDirPath = "";
 			projectRoot = "";
 			targets = (
+                C30000000000000000000007,
                 B20000000000000000000005,
 				1D480245301A3A6C004AB49D /* ScreenTranslate */,
                 A10000000000000000000003 /* ScreenTranslateTests */,
@@ -163,6 +171,7 @@ B20000000000000000000005 = {isa = PBXNativeTarget; buildConfigurationList = B200
 		};
         A10000000000000000000006 = {isa = PBXResourcesBuildPhase; buildActionMask = 2147483647; files = (); runOnlyForDeploymentPostprocessing = 0; };
 B2000000000000000000000D = {isa = PBXResourcesBuildPhase; buildActionMask = 2147483647; files = (); runOnlyForDeploymentPostprocessing = 0;};
+C30000000000000000000005 = {isa = PBXResourcesBuildPhase; buildActionMask = 2147483647; files = (); runOnlyForDeploymentPostprocessing = 0;};
 /* End PBXResourcesBuildPhase section */
 
 /* Begin PBXSourcesBuildPhase section */
@@ -175,11 +184,13 @@ B2000000000000000000000D = {isa = PBXResourcesBuildPhase; buildActionMask = 2147
 		};
         A10000000000000000000004 = {isa = PBXSourcesBuildPhase; buildActionMask = 2147483647; files = (); runOnlyForDeploymentPostprocessing = 0; };
 B2000000000000000000000B = {isa = PBXSourcesBuildPhase; buildActionMask = 2147483647; files = (); runOnlyForDeploymentPostprocessing = 0;};
+C30000000000000000000003 = {isa = PBXSourcesBuildPhase; buildActionMask = 2147483647; files = (); runOnlyForDeploymentPostprocessing = 0;};
 /* End PBXSourcesBuildPhase section */
 
 /* Begin PBXTargetDependency section */
         A1000000000000000000000A = {isa = PBXTargetDependency; target = 1D480245301A3A6C004AB49D; targetProxy = A1000000000000000000000B; };
 B20000000000000000000006 = {isa = PBXTargetDependency; target = B20000000000000000000005; targetProxy = B20000000000000000000004;};
+C30000000000000000000006 = {isa = PBXTargetDependency; target = 1D480245301A3A6C004AB49D; targetProxy = A1000000000000000000000B;};
 /* End PBXTargetDependency section */
 
 /* Begin XCBuildConfiguration section */
@@ -416,6 +427,8 @@ B20000000000000000000006 = {isa = PBXTargetDependency; target = B200000000000000
         };
 B2000000000000000000000F = {isa = XCBuildConfiguration; buildSettings = {APPLICATION_EXTENSION_API_ONLY = YES; CODE_SIGN_STYLE = Automatic; CODE_SIGN_ENTITLEMENTS = ScreenTranslateShare/ScreenTranslateShare.entitlements; CURRENT_PROJECT_VERSION = 3; GENERATE_INFOPLIST_FILE = YES; INFOPLIST_FILE = ScreenTranslateShare/Info.plist; IPHONEOS_DEPLOYMENT_TARGET = 26.5; LD_RUNPATH_SEARCH_PATHS = ("$(inherited)", "@executable_path/Frameworks", "@executable_path/../../Frameworks"); MARKETING_VERSION = 1.2; PRODUCT_BUNDLE_IDENTIFIER = com.bahaanajjar.ScreenTranslate.ShareExtension; PRODUCT_NAME = "$(TARGET_NAME)"; SKIP_INSTALL = YES; SWIFT_ACTIVE_COMPILATION_CONDITIONS = "$(inherited) SCREEN_TRANSLATE_SHARE_EXTENSION"; SWIFT_DEFAULT_ACTOR_ISOLATION = MainActor; SWIFT_APPROACHABLE_CONCURRENCY = YES; SWIFT_VERSION = 5.0; SWIFT_EMIT_LOC_STRINGS = YES; TARGETED_DEVICE_FAMILY = "1,2"; }; name = Debug; };
 B20000000000000000000010 = {isa = XCBuildConfiguration; buildSettings = {APPLICATION_EXTENSION_API_ONLY = YES; CODE_SIGN_STYLE = Automatic; CODE_SIGN_ENTITLEMENTS = ScreenTranslateShare/ScreenTranslateShare.entitlements; CURRENT_PROJECT_VERSION = 3; GENERATE_INFOPLIST_FILE = YES; INFOPLIST_FILE = ScreenTranslateShare/Info.plist; IPHONEOS_DEPLOYMENT_TARGET = 26.5; LD_RUNPATH_SEARCH_PATHS = ("$(inherited)", "@executable_path/Frameworks", "@executable_path/../../Frameworks"); MARKETING_VERSION = 1.2; PRODUCT_BUNDLE_IDENTIFIER = com.bahaanajjar.ScreenTranslate.ShareExtension; PRODUCT_NAME = "$(TARGET_NAME)"; SKIP_INSTALL = YES; SWIFT_ACTIVE_COMPILATION_CONDITIONS = "$(inherited) SCREEN_TRANSLATE_SHARE_EXTENSION"; SWIFT_DEFAULT_ACTOR_ISOLATION = MainActor; SWIFT_APPROACHABLE_CONCURRENCY = YES; SWIFT_VERSION = 5.0; SWIFT_EMIT_LOC_STRINGS = YES; TARGETED_DEVICE_FAMILY = "1,2"; }; name = Release; };
+C30000000000000000000009 = {isa = XCBuildConfiguration; buildSettings = {CODE_SIGN_STYLE = Automatic; GENERATE_INFOPLIST_FILE = YES; CURRENT_PROJECT_VERSION = 3; MARKETING_VERSION = 1.2; PRODUCT_BUNDLE_IDENTIFIER = com.bahaanajjar.ScreenTranslateUITests; PRODUCT_NAME = "$(TARGET_NAME)"; SWIFT_VERSION = 5.0; TEST_TARGET_NAME = ScreenTranslate; TARGETED_DEVICE_FAMILY = "1,2"; }; name = Debug; };
+C3000000000000000000000A = {isa = XCBuildConfiguration; buildSettings = {CODE_SIGN_STYLE = Automatic; GENERATE_INFOPLIST_FILE = YES; CURRENT_PROJECT_VERSION = 3; MARKETING_VERSION = 1.2; PRODUCT_BUNDLE_IDENTIFIER = com.bahaanajjar.ScreenTranslateUITests; PRODUCT_NAME = "$(TARGET_NAME)"; SWIFT_VERSION = 5.0; TEST_TARGET_NAME = ScreenTranslate; TARGETED_DEVICE_FAMILY = "1,2"; }; name = Release; };
 /* End XCBuildConfiguration section */
 
 /* Begin XCConfigurationList section */
@@ -439,6 +452,7 @@ B20000000000000000000010 = {isa = XCBuildConfiguration; buildSettings = {APPLICA
 		};
         A10000000000000000000007 = {isa = XCConfigurationList; buildConfigurations = (A10000000000000000000008, A10000000000000000000009); defaultConfigurationIsVisible = 0; defaultConfigurationName = Release; };
 B2000000000000000000000E = {isa = XCConfigurationList; buildConfigurations = (B2000000000000000000000F, B20000000000000000000010); defaultConfigurationIsVisible = 0; defaultConfigurationName = Release;};
+C30000000000000000000008 = {isa = XCConfigurationList; buildConfigurations = (C30000000000000000000009,C3000000000000000000000A); defaultConfigurationIsVisible = 0; defaultConfigurationName = Release;};
 /* End XCConfigurationList section */
 	};
 	rootObject = 1D48023E301A3A6C004AB49D /* Project object */;

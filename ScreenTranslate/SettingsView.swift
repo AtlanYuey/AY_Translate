@@ -23,7 +23,7 @@ struct SettingsView: View {
                     LabeledContent("OCR Engine", value: engineName(.ocr))
                 }
                 Picker("Source Language", selection: $settings.source) {
-                    ForEach(AppLanguage.sourceLanguages) { Text(LocalizedStringKey($0.name)).tag($0) }
+                    ForEach(AppLanguage.sourceLanguages) { Text($0 == .automatic ? settings.text($0.name) : $0.nativeName).tag($0) }
                 }
             } header: { Text("OCR") } footer: {
                 Text("Apple Vision uses accurate recognition, language correction and automatic detection. AI OCR sends a screenshot only with permission; uncertain positions appear in Full Text.")
@@ -33,7 +33,7 @@ struct SettingsView: View {
                     LabeledContent("Translation Engine", value: engineName(.translation))
                 }
                 Picker("Target Language", selection: $settings.target) {
-                    ForEach(AppLanguage.targetLanguages) { Text(LocalizedStringKey($0.name)).tag($0) }
+                    ForEach(AppLanguage.targetLanguages) { Text(verbatim: $0.nativeName).tag($0) }
                 }
                 Picker("Priority", selection: $settings.preference) {
                     ForEach(TranslationPreference.allCases) { Text(LocalizedStringKey($0.name)).tag($0) }
@@ -61,12 +61,13 @@ struct SettingsView: View {
             #if !SCREEN_TRANSLATE_SHARE_EXTENSION
             Section("Quick Actions") {
                 Button { showsShortcutSetup = true } label: { Label("Action Button & Shortcuts", systemImage: "button.programmable") }
-                Text("Lightweight shortcut results stay above your current app. Dismiss the system preview to return; open the app for pinch, pan and detailed reading.")
+                Text("The screenshot shortcut opens the full-screen translator above your current app. Close or swipe up to continue where you were.")
                     .font(.footnote).foregroundStyle(.secondary)
             }
             #endif
             Section {
                 Toggle("Save Translation History", isOn: $settings.savesHistory)
+                    .accessibilityIdentifier("settings.history")
                     .onChange(of: settings.savesHistory) { _, enabled in if !enabled { history.clear() } }
                 if !history.items.isEmpty { Button("Clear Saved History", role: .destructive) { history.clear() } }
                 Button("Revoke Cloud Sharing Permission") { settings.revokeCloudConsent(); permissionsCleared = true }
@@ -160,7 +161,7 @@ private struct AboutView: View {
                 Text("Translate Screen").font(.title2.bold())
                 Text("See it. Press. Understand.")
                     .foregroundStyle(.secondary)
-                Text("Version \(Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "1.1")")
+                Text("Version \(Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "1.2")")
                     .font(.caption)
                     .foregroundStyle(.tertiary)
                 Spacer()

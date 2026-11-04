@@ -69,6 +69,13 @@ jobs:
           Path(os.environ["RUNNER_TEMP"], "ShortcutProbe.shortcut").write_bytes(plistlib.dumps(workflow))
           PYTHON
           shortcuts sign --mode anyone --input "$RUNNER_TEMP/ShortcutProbe.shortcut" --output "$RUNNER_TEMP/ShortcutProbe-signed.shortcut" 2>&1 | tee "$RUNNER_TEMP/shortcut-sign.log"
+          python3 - <<'PYTHON'
+          import os
+          from pathlib import Path
+          file = Path(os.environ["RUNNER_TEMP"], "ShortcutProbe-signed.shortcut")
+          if not file.exists() or file.read_bytes()[:4] != b'AEA1':
+              raise SystemExit('Signing requires an iCloud-authenticated Mac. No signed Shortcut was produced.')
+          PYTHON
 
       - name: Resolve version and artifact name
         id: metadata
@@ -147,6 +154,11 @@ jobs:
             CODE_SIGNING_ALLOWED=YES CODE_SIGNING_REQUIRED=NO CODE_SIGN_IDENTITY="-" DEVELOPMENT_TEAM="" \
             2>&1 | tee "$RUNNER_TEMP/ios-test-build.log"
 
+      - name: Inspect shared-action platform metadata
+        continue-on-error: true
+        shell: bash
+        run: python3 .github/scripts/inspect-shortcut-actions.py > "$RUNNER_TEMP/shortcut-actions.json"
+
       - name: Test iOS workflow, Vision, Keychain and Chinese interface
         timeout-minutes: 15
         env:
@@ -208,6 +220,8 @@ jobs:
             ${{ runner.temp }}/interface-screenshots
             ${{ runner.temp }}/shortcut-sign.log
             ${{ runner.temp }}/ShortcutProbe-signed.shortcut
+            ${{ runner.temp }}/shortcut-actions.json
+            Shortcuts/TranslateScreen.unsigned.plist
           if-no-files-found: warn
           retention-days: 14
 

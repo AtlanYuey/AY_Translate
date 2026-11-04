@@ -5,8 +5,13 @@ import Foundation
 @MainActor
 enum SharedAppContainer {
     static var hostIdentifier: String {
-        Bundle.main.object(forInfoDictionaryKey: "ContainingAppBundleIdentifier") as? String
-            ?? (Bundle.main.bundleIdentifier ?? "com.bahaanajjar.ScreenTranslate").replacingOccurrences(of: ".ShareExtension", with: "")
+        if Bundle.main.bundleURL.pathExtension == "appex" {
+            let app = Bundle.main.bundleURL.deletingLastPathComponent().deletingLastPathComponent()
+            return Bundle(url: app)?.bundleIdentifier
+                ?? Bundle.main.object(forInfoDictionaryKey: "ContainingAppBundleIdentifier") as? String
+                ?? "com.bahaanajjar.ScreenTranslate"
+        }
+        return Bundle.main.bundleIdentifier ?? "com.bahaanajjar.ScreenTranslate"
     }
     static var groupIdentifier: String {
         Bundle.main.object(forInfoDictionaryKey: "SharedAppGroup") as? String ?? "group." + hostIdentifier
@@ -14,11 +19,13 @@ enum SharedAppContainer {
     static var url: URL? { FileManager.default.containerURL(forSecurityApplicationGroupIdentifier: groupIdentifier) }
     static var preferences: UserDefaults {
         guard url != nil, let shared = UserDefaults(suiteName: groupIdentifier) else { return .standard }
-        if Bundle.main.bundleURL.pathExtension != "appex", !shared.bool(forKey: "shared.preferences.migrated") {
-            for (key, value) in UserDefaults.standard.dictionaryRepresentation() where isPreferenceKey(key) {
-                if shared.object(forKey: key) == nil { shared.set(value, forKey: key) }
+        if Bundle.main.bundleURL.pathExtension != "appex" {
+            if !shared.bool(forKey: "shared.preferences.migrated") {
+                for (key, value) in UserDefaults.standard.dictionaryRepresentation() where isPreferenceKey(key) {
+                    if shared.object(forKey: key) == nil { shared.set(value, forKey: key) }
+                }
+                shared.set(true, forKey: "shared.preferences.migrated")
             }
-            shared.set(true, forKey: "shared.preferences.migrated")
             migrateHistory()
         }
         return shared

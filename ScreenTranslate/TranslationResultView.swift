@@ -26,6 +26,8 @@ struct TranslationResultView: View {
                     .padding(.trailing, 18)
                     .padding(.bottom, max(geometry.safeAreaInsets.bottom, 12) + 12)
             }
+            .accessibilityElement(children: .contain)
+            .accessibilityIdentifier("result.canvas")
             .simultaneousGesture(DragGesture(minimumDistance: 45).onEnded { value in
                 if appState.phase == .ready, mode != .text, imageZoom <= 1.01,
                    value.startLocation.y > geometry.size.height - 110,

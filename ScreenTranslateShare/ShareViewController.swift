@@ -30,7 +30,6 @@ final class ShareViewController: UIViewController {
         let items = extensionContext?.inputItems.compactMap { $0 as? NSExtensionItem } ?? []
         loading = Task { [weak self, weak state] in
             do {
-                guard SharedAppContainer.url != nil else { throw SharedImageError.unavailable }
                 let image = try await SharedImageLoader.load(from: items)
                 try Task.checkCancellation()
                 state?.process(image)

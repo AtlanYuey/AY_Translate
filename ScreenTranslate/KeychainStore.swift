@@ -46,11 +46,9 @@ struct KeychainStore: APIKeyStoring {
     }
 
     private func query(_ profile: APIKeySlot) -> [String: Any] {
-        var query: [String: Any] = [kSecClass as String: kSecClassGenericPassword, kSecAttrService as String: service, kSecAttrAccount as String: profile.account, kSecAttrSynchronizable as String: false]
-        #if !targetEnvironment(simulator)
-        if let group = Bundle.main.object(forInfoDictionaryKey: "SharedKeychainGroup") as? String, !group.isEmpty { query[kSecAttrAccessGroup as String] = group }
-        #endif
-        return query
+        // Both targets declare the containing app's group as their default.
+        // Let iOS resolve the actual signing-team prefix after re-signing an IPA.
+        return [kSecClass as String: kSecClassGenericPassword, kSecAttrService as String: service, kSecAttrAccount as String: profile.account, kSecAttrSynchronizable as String: false]
     }
 }
 

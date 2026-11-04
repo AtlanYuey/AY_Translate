@@ -205,6 +205,7 @@ private struct HomeView: View {
 }
 
 private struct LanguageRow: View {
+    @EnvironmentObject private var settings: AppSettings
     let title: String
     @Binding var selection: AppLanguage
     let options: [AppLanguage]
@@ -216,13 +217,13 @@ private struct LanguageRow: View {
                 .frame(width: 26)
             VStack(alignment: .leading, spacing: 3) {
                 Text(LocalizedStringKey(title)).font(.caption).foregroundStyle(.secondary)
-                Text(LocalizedStringKey(selection.name)).font(.body.weight(.medium))
+                Text(selection == .automatic ? settings.text(selection.name) : selection.nativeName).font(.body.weight(.medium))
             }
             Spacer()
             Menu {
                 Picker(title, selection: $selection) {
                     ForEach(options) { language in
-                        Text(LocalizedStringKey(language.name)).tag(language)
+                        Text(language == .automatic ? settings.text(language.name) : language.nativeName).tag(language)
                     }
                 }
             } label: {

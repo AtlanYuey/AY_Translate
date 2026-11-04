@@ -3,6 +3,7 @@ import Foundation
 import SwiftUI
 import Translation
 import UIKit
+import NaturalLanguage
 
 @MainActor
 final class AppState: ObservableObject {
@@ -190,7 +191,17 @@ final class AppState: ObservableObject {
             finish(processID)
         } catch {
             guard isActive(processID) else { return }
-            phase = .failed(AppLocalization.formatted("Translation couldn’t be completed: %@", settings.text(error.localizedDescription), language: settings.interfaceLanguage))
+            let detected = NLLanguageRecognizer.dominantLanguage(for: current.originalText)
+            let source = current.source.localeLanguage ?? detected.map { Locale.Language(identifier: $0.rawValue) }
+            if let source, let target = current.target.localeLanguage,
+               source.minimalIdentifier != target.minimalIdentifier,
+               await LanguageAvailability().status(from: source, to: target) == .unsupported {
+                guard isActive(processID) else { return }
+                phase = .failed("Apple Translation does not support this language pair. Choose an AI translation service in More, or change the source and target languages.")
+            } else {
+                guard isActive(processID) else { return }
+                phase = .failed(AppLocalization.formatted("Translation couldn’t be completed: %@", settings.text(error.localizedDescription), language: settings.interfaceLanguage))
+            }
         }
     }
 

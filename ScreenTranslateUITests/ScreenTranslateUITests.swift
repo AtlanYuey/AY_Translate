@@ -1,0 +1,62 @@
+import XCTest
+
+final class ScreenTranslateUITests: XCTestCase {
+    override func setUpWithError() throws { continueAfterFailure = false; executionTimeAllowance = 120 }
+
+    func testRealActionExtensionFillsScreenAndReturnsToInvokingApp() throws {
+        let app = XCUIApplication()
+        app.launchArguments = ["--ui-test-reset", "--ui-test-share", "-AppleLanguages", "(en)", "-AppleLocale", "en_US"]
+        app.launch()
+        let source = app.buttons["share.test.present"]
+        XCTAssertTrue(source.waitForExistence(timeout: 20))
+        openExtension(app, source: source)
+        let original = app.buttons["result.original"]
+        XCTAssertTrue(original.waitForExistence(timeout: 60))
+        let canvas = app.otherElements["result.canvas"]
+        XCTAssertTrue(canvas.waitForExistence(timeout: 10))
+        XCTAssertGreaterThanOrEqual(canvas.frame.height, app.frame.height * 0.97)
+        XCTAssertGreaterThanOrEqual(canvas.frame.width, app.frame.width * 0.97)
+        XCTAssertFalse(source.isHittable)
+        original.tap()
+        XCTAssertEqual(original.label, "Show Translation")
+        let attachment = XCTAttachment(screenshot: app.screenshot())
+        attachment.name = "真实系统扩展-全屏覆盖来源界面"; attachment.lifetime = .keepAlways; add(attachment)
+        app.coordinate(withNormalizedOffset: CGVector(dx: 0.12, dy: 0.94))
+            .press(forDuration: 0.05, thenDragTo: app.coordinate(withNormalizedOffset: CGVector(dx: 0.12, dy: 0.60)))
+        XCTAssertTrue(waitUntilHittable(source), "Swipe-up must complete the extension and reveal its invoking app")
+        openExtension(app, source: source)
+        let close = app.buttons["result.close"]
+        XCTAssertTrue(close.waitForExistence(timeout: 45)); close.tap()
+        XCTAssertTrue(waitUntilHittable(source))
+    }
+
+    func testHistoryTabOnlyExistsWhenHistorySavingIsEnabled() throws {
+        let app = XCUIApplication()
+        app.launchArguments = ["--ui-test-reset", "-AppleLanguages", "(en)", "-AppleLocale", "en_US"]
+        app.launch()
+        XCTAssertTrue(app.tabBars.buttons["Settings"].waitForExistence(timeout: 20))
+        XCTAssertFalse(app.tabBars.buttons["History"].exists)
+        app.tabBars.buttons["Settings"].tap()
+        let toggle = app.switches["settings.history"]
+        for _ in 0..<8 where !toggle.isHittable { app.swipeUp() }
+        XCTAssertTrue(toggle.isHittable); toggle.tap()
+        XCTAssertTrue(app.tabBars.buttons["History"].waitForExistence(timeout: 10))
+        toggle.tap()
+        XCTAssertFalse(app.tabBars.buttons["History"].exists)
+    }
+
+    private func openExtension(_ app: XCUIApplication, source: XCUIElement) {
+        source.tap()
+        let button = app.buttons["Translate Screen"].firstMatch
+        for _ in 0..<5 {
+            if button.waitForExistence(timeout: 2), button.isHittable { break }
+            app.swipeUp()
+        }
+        XCTAssertTrue(button.isHittable, app.debugDescription)
+        button.tap()
+    }
+
+    private func waitUntilHittable(_ element: XCUIElement) -> Bool {
+        XCTWaiter.wait(for: [XCTNSPredicateExpectation(predicate: NSPredicate(format: "isHittable == true"), object: element)], timeout: 20) == .completed
+    }
+}

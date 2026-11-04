@@ -2,7 +2,7 @@ import Foundation
 import UniformTypeIdentifiers
 import UIKit
 
-enum SharedImageError: LocalizedError {
+enum SharedImageError: LocalizedError, Equatable {
     case noImage, tooLarge, unavailable
     var errorDescription: String? {
         switch self {

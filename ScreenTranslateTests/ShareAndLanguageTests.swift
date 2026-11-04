@@ -1,0 +1,73 @@
+import XCTest
+import UIKit
+import UniformTypeIdentifiers
+@testable import ScreenTranslate
+
+@MainActor
+final class ShareAndLanguageTests: XCTestCase {
+    func testLanguageChoicesUseTheirOwnNamesAndFollowSystemByDefault() {
+        let suite = "ShareLanguages." + UUID().uuidString
+        let defaults = UserDefaults(suiteName: suite)!
+        defer { defaults.removePersistentDomain(forName: suite) }
+        XCTAssertEqual(AppSettings(defaults: defaults).interfaceLanguage, .system)
+        XCTAssertEqual(InterfaceLanguage.spanish.name, "Español")
+        XCTAssertEqual(InterfaceLanguage.japanese.name, "日本語")
+        XCTAssertEqual(InterfaceLanguage.korean.name, "한국어")
+        XCTAssertEqual(InterfaceLanguage.english.name, "English")
+        XCTAssertEqual(InterfaceLanguage.arabic.name, "العربية")
+    }
+
+    func testAllLanguageChoicesContainBundledInterfaceResources() throws {
+        for language in InterfaceLanguage.allCases where language != .system {
+            XCTAssertNotNil(Bundle.main.path(forResource: language.rawValue, ofType: "lproj"), language.rawValue)
+            let title = AppLocalization.text("Settings", language: language)
+            XCTAssertFalse(title.isEmpty)
+            if language != .english { XCTAssertNotEqual(title, "Settings", language.rawValue) }
+        }
+    }
+
+    func testRealImageItemProviderLoadsSharedScreenshot() async throws {
+        let image = UIGraphicsImageRenderer(size: CGSize(width: 40, height: 80)).image { context in
+            UIColor.white.setFill(); context.fill(CGRect(x: 0, y: 0, width: 40, height: 80))
+        }
+        let provider = NSItemProvider(item: try XCTUnwrap(image.pngData()) as NSData, typeIdentifier: UTType.png.identifier)
+        let item = NSExtensionItem(); item.attachments = [provider]
+        let loaded = try await SharedImageLoader.load(from: [item])
+        XCTAssertEqual(loaded.size, image.size)
+    }
+
+    func testMissingImageAndInvalidDataFailWithoutLaunchingTranslator() async {
+        do { _ = try await SharedImageLoader.load(from: []); XCTFail("Expected no-image error") }
+        catch { XCTAssertEqual(error as? SharedImageError, .noImage) }
+        let item = NSExtensionItem()
+        item.attachments = [NSItemProvider(item: Data("invalid".utf8) as NSData, typeIdentifier: UTType.png.identifier)]
+        do { _ = try await SharedImageLoader.load(from: [item]); XCTFail("Expected invalid-image error") }
+        catch { XCTAssertEqual(error as? SharedImageError, .noImage) }
+    }
+
+    func testIPAEmbedsAFullScreenActionExtensionWithSharedIdentifiers() throws {
+        let path = Bundle.main.bundleURL.appendingPathComponent("PlugIns/ScreenTranslateShare.appex/Info.plist")
+        let plist = try XCTUnwrap(PropertyListSerialization.propertyList(from: Data(contentsOf: path), format: nil) as? [String: Any])
+        let settings = try XCTUnwrap(plist["NSExtension"] as? [String: Any])
+        XCTAssertEqual(settings["NSExtensionPointIdentifier"] as? String, "com.apple.ui-services")
+        XCTAssertEqual(settings["NSExtensionActionWantsFullScreenPresentation"] as? Bool, true)
+        XCTAssertEqual(plist["SharedAppGroup"] as? String, Bundle.main.object(forInfoDictionaryKey: "SharedAppGroup") as? String)
+        XCTAssertEqual(plist["SharedKeychainGroup"] as? String, Bundle.main.object(forInfoDictionaryKey: "SharedKeychainGroup") as? String)
+        XCTAssertEqual(plist["CFBundleShortVersionString"] as? String, Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String)
+    }
+
+    func testPreferenceMigrationDoesNotCopyUnrelatedSystemData() {
+        XCTAssertTrue(SharedAppContainer.isPreferenceKey("ai.services.v1"))
+        XCTAssertTrue(SharedAppContainer.isPreferenceKey("cloudConsent.translation.example"))
+        XCTAssertTrue(SharedAppContainer.isPreferenceKey("interfaceLanguage"))
+        XCTAssertFalse(SharedAppContainer.isPreferenceKey("AppleLanguages"))
+        XCTAssertFalse(SharedAppContainer.isPreferenceKey("unrelated.private.data"))
+    }
+
+    func testApplicationContainsAnActualIcon() throws {
+        let icons = try XCTUnwrap(Bundle.main.object(forInfoDictionaryKey: "CFBundleIcons") as? [String: Any])
+        let primary = try XCTUnwrap(icons["CFBundlePrimaryIcon"] as? [String: Any])
+        XCTAssertEqual(primary["CFBundleIconName"] as? String, "AppIcon")
+        XCTAssertFalse((primary["CFBundleIconFiles"] as? [String] ?? []).isEmpty)
+    }
+}

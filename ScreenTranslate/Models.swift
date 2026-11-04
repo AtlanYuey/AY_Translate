@@ -41,7 +41,7 @@ enum AppLanguage: String, CaseIterable, Identifiable, Codable {
         case .automatic: "Recommended"
         case .english: "English"
         case .arabic: "العربية"
-        case .chinese: "中文"
+        case .chinese: "简体中文"
         case .japanese: "日本語"
         case .korean: "한국어"
         case .spanish: "Español"
