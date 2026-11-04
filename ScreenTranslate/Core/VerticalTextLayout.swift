@@ -1,4 +1,7 @@
 import Foundation
+#if canImport(CoreGraphics)
+import CoreGraphics
+#endif
 
 nonisolated struct VerticalGlyph: Equatable, Sendable {
     let text: String
