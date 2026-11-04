@@ -40,6 +40,29 @@ final class InterfaceAndServiceTests: XCTestCase {
         ProcessingServices(vision: { _, _ in regions }, aiOCR: { _, _, _, _ in XCTFail("Unexpected cloud OCR"); throw AIServiceError.transport }, aiTranslation: { _, _, _, _, _, _ in XCTFail("Unexpected cloud translation"); throw AIServiceError.transport })
     }
 
+    func testCloudSyncWaitsForRemoteBeforeSeedingDefaultsAndKeepsLocalChanges() throws {
+        defaults.set("en", forKey: "defaultTargetLanguage")
+        let cloud = MemoryCloudSettings()
+        var imported: [String: Any] = [:]
+        let sync = CloudSettingsSync(defaults: defaults, store: cloud, apply: { changes in
+            imported.merge(changes) { _, new in new }; return true
+        }, status: { _ in })
+        sync.start()
+        defer { sync.stop() }
+        XCTAssertTrue(cloud.values.isEmpty, "An empty local iCloud cache may still be downloading; do not upload defaults")
+        let remote = try CloudSettingsRecord(value: "ja", timestamp: 100, device: "other")
+        cloud.set(try JSONEncoder().encode(remote), forKey: "ay.settings.v1.defaultTargetLanguage")
+        sync.merge()
+        XCTAssertEqual(imported["defaultTargetLanguage"] as? String, "ja")
+        sync.changed("es", key: "defaultTargetLanguage")
+        let sent = try JSONDecoder().decode(CloudSettingsRecord.self, from: XCTUnwrap(cloud.data(forKey: "ay.settings.v1.defaultTargetLanguage")))
+        XCTAssertEqual(sent.decodedValue(for: "defaultTargetLanguage") as? String, "es")
+        sync.changed("private", key: "APIKey")
+        sync.changed(true, key: "saveTranslationHistory")
+        XCTAssertNil(cloud.data(forKey: "ay.settings.v1.APIKey"))
+        XCTAssertNil(cloud.data(forKey: "ay.settings.v1.saveTranslationHistory"))
+    }
+
     func testChangingTranslationServiceReusesLocalRecognitionAndClosingClearsTheCache() async throws {
         settings.source = .english; settings.target = .english
         var calls = 0
@@ -574,4 +597,12 @@ private final class ServiceTestKeys: APIKeyStoring {
         if case .service = slot, failServiceWrites { throw KeychainError(status: -25308) }
         values[slot] = key
     }
+}
+
+@MainActor
+private final class MemoryCloudSettings: CloudKeyValueStoring {
+    var values: [String: Any] = [:]
+    func data(forKey key: String) -> Data? { values[key] as? Data }
+    func set(_ value: Any?, forKey key: String) { values[key] = value }
+    func synchronize() -> Bool { true }
 }

@@ -1,11 +1,20 @@
 import Foundation
 
+@MainActor
+protocol CloudKeyValueStoring: AnyObject {
+    func data(forKey key: String) -> Data?
+    func set(_ value: Any?, forKey key: String)
+    func synchronize() -> Bool
+}
+
+extension NSUbiquitousKeyValueStore: CloudKeyValueStoring {}
+
 /// KVS is only touched after explicit opt-in in the containing app. Signing
 /// profiles must keep its iCloud entitlement. Extensions use the local bridge.
 @MainActor
 final class CloudSettingsSync {
     private let defaults: UserDefaults
-    private let store: NSUbiquitousKeyValueStore
+    private let store: any CloudKeyValueStoring
     private let apply: ([String: Any]) -> Bool
     private let status: (String) -> Void
     private var observer: NSObjectProtocol?
@@ -13,7 +22,7 @@ final class CloudSettingsSync {
     private var active = false
     private let prefix = "ay.settings.v1."
 
-    init(defaults: UserDefaults, store: NSUbiquitousKeyValueStore = .default,
+    init(defaults: UserDefaults, store: any CloudKeyValueStoring = NSUbiquitousKeyValueStore.default,
          apply: @escaping ([String: Any]) -> Bool, status: @escaping (String) -> Void) {
         self.defaults = defaults; self.store = store; self.apply = apply; self.status = status
         device = defaults.string(forKey: "icloud.device") ?? UUID().uuidString
