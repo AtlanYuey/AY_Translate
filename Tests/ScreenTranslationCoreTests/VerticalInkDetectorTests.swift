@@ -35,6 +35,18 @@ final class VerticalInkDetectorTests: XCTestCase {
         XCTAssertTrue(VerticalInkDetector.columns(grayscale: pixels, width: width, height: height).isEmpty)
     }
 
+    func testDifferentBubblesAtTheSameXKeepIndependentCharacterGrids() {
+        let width = 120, height = 360
+        var pixels = [UInt8](repeating: 255, count: width * height)
+        for top in [20, 44, 68, 225, 249, 273] {
+            for y in top..<(top + 16) {
+                for x in 70..<86 where y < top + 2 || y >= top + 14 || x < 72 || x >= 84 { pixels[y * width + x] = 0 }
+            }
+        }
+        let result = VerticalInkDetector.columns(grayscale: pixels, width: width, height: height)
+        XCTAssertEqual(result.map(\.count).sorted(), [3, 3])
+    }
+
     func testOneRecognizedCharacterDoesNotBlockTheRestOfAVerticalColumn() {
         let column = (0..<4).map { CGRect(x: 0.2, y: 0.8 - Double($0) * 0.03, width: 0.02, height: 0.02) }
         let fragment = RecognizedBlock(id: UUID(), original: "の", translation: "の", boundingBox: column[1], confidence: 0.9)

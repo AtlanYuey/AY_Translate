@@ -153,7 +153,7 @@ struct AIServiceEditor: View {
                 Text("Pasting a key fetches the provider’s model list. If listing is unavailable, choose Other Model and enter its ID. Enable image input only for a vision-capable model.")
             }
             Section {
-                Picker("Test Phrase", selection: $probeID) {
+                Picker("Test Phrase", selection: Binding(get: { probe.id }, set: { probeID = $0 })) {
                     ForEach(probes) { Text(verbatim: $0.languageName).tag($0.id) }
                 }
                 Text(verbatim: probe.text).textSelection(.enabled)

@@ -65,8 +65,20 @@ nonisolated enum VerticalInkDetector {
             }) { tracks[index].append(seed) }
             else { tracks.append([seed]) }
         }
+        // Separate panels/bubbles before estimating the character grid. Two
+        // columns at the same x need not share the same vertical starting phase.
+        var spans: [[Component]] = []
+        for track in tracks {
+            let scale = track.map { $0.box.height }.sorted()[track.count / 2]
+            var span: [Component] = []
+            for seed in track.sorted(by: { $0.centerY < $1.centerY }) {
+                if let last = span.last, seed.centerY - last.centerY > scale * 3.8 { spans.append(span); span = [] }
+                span.append(seed)
+            }
+            if !span.isEmpty { spans.append(span) }
+        }
         var result: [[CGRect]] = []
-        for track in tracks where track.count >= 3 {
+        for track in spans where track.count >= 3 {
             let scale = track.map { $0.box.height }.sorted()[track.count / 2]
             let centerX = track.map(\.centerX).reduce(0, +) / CGFloat(track.count)
             var centers: [CGFloat] = []
@@ -80,7 +92,8 @@ nonisolated enum VerticalInkDetector {
             let regular = centers.filter { abs(($0 - origin) / pitch - (($0 - origin) / pitch).rounded()) < 0.23 }
             guard regular.count * 4 >= centers.count * 3 else { continue }
             var cells: [Int: CGRect] = [:]
-            for component in components where abs(component.centerX - centerX) <= scale * 0.72 && max(component.box.width, component.box.height) <= scale * 1.7 {
+            for component in components where abs(component.centerX - centerX) <= scale * 0.72 && max(component.box.width, component.box.height) <= scale * 1.7
+                && component.centerY >= centers[0] - scale * 2.5 && component.centerY <= centers[centers.count - 1] + scale * 2.5 {
                 let row = Int(((component.centerY - origin) / pitch).rounded())
                 guard abs(component.centerY - (origin + CGFloat(row) * pitch)) < pitch * 0.46 else { continue }
                 cells[row] = (cells[row] ?? .null).union(component.box)
