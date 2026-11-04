@@ -3,7 +3,7 @@ import XCTest
 final class ScreenTranslateUITests: XCTestCase {
     override func setUpWithError() throws { continueAfterFailure = false; executionTimeAllowance = 300 }
 
-    func testRealActionExtensionFillsScreenAndReturnsToInvokingApp() throws {
+    func testRealShareExtensionFillsScreenAndReturnsToInvokingApp() throws {
         let app = XCUIApplication()
         app.launchArguments = ["--ui-test-reset", "--ui-test-share", "-AppleLanguages", "(en)", "-AppleLocale", "en_US"]
         app.launch()
@@ -59,14 +59,15 @@ final class ScreenTranslateUITests: XCTestCase {
 
     private func openExtension(_ app: XCUIApplication, source: XCUIElement) {
         source.tap()
-        // Action extensions are cells in the system activity list, not buttons.
-        let button = app.cells.containing(.staticText, identifier: "Translate Screen").firstMatch
+        // Share extensions appear in the app row, not the Action list below it.
+        let shareButton = app.buttons["Translate Screen"].firstMatch
+        let shareCell = app.cells.containing(.staticText, identifier: "Translate Screen").firstMatch
         for _ in 0..<5 {
-            if button.waitForExistence(timeout: 2), button.isHittable { break }
+            if shareButton.waitForExistence(timeout: 2), shareButton.isHittable { shareButton.tap(); return }
+            if shareCell.exists, shareCell.isHittable { shareCell.tap(); return }
             app.swipeUp()
         }
-        XCTAssertTrue(button.isHittable, app.debugDescription)
-        button.tap()
+        XCTFail("Share extension was not discoverable in the system app row.\n" + app.debugDescription)
     }
 
     private func waitUntilHittable(_ element: XCUIElement) -> Bool {

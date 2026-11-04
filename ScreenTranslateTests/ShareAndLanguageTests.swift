@@ -70,12 +70,20 @@ final class ShareAndLanguageTests: XCTestCase {
         XCTAssertEqual(loaded.cgImage?.height, image.cgImage?.height)
     }
 
-    func testIPAEmbedsAFullScreenActionExtensionWithSharedIdentifiers() throws {
+    func testIPAEmbedsAShortcutsDiscoverableFullScreenShareExtension() throws {
         let path = Bundle.main.bundleURL.appendingPathComponent("PlugIns/ScreenTranslateShare.appex/Info.plist")
         let plist = try XCTUnwrap(PropertyListSerialization.propertyList(from: Data(contentsOf: path), format: nil) as? [String: Any])
         let settings = try XCTUnwrap(plist["NSExtension"] as? [String: Any])
-        XCTAssertEqual(settings["NSExtensionPointIdentifier"] as? String, "com.apple.ui-services")
+        // UIActivityViewController also lists Action extensions. That alone
+        // cannot verify compatibility with Shortcuts' “Share with App” action.
+        XCTAssertEqual(settings["NSExtensionPointIdentifier"] as? String, "com.apple.share-services")
         XCTAssertEqual(settings["NSExtensionActionWantsFullScreenPresentation"] as? Bool, true)
+        let attributes = try XCTUnwrap(settings["NSExtensionAttributes"] as? [String: Any])
+        let activation = try XCTUnwrap(attributes["NSExtensionActivationRule"] as? [String: Any])
+        XCTAssertEqual(activation["NSExtensionActivationSupportsImageWithMaxCount"] as? Int, 1)
+        let identifier = try XCTUnwrap(plist["CFBundleIdentifier"] as? String)
+        XCTAssertTrue(identifier.hasPrefix(try XCTUnwrap(Bundle.main.bundleIdentifier) + "."))
+        XCTAssertEqual(plist["ContainingAppBundleIdentifier"] as? String, Bundle.main.bundleIdentifier)
         XCTAssertEqual(plist["SharedAppGroup"] as? String, Bundle.main.object(forInfoDictionaryKey: "SharedAppGroup") as? String)
         XCTAssertEqual(plist["SharedKeychainGroup"] as? String, Bundle.main.object(forInfoDictionaryKey: "SharedKeychainGroup") as? String)
         XCTAssertEqual(plist["CFBundleShortVersionString"] as? String, Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String)

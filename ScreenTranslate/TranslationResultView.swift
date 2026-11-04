@@ -280,19 +280,21 @@ private struct OverlayTextView: View {
     @State private var revealsOriginal = false
 
     var body: some View {
-        let rect = CGRect(x: block.boundingBox.minX * canvasSize.width, y: (1 - block.boundingBox.maxY) * canvasSize.height, width: max(block.boundingBox.width * canvasSize.width, 24), height: max(block.boundingBox.height * canvasSize.height, 16))
-        let fontSize = ScreenshotRendering.fittedFontSize(for: revealsOriginal ? block.original : block.translation, in: rect, textScale: textScale)
+        let layout = ScreenshotRendering.textLayout(for: block, canvasSize: canvasSize, textScale: textScale,
+                                                   text: revealsOriginal ? block.original : block.translation)
         Text(revealsOriginal ? block.original : block.translation)
-            .font(.system(size: fontSize, weight: .medium))
-            .lineLimit(max(1, Int(rect.height / (fontSize * 1.15))))
+            .font(.system(size: layout.fontSize, weight: .medium))
+            .lineLimit(layout.lineLimit)
             .truncationMode(.tail)
             .multilineTextAlignment(isRTL ? .trailing : .leading)
-            .padding(.horizontal, 2)
-            .frame(width: rect.width, height: rect.height, alignment: isRTL ? .trailing : .leading)
+            .frame(width: layout.textRect.width, height: layout.textRect.height, alignment: isRTL ? .topTrailing : .topLeading)
             .foregroundStyle(appearance == .readable || !color.usesDarkText ? Color.white : Color.black)
-            .background { background }
-            .clipShape(RoundedRectangle(cornerRadius: 4))
-            .position(x: rect.midX, y: rect.midY)
+            .background {
+                background.frame(width: layout.sourceRect.width + layout.coverPadding * 2,
+                                 height: layout.sourceRect.height + layout.coverPadding * 2)
+            }
+            .clipped()
+            .position(x: layout.textRect.midX, y: layout.textRect.midY)
             .environment(\.layoutDirection, isRTL ? .rightToLeft : .leftToRight)
             .onTapGesture(perform: onTap)
             .onLongPressGesture(minimumDuration: 0.15, pressing: { revealsOriginal = $0 }, perform: {})

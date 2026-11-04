@@ -13,6 +13,17 @@ nonisolated struct RecognizedBlock: Identifiable, Hashable, Sendable {
     let boundingBox: CGRect
     let confidence: Float
     var placement: TextPlacement = .overlay
+    /// Height of one original OCR line, normalized to the upright image height.
+    /// Preserve this when joining lines: a paragraph's union is not a font size.
+    var sourceLineHeight: CGFloat? = nil
+
+    var originalLineHeight: CGFloat {
+        if let sourceLineHeight, sourceLineHeight.isFinite, sourceLineHeight > 0 {
+            return min(sourceLineHeight, boundingBox.height)
+        }
+        let lines = max(1, original.split(separator: "\n", omittingEmptySubsequences: false).count)
+        return max(0, boundingBox.height) / CGFloat(lines)
+    }
 }
 
 nonisolated struct OCRResult: Sendable {
@@ -65,7 +76,7 @@ nonisolated enum OCRAlignment {
             if let index, !used.contains(anchors[index].id), similarity(text, anchors[index].original) >= 0.65 {
                 used.insert(anchors[index].id)
                 let anchor = anchors[index]
-                blocks[index] = RecognizedBlock(id: anchor.id, original: text, translation: text, boundingBox: anchor.boundingBox, confidence: anchor.confidence)
+                blocks[index] = RecognizedBlock(id: anchor.id, original: text, translation: text, boundingBox: anchor.boundingBox, confidence: anchor.confidence, sourceLineHeight: anchor.originalLineHeight)
             } else {
                 unmatched.append(RecognizedBlock(id: UUID(), original: text, translation: text, boundingBox: .zero, confidence: 0, placement: .textOnly))
             }

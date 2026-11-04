@@ -1,27 +1,73 @@
 import CoreImage
+import CoreText
 import SwiftUI
 import UIKit
 
 @MainActor
 enum ScreenshotRendering {
-    /// Fit longer translations before truncating, with a readable lower bound.
-    /// The full editor still offers the complete text on tap at that bound.
-    static func fittedFontSize(for text: String, in rect: CGRect, textScale: Double) -> CGFloat {
-        let preferred = max(12, min(rect.height / 1.15, min(28, max(12, rect.height * 0.65)) * textScale))
+    struct TextLayout {
+        let sourceRect: CGRect
+        let textRect: CGRect
+        let fontSize: CGFloat
+        let lineLimit: Int
+        let coverPadding: CGFloat
+    }
+
+    /// OCR measures ink, not a font's leading. Match each original line's ink
+    /// height, then allow the destination font's leading outside that box.
+    /// All distances scale with the image; there is no viewport-point minimum.
+    static func textLayout(for block: RecognizedBlock, canvasSize: CGSize, textScale: Double, text: String? = nil) -> TextLayout {
+        let text = text ?? block.translation
+        let rect = CGRect(x: block.boundingBox.minX * canvasSize.width,
+                          y: (1 - block.boundingBox.maxY) * canvasSize.height,
+                          width: block.boundingBox.width * canvasSize.width,
+                          height: block.boundingBox.height * canvasSize.height)
+        let lineHeight = max(0.0001, block.originalLineHeight * canvasSize.height)
+        let inkRatio = inkHeightRatio(for: text)
+        let preferred = lineHeight / inkRatio
+        let fitted = fittedFontSize(for: text, in: rect, preferred: preferred, inkRatio: inkRatio)
+        // Fit at 100% first. Fitting again after this multiplication would undo
+        // the user's enlargement whenever a translated region is already full.
+        let scale = textScale.isFinite && textScale > 0 ? CGFloat(textScale) : 1
+        let fontSize = fitted * scale
+        let fontLineHeight = UIFont.systemFont(ofSize: fontSize, weight: .medium).lineHeight
+        let leading = max(0, fontLineHeight - fontSize * inkRatio)
+        let textRect = rect.insetBy(dx: 0, dy: -leading / 2)
+        return TextLayout(sourceRect: rect, textRect: textRect, fontSize: fontSize,
+                          lineLimit: max(1, Int((textRect.height + fontSize * 0.001) / fontLineHeight)),
+                          coverPadding: lineHeight * 0.06)
+    }
+
+    private static func inkHeightRatio(for text: String) -> CGFloat {
+        // CTLine includes actual fallback glyphs (e.g. Chinese/Japanese), unlike
+        // capHeight alone. Bound measurement work on long model responses.
+        let sample = String(text.prefix(256)).replacingOccurrences(of: "\n", with: " ")
+        let line = CTLineCreateWithAttributedString(NSAttributedString(string: sample, attributes: [
+            .font: UIFont.systemFont(ofSize: 100, weight: .medium)
+        ]) as CFAttributedString)
+        let height = CTLineGetImageBounds(line, nil).height
+        return height.isFinite && height > 0 ? min(1.5, max(0.5, height / 100)) : 1
+    }
+
+    private static func fittedFontSize(for text: String, in rect: CGRect, preferred: CGFloat, inkRatio: CGFloat) -> CGFloat {
         func fits(_ size: CGFloat) -> Bool {
+            let font = UIFont.systemFont(ofSize: size, weight: .medium)
+            let leading = max(0, font.lineHeight - size * inkRatio)
             let bounds = (text as NSString).boundingRect(
-                with: CGSize(width: max(1, rect.width - 4), height: .greatestFiniteMagnitude),
+                with: CGSize(width: max(0.0001, rect.width), height: .greatestFiniteMagnitude),
                 options: [.usesLineFragmentOrigin, .usesFontLeading],
-                attributes: [.font: UIFont.systemFont(ofSize: size, weight: .medium)], context: nil)
-            return ceil(bounds.height) <= rect.height && ceil(bounds.width) <= max(1, rect.width - 4)
+                attributes: [.font: font], context: nil)
+            return bounds.height <= rect.height + leading + size * 0.001 && bounds.width <= rect.width + size * 0.001
         }
         if fits(preferred) { return preferred }
-        var lower: CGFloat = 12, upper = preferred
-        for _ in 0..<5 {
+        // Long translations can shrink moderately relative to their own source,
+        // never relative to a fixed global font. Tap still reveals the full text.
+        var lower = preferred * 0.75, upper = preferred
+        for _ in 0..<8 {
             let middle = (lower + upper) / 2
             if fits(middle) { lower = middle } else { upper = middle }
         }
-        return max(12, floor(lower))
+        return lower
     }
 
     static func palette(for document: TranslationDocument) -> [UUID: SampledColor] {
@@ -77,17 +123,15 @@ enum ScreenshotRendering {
         return UIGraphicsImageRenderer(size: size, format: format).image { renderer in
             document.image.draw(in: CGRect(origin: .zero, size: size))
             for block in document.blocks where block.placement == .overlay && block.translation != block.original {
-                let rect = CGRect(x: block.boundingBox.minX * size.width, y: (1 - block.boundingBox.maxY) * size.height,
-                                  width: block.boundingBox.width * size.width, height: max(16, block.boundingBox.height * size.height))
+                let layout = textLayout(for: block, canvasSize: size, textScale: textScale)
                 let color = palette[block.id] ?? SampledColor(red: 1, green: 1, blue: 1)
                 UIColor(red: color.red, green: color.green, blue: color.blue, alpha: 1).setFill()
-                renderer.fill(rect.insetBy(dx: -1, dy: -1))
+                renderer.fill(layout.sourceRect.insetBy(dx: -layout.coverPadding, dy: -layout.coverPadding))
                 let paragraph = NSMutableParagraphStyle()
                 paragraph.alignment = document.target.isRightToLeft ? .right : .left
                 paragraph.lineBreakMode = .byTruncatingTail
-                let fontSize = fittedFontSize(for: block.translation, in: rect, textScale: textScale)
-                (block.translation as NSString).draw(in: rect.insetBy(dx: 2, dy: 0), withAttributes: [
-                    .font: UIFont.systemFont(ofSize: fontSize, weight: .medium),
+                (block.translation as NSString).draw(in: layout.textRect, withAttributes: [
+                    .font: UIFont.systemFont(ofSize: layout.fontSize, weight: .medium),
                     .foregroundColor: color.usesDarkText ? UIColor.black : UIColor.white,
                     .paragraphStyle: paragraph
                 ])

@@ -23,7 +23,8 @@ nonisolated enum TranslationPlanner {
                 let joiner = joinsWithoutSpace ? "" : " "
                 let prefix = previous.original.hasSuffix("-") ? String(group.original.dropLast()) : group.original
                 let text = prefix + joiner + block.original
-                result[result.count - 1] = RecognizedBlock(id: group.id, original: text, translation: text, boundingBox: group.boundingBox.union(block.boundingBox), confidence: min(group.confidence, block.confidence))
+                let lineHeight = (group.originalLineHeight * CGFloat(lineCount) + block.originalLineHeight) / CGFloat(lineCount + 1)
+                result[result.count - 1] = RecognizedBlock(id: group.id, original: text, translation: text, boundingBox: group.boundingBox.union(block.boundingBox), confidence: min(group.confidence, block.confidence), sourceLineHeight: lineHeight)
                 lineCount += 1
             } else {
                 result.append(block)

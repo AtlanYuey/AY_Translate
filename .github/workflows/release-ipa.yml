@@ -153,6 +153,7 @@ jobs:
           set -euo pipefail
           APP_PATH="$RUNNER_TEMP/DerivedData/Build/Products/Release-iphoneos/$APP_NAME.app"
           test -d "$APP_PATH"
+          python3 .github/scripts/verify-bundled-shortcut.py --app "$APP_PATH" | tee "$RUNNER_TEMP/shortcut-package-verification.json"
           mkdir -p "$RUNNER_TEMP/ipa-package/Payload"
           cp -R "$APP_PATH" "$RUNNER_TEMP/ipa-package/Payload/"
           (cd "$RUNNER_TEMP/ipa-package" && COPYFILE_DISABLE=1 zip -qry "$GITHUB_WORKSPACE/$IPA_NAME" Payload)
@@ -222,6 +223,31 @@ jobs:
               || echo "::warning::Screenshot export failed; attachments remain in the test result bundle."
           fi
 
+      - name: Record Shortcuts simulator coverage
+        if: always() && steps.simulator.outputs.destination != ''
+        env:
+          TEST_DESTINATION: ${{ steps.simulator.outputs.destination }}
+        shell: bash
+        run: |
+          python3 - <<'PYTHON'
+          import json, os, subprocess
+          from pathlib import Path
+          udid = os.environ["TEST_DESTINATION"].split("id=", 1)[1]
+          report = {"testedHost": "UIActivityViewController", "shortcutsEndToEndTested": False}
+          try:
+              result = subprocess.run(["xcrun", "simctl", "listapps", udid], capture_output=True, text=True, timeout=45)
+              if result.returncode == 0:
+                  report["shortcutsInstalledInSimulator"] = "com.apple.shortcuts" in json.loads(result.stdout)
+              else:
+                  report["shortcutsInstalledInSimulator"] = "unknown: simulator app list unavailable"
+          except (subprocess.SubprocessError, ValueError) as error:
+              report["shortcutsInstalledInSimulator"] = "unknown: " + type(error).__name__
+          Path(os.environ["RUNNER_TEMP"], "shortcut-host-coverage.json").write_text(json.dumps(report, indent=2))
+          with open(os.environ["GITHUB_STEP_SUMMARY"], "a") as summary:
+              summary.write("\nShare-extension registration and system sharing UI are checked. Shortcuts import, Back Tap and Action Button still require a physical-device test.\n")
+          print(json.dumps(report, indent=2))
+          PYTHON
+
       - name: Shut down the simulator started by this job
         if: always() && steps.simulator.outputs.destination != ''
         env:
@@ -254,6 +280,8 @@ jobs:
             ${{ runner.temp }}/BuildResults.xcresult
             ${{ runner.temp }}/interface-screenshots
             ${{ runner.temp }}/shortcut-verification.json
+            ${{ runner.temp }}/shortcut-package-verification.json
+            ${{ runner.temp }}/shortcut-host-coverage.json
             Shortcuts/TranslateScreen.unsigned.plist
           if-no-files-found: warn
           retention-days: 14

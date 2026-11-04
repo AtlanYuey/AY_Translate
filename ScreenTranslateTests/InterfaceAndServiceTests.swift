@@ -136,13 +136,79 @@ final class InterfaceAndServiceTests: XCTestCase {
         XCTAssertEqual(rendered.size.width, 390)
     }
 
-    func testLongOverlayTextFitsBeforeTruncatingAndKeepsReadableMinimum() {
-        let rect = CGRect(x: 0, y: 0, width: 180, height: 60)
-        let short = ScreenshotRendering.fittedFontSize(for: "你好", in: rect, textScale: 1)
-        let long = ScreenshotRendering.fittedFontSize(for: String(repeating: "这段译文保留上下文。", count: 5), in: rect, textScale: 1)
-        XCTAssertLessThan(long, short)
-        XCTAssertGreaterThanOrEqual(long, 12)
-        XCTAssertGreaterThanOrEqual(ScreenshotRendering.fittedFontSize(for: "很长的译文", in: CGRect(x: 0, y: 0, width: 20, height: 10), textScale: 0.8), 12)
+    func testLandscapeMenuKeepsTitleAndSmallBodyAtTheirOriginalRelativeSizes() {
+        let imageSize = CGSize(width: 2048, height: 1152)
+        let canvas = ImageViewport.fittedSize(image: imageSize, container: CGSize(width: 393, height: 852))
+        let body = RecognizedBlock(id: UUID(), original: "YOGUR O FRUTA", translation: "酸奶或水果",
+                                   boundingBox: CGRect(x: 0.1, y: 0.4, width: 0.2, height: 20 / 1152.0), confidence: 1)
+        let title = RecognizedBlock(id: UUID(), original: "MENU SEMANA", translation: "每周菜单",
+                                    boundingBox: CGRect(x: 0.1, y: 0.8, width: 0.6, height: 40 / 1152.0), confidence: 1)
+        let bodyLayout = ScreenshotRendering.textLayout(for: body, canvasSize: canvas, textScale: 1)
+        let titleLayout = ScreenshotRendering.textLayout(for: title, canvasSize: canvas, textScale: 1)
+        XCTAssertLessThan(bodyLayout.fontSize, 6, "Zoomed-out photo text must not be inflated to a 12pt minimum")
+        XCTAssertEqual(titleLayout.fontSize / bodyLayout.fontSize, 2, accuracy: 0.15)
+        XCTAssertEqual(bodyLayout.sourceRect.height, 20 * canvas.width / imageSize.width, accuracy: 0.0001)
+        let largerCanvas = CGSize(width: canvas.width * 2, height: canvas.height * 2)
+        XCTAssertEqual(ScreenshotRendering.textLayout(for: body, canvasSize: largerCanvas, textScale: 1).fontSize,
+                       bodyLayout.fontSize * 2, accuracy: 0.1)
+    }
+
+    func testLongTranslationFitsRelativeToSourceBeforeApplyingUserMultiplier() {
+        var block = region()
+        block.translation = String(repeating: "这段译文保留上下文。", count: 5)
+        let canvas = CGSize(width: 390, height: 780)
+        let short = ScreenshotRendering.textLayout(for: block, canvasSize: canvas, textScale: 1, text: "你好")
+        let normal = ScreenshotRendering.textLayout(for: block, canvasSize: canvas, textScale: 1)
+        let enlarged = ScreenshotRendering.textLayout(for: block, canvasSize: canvas, textScale: 1.6)
+        let reduced = ScreenshotRendering.textLayout(for: block, canvasSize: canvas, textScale: 0.8)
+        XCTAssertLessThan(normal.fontSize, short.fontSize)
+        XCTAssertGreaterThanOrEqual(normal.fontSize, short.fontSize * 0.70)
+        XCTAssertEqual(enlarged.fontSize, normal.fontSize * 1.6, accuracy: 0.0001)
+        XCTAssertEqual(reduced.fontSize, normal.fontSize * 0.8, accuracy: 0.0001)
+        XCTAssertEqual(enlarged.sourceRect, normal.sourceRect, "Font scaling must not enlarge the original cover region")
+    }
+
+    func testJoinedParagraphKeepsItsOriginalLineSizeInBothRenderers() {
+        let first = RecognizedBlock(id: UUID(), original: "This is a sentence wrapping", translation: "内容",
+                                    boundingBox: CGRect(x: 0.1, y: 0.8, width: 0.7, height: 0.02), confidence: 1)
+        let second = RecognizedBlock(id: UUID(), original: "onto the next line", translation: "内容",
+                                     boundingBox: CGRect(x: 0.1, y: 0.775, width: 0.7, height: 0.02), confidence: 1)
+        var paragraph = TranslationPlanner.paragraphs([first, second], preference: .quality)[0]
+        paragraph.translation = "内容"
+        let canvas = CGSize(width: 390, height: 844)
+        let line = ScreenshotRendering.textLayout(for: first, canvasSize: canvas, textScale: 1)
+        let joined = ScreenshotRendering.textLayout(for: paragraph, canvasSize: canvas, textScale: 1)
+        XCTAssertEqual(joined.fontSize, line.fontSize, accuracy: 0.0001)
+        XCTAssertGreaterThan(joined.sourceRect.height, line.sourceRect.height * 2)
+    }
+
+    func testRealVisionKeepsLargeTitleAndSmallBodySizesInALandscapePhoto() async throws {
+        let size = CGSize(width: 2048, height: 1152)
+        let format = UIGraphicsImageRendererFormat(); format.scale = 1; format.opaque = true
+        let image = UIGraphicsImageRenderer(size: size, format: format).image { renderer in
+            UIColor.white.setFill(); renderer.fill(CGRect(origin: .zero, size: size))
+            ("MENU SEMANA" as NSString).draw(at: CGPoint(x: 400, y: 140), withAttributes: [
+                .font: UIFont.systemFont(ofSize: 44, weight: .bold), .foregroundColor: UIColor.black
+            ])
+            ("YOGUR O FRUTA" as NSString).draw(at: CGPoint(x: 200, y: 420), withAttributes: [
+                .font: UIFont.systemFont(ofSize: 22, weight: .bold), .foregroundColor: UIColor.black
+            ])
+        }
+        let recognized = try await ScreenReader.recognize(in: image, source: .spanish)
+        var title = try XCTUnwrap(recognized.first { $0.original.contains("MENU") })
+        var body = try XCTUnwrap(recognized.first { $0.original.contains("YOGUR") })
+        title.translation = "每周菜单"; body.translation = "酸奶水果"
+        let canvas = ImageViewport.fittedSize(image: size, container: CGSize(width: 393, height: 852))
+        let large = ScreenshotRendering.textLayout(for: title, canvasSize: canvas, textScale: 1)
+        let small = ScreenshotRendering.textLayout(for: body, canvasSize: canvas, textScale: 1)
+        XCTAssertGreaterThan(large.fontSize / small.fontSize, 1.7)
+        XCTAssertLessThan(small.fontSize, 6)
+        let document = TranslationDocument(id: UUID(), image: image, blocks: [title, body], source: .spanish, target: .chinese, createdAt: Date())
+        for (name, screenshot) in [("横屏原图-44与22字号", image),
+                                    ("横屏译图-保留标题正文比例", ScreenshotRendering.translatedImage(document, palette: [:], textScale: 1))] {
+            let attachment = XCTAttachment(image: screenshot)
+            attachment.name = name; attachment.lifetime = .keepAlways; add(attachment)
+        }
     }
 
     func testChineseFullScreenAndSettingsSnapshots() async throws {

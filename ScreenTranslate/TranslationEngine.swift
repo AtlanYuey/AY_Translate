@@ -38,7 +38,8 @@ enum ScreenReader {
                         original: candidate.string,
                         translation: candidate.string,
                         boundingBox: observation.boundingBox,
-                        confidence: candidate.confidence
+                        confidence: candidate.confidence,
+                        sourceLineHeight: observation.boundingBox.height
                     )
                 }
 

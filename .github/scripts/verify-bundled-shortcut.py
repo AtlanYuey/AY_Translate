@@ -3,6 +3,7 @@
 macOS supplies aea/aa. No iCloud login, network request or workflow execution is
 needed. See docs/全屏扩展与快捷指令调查.md for the public format references.
 """
+import argparse
 import base64
 import hashlib
 import json
@@ -16,8 +17,36 @@ from pathlib import Path
 # SHA-256 of https://www.apple.com/certificateauthority/AppleRootCA-G3.cer
 APPLE_ROOT_G3 = "63343abfb89a6a03ebb57e9b3f5fa7be7c4f5c756f3017b3a8c488c3653e9179"
 project = Path(__file__).resolve().parents[2]
+parser = argparse.ArgumentParser(description=__doc__)
+parser.add_argument("--app", type=Path, help="Also verify the compiled app's embedded Share extension")
+arguments = parser.parse_args()
 signed = project / "ScreenTranslate/Resources/TranslateScreen.shortcut"
 source = plistlib.loads((project / "Shortcuts/TranslateScreen.unsigned.plist").read_bytes())
+app = arguments.app or project / "ScreenTranslate"
+app_info = plistlib.loads((app / "Info.plist").read_bytes())
+extension_path = (app / "PlugIns/ScreenTranslateShare.appex/Info.plist" if arguments.app
+                  else project / "ScreenTranslateShare/Info.plist")
+extension_info = plistlib.loads(extension_path.read_bytes())
+registration = extension_info["NSExtension"]
+if registration.get("NSExtensionPointIdentifier") != "com.apple.share-services":
+    raise SystemExit("Shortcuts Share with App requires a com.apple.share-services extension; an Action extension is insufficient")
+if registration.get("NSExtensionActionWantsFullScreenPresentation") is not True:
+    raise SystemExit("Screenshot Share extension must retain full-screen presentation")
+activation = registration.get("NSExtensionAttributes", {}).get("NSExtensionActivationRule", {})
+if activation.get("NSExtensionActivationSupportsImageWithMaxCount", 0) < 1:
+    raise SystemExit("Screenshot Share extension does not accept images")
+app_id = app_info.get("CFBundleIdentifier", app_info["ContainingAppBundleIdentifier"])
+if extension_info.get("ContainingAppBundleIdentifier") != app_id:
+    raise SystemExit("Share extension targets a different containing app")
+if arguments.app:
+    if not extension_info.get("CFBundleIdentifier", "").startswith(app_id + "."):
+        raise SystemExit("Embedded Share extension bundle ID is outside the containing app")
+    for field in ["CFBundleShortVersionString", "CFBundleVersion"]:
+        if extension_info.get(field) != app_info.get(field):
+            raise SystemExit(f"Embedded Share extension and app differ: {field}")
+    signed = app / "TranslateScreen.shortcut"
+    if not signed.is_file():
+        signed = app / "Resources/TranslateScreen.shortcut"
 blob = signed.read_bytes()
 if len(blob) < 12 or blob[:4] != b"AEA1":
     raise SystemExit("Missing signed Shortcut archive")
@@ -68,10 +97,11 @@ with tempfile.TemporaryDirectory(prefix="shortcut-verification-") as folder:
     expected_ids = ["is.workflow.actions.takescreenshot", "is.workflow.actions.runextension"]
     if [action["WFWorkflowActionIdentifier"] for action in actions] != expected_ids:
         raise SystemExit("Expected exactly the screenshot and share-extension actions")
-    app_id = plistlib.loads((project / "ScreenTranslate/Info.plist").read_bytes())["ContainingAppBundleIdentifier"]
     if actions[1]["WFWorkflowActionParameters"]["WFAppIdentifier"] != app_id:
         raise SystemExit("Shortcut targets a different containing app")
 
 print(json.dumps({"sha256": hashlib.sha256(blob).hexdigest(), "appleCertificateChain": "verified",
                   "archiveSignature": "verified", "matchesReviewedActions": True,
-                  "actions": expected_ids, "appIdentifier": app_id}, indent=2))
+                  "actions": expected_ids, "appIdentifier": app_id,
+                  "extensionPoint": registration["NSExtensionPointIdentifier"],
+                  "fullScreen": True, "compiledPackage": arguments.app is not None}, indent=2))

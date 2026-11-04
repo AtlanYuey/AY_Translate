@@ -1,7 +1,8 @@
 import SwiftUI
 import UIKit
 
-/// A full-screen Action extension, hosted above the invoking app. Completing
+/// A full-screen Share extension, discoverable by Shortcuts' Share with App.
+/// It is hosted above the invoking app. Completing
 /// the extension request returns to that host; it never foregrounds our app.
 @MainActor
 final class ShareViewController: UIViewController {

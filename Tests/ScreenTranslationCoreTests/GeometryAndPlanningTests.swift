@@ -79,6 +79,27 @@ final class GeometryAndPlanningTests: XCTestCase {
         XCTAssertEqual(grouped[0].original, a.original + " " + b.original)
         XCTAssertEqual(grouped[0].boundingBox, a.boundingBox.union(b.boundingBox))
         XCTAssertEqual(grouped[0].id, a.id)
+        XCTAssertEqual(grouped[0].originalLineHeight, a.boundingBox.height, accuracy: 0.00001)
+        XCTAssertGreaterThan(grouped[0].boundingBox.height, grouped[0].originalLineHeight * 2)
+    }
+
+    func testManyJoinedLinesDoNotTurnTheirParagraphHeightIntoFontSize() {
+        let lines = (0..<6).map { block("A continuation of a long sentence", y: 0.85 - Double($0) * 0.05) }
+        let paragraph = TranslationPlanner.paragraphs(lines, preference: .quality)[0]
+        XCTAssertEqual(paragraph.originalLineHeight, 0.04, accuracy: 0.00001)
+        XCTAssertGreaterThan(paragraph.boundingBox.height, paragraph.originalLineHeight * 6)
+    }
+
+    func testExplicitMultilineRegionEstimatesOneOriginalLine() {
+        let region = block("ENSALADA DE\nCALABAZA Y\nMANZANA", height: 0.06)
+        XCTAssertEqual(region.originalLineHeight, 0.02, accuracy: 0.00001)
+    }
+
+    func testAICorrectionKeepsTheLocalOriginalLineHeight() throws {
+        var anchor = block("Original recognized paragraph", height: 0.15)
+        anchor.sourceLineHeight = 0.03
+        let result = try OCRAlignment.resolve([.init(id: anchor.id.uuidString, text: anchor.original + "!", box: nil)], anchors: [anchor])
+        XCTAssertEqual(result.blocks[0].originalLineHeight, 0.03, accuracy: 0.00001)
     }
 
     func testMenusColumnsAndCompleteSentencesStaySeparate() {
