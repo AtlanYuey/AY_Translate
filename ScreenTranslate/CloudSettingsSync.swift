@@ -59,6 +59,13 @@ final class CloudSettingsSync {
         store.set(data, forKey: prefix + key)
     }
 
+    func uploadLocalSettings() {
+        for key in CloudSettingsRecord.allowedKeys {
+            if let value = defaults.object(forKey: key) { changed(value, key: key) }
+        }
+        if !store.synchronize() { status("iCloud sync is unavailable. Check your iCloud account and signing profile.") }
+    }
+
     func merge() {
         var changes: [String: Any] = [:]
         var accepted: [String: Data] = [:]
@@ -70,9 +77,10 @@ final class CloudSettingsSync {
                 accepted[key] = try? JSONEncoder().encode(remote)
             } else if let local, local.isNewer(than: remote), local.decodedValue(for: key) != nil {
                 store.set(try? JSONEncoder().encode(local), forKey: prefix + key)
-            } else if remote == nil, local == nil, let value = defaults.object(forKey: key) {
-                changed(value, key: key)
             }
+            // Do not seed an empty local KVS cache on first launch: the remote
+            // account may not have downloaded yet. Default values must never
+            // overwrite an existing device's settings before initial sync.
         }
         if !changes.isEmpty && apply(changes) {
             for (key, data) in accepted { defaults.set(data, forKey: prefix + key) }

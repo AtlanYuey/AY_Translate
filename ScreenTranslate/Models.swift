@@ -170,6 +170,8 @@ final class AppSettings: ObservableObject {
         #endif
     }
 
+    func uploadSettingsToCloud() { cloudSync?.uploadLocalSettings() }
+
     @Published var source: AppLanguage {
         didSet { persist(source.rawValue, forKey: Keys.source) }
     }

@@ -292,6 +292,41 @@ final class InterfaceAndServiceTests: XCTestCase {
         XCTAssertEqual(try keys.read(.ocr), "")
     }
 
+    func testRestorationErasesOnlySourceInkAtTheCorrectImageOrigin() async throws {
+        let size = CGSize(width: 200, height: 400)
+        let format = UIGraphicsImageRendererFormat(); format.scale = 1; format.opaque = true
+        let source = UIGraphicsImageRenderer(size: size, format: format).image { renderer in
+            UIColor.white.setFill(); renderer.fill(CGRect(origin: .zero, size: size))
+            UIColor.blue.setFill(); renderer.fill(CGRect(x: 0, y: 200, width: 200, height: 200))
+            UIColor.black.setFill(); renderer.fill(CGRect(x: 90, y: 40, width: 3, height: 23))
+        }
+        let region = CGRect(x: 0.2, y: 1 - 64.0/400, width: 0.35, height: 24.0/400)
+        let glyph = CGRect(x: 89.0/200, y: 1 - 64.0/400, width: 5.0/200, height: 24.0/400)
+        let block = RecognizedBlock(id: UUID(), original: "IIII", translation: "好", boundingBox: region, confidence: 1, sourceGlyphBoxes: [glyph])
+        let document = TranslationDocument(id: UUID(), image: source, blocks: [block], source: .english, target: .chinese, createdAt: Date())
+        let patches = await ScreenshotRendering.restorationsAsync(for: document)
+        XCTAssertNotNil(patches[block.id])
+        let restored = UIGraphicsImageRenderer(size: size, format: format).image { renderer in
+            source.draw(at: .zero)
+            ScreenshotRendering.drawRestoration(patches[block.id], canvas: size, in: renderer.cgContext)
+        }
+        // CGImage crops use the same top-left coordinates as the source drawing.
+        func red(_ image: UIImage, x: Int, y: Int) throws -> UInt8 {
+            let crop = try XCTUnwrap(image.cgImage?.cropping(to: CGRect(x: x, y: y, width: 1, height: 1)))
+            var bytes = [UInt8](repeating: 0, count: 4)
+            try bytes.withUnsafeMutableBytes { raw in
+                let context = try XCTUnwrap(CGContext(data: raw.baseAddress, width: 1, height: 1, bitsPerComponent: 8, bytesPerRow: 4,
+                    space: CGColorSpaceCreateDeviceRGB(), bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue))
+                context.draw(crop, in: CGRect(x: 0, y: 0, width: 1, height: 1))
+            }
+            return bytes[0]
+        }
+        XCTAssertLessThan(try red(source, x: 91, y: 50), 20)
+        XCTAssertGreaterThan(try red(restored, x: 91, y: 50), 230)
+        XCTAssertEqual(try red(restored, x: 91, y: 300), try red(source, x: 91, y: 300))
+        let attachment = XCTAttachment(image: restored); attachment.name = "笔画恢复-上下坐标与背景保护"; attachment.lifetime = .keepAlways; add(attachment)
+    }
+
     func testPaletteMatchesTopAndBottomImageCoordinatesWithoutGrayMaterial() throws {
         let top = region()
         let bottom = RecognizedBlock(id: UUID(), original: "Bottom", translation: "底部", boundingBox: CGRect(x: 0.1, y: 0.2, width: 0.7, height: 0.04), confidence: 1)

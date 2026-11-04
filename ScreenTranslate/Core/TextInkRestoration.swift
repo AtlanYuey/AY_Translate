@@ -15,7 +15,14 @@ nonisolated enum TextInkRestoration {
             return Patch(pixels: pixels, width: width, height: height, changedPixels: 0)
         }
         let radius = min(32, max(3, Int(glyphSize * 0.65)))
-        let luminance = stride(from: 0, to: pixels.count, by: 4).map { (Int(pixels[$0]) * 77 + Int(pixels[$0 + 1]) * 150 + Int(pixels[$0 + 2]) * 29) / 256 }
+        var luminance = [Int](repeating: 0, count: width * height)
+        for index in luminance.indices {
+            let pixel = index * 4
+            let red = Int(pixels[pixel]) * 77
+            let green = Int(pixels[pixel + 1]) * 150
+            let blue = Int(pixels[pixel + 2]) * 29
+            luminance[index] = (red + green + blue) / 256
+        }
         var allowed = [Bool](repeating: false, count: width * height)
         for rect in glyphs {
             let left = max(1, Int(floor(rect.minX))), right = min(width - 2, Int(ceil(rect.maxX)))

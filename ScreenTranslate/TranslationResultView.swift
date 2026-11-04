@@ -13,6 +13,7 @@ struct TranslationResultView: View {
     @State private var showsNotice = false
     @State private var resetZoom = UUID()
     @State private var showsTiming = false
+    @State private var backgroundSeconds: Double = 0
     @State private var palette: [UUID: SampledColor] = [:]
     @State private var restorations: [UUID: ScreenshotRendering.RestoredRegion] = [:]
     @State private var imageZoom: CGFloat = 1
@@ -75,7 +76,7 @@ struct TranslationResultView: View {
             }
         }
         .alert("Processing Time", isPresented: $showsTiming) { Button("OK", role: .cancel) {} } message: {
-            Text(AppLocalization.formatted("OCR %.2f s · Translation %.2f s", appState.recognitionSeconds, appState.translationSeconds, language: settings.interfaceLanguage))
+            Text(AppLocalization.formatted("OCR %.2f s · Translation %.2f s · Background %.2f s", appState.recognitionSeconds, appState.translationSeconds, backgroundSeconds, language: settings.interfaceLanguage))
         }
         .alert("Recognition Note", isPresented: $showsNotice) { Button("OK", role: .cancel) {} } message: {
             Text(settings.text(appState.notice ?? ""))
@@ -83,18 +84,22 @@ struct TranslationResultView: View {
         .onChange(of: appState.document?.id, initial: true) { _, _ in
             palette = [:]
             restorations = [:]
+            backgroundSeconds = 0
             imageZoom = 1
             guard let document = appState.document else { return }
             mode = settings.defaultResultMode
         }
         .task(id: appState.document?.id) {
             guard let document = appState.document else { return }
+            let backgroundStart = ContinuousClock.now
             async let colors = ScreenshotRendering.paletteAsync(for: document)
             async let patches = ScreenshotRendering.restorationsAsync(for: document)
             let (sampled, restored) = await (colors, patches)
             guard !Task.isCancelled, appState.document?.id == document.id else { return }
             palette = sampled
             restorations = restored
+            let duration = backgroundStart.duration(to: .now).components
+            backgroundSeconds = Double(duration.seconds) + Double(duration.attoseconds) / 1e18
         }
     }
 

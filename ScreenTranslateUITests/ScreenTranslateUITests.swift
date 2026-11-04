@@ -58,6 +58,20 @@ final class ScreenTranslateUITests: XCTestCase {
         }
     }
 
+    func testHomeOffersOneVisibleImageActionWithoutShortcutSetupClutter() {
+        let app = XCUIApplication()
+        app.launchArguments = ["--ui-test-reset", "-AppleLanguages", "(en)", "-AppleLocale", "en_US"]
+        XCUIDevice.shared.orientation = .portrait
+        app.launch()
+        let choose = app.buttons["home.choose-image"]
+        XCTAssertTrue(choose.waitForExistence(timeout: 20))
+        XCTAssertTrue(choose.isHittable, "The normal phone home should need no scrolling before importing an image")
+        XCTAssertFalse(app.buttons["Set Up Shortcut"].exists)
+        XCTAssertFalse(app.buttons["Choose from Photos"].exists)
+        let capture = XCTAttachment(screenshot: XCUIScreen.main.screenshot())
+        capture.name = "AY Translate-单入口首页"; capture.lifetime = .keepAlways; add(capture)
+    }
+
     func testHistoryTabOnlyExistsWhenHistorySavingIsEnabled() throws {
         let app = XCUIApplication()
         app.launchArguments = ["--ui-test-reset", "-AppleLanguages", "(en)", "-AppleLocale", "en_US"]

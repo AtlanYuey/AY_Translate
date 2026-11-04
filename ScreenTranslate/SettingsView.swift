@@ -223,6 +223,11 @@ private struct ConfigurationSyncView: View {
             #if !SCREEN_TRANSLATE_SHARE_EXTENSION
             Section("iCloud") {
                 Toggle("Sync Settings with iCloud", isOn: $settings.iCloudSyncEnabled)
+                if settings.iCloudSyncEnabled {
+                    Button("Upload This Device’s Settings") { settings.uploadSettingsToCloud() }
+                    Text("Other devices read your iCloud settings first. On your first device, upload once; later changes sync automatically.")
+                        .font(.footnote).foregroundStyle(.secondary)
+                }
                 Text("Sync languages, display preferences and AI service details across your devices. API keys, screenshots, history and cloud permissions stay on this device.")
                     .font(.footnote).foregroundStyle(.secondary)
                 if let message = settings.iCloudSyncMessage { Text(settings.text(message)).font(.footnote).foregroundStyle(.secondary) }

@@ -233,16 +233,21 @@ final class AppState: ObservableObject {
             let requests = current.blocks.filter { pendingAppleIDs.contains($0.id) }.map { TranslationSession.Request(sourceText: $0.original, clientIdentifier: $0.id.uuidString) }
             let indices = Dictionary(uniqueKeysWithValues: current.blocks.indices.map { (current.blocks[$0].id.uuidString, $0) })
             var completed = Set<String>()
+            var lastPublish = ContinuousClock.now
             for try await response in session.translate(batch: requests) {
                 guard isActive(processID) else { session.cancel(); return }
                 guard let key = response.clientIdentifier, let index = indices[key],
                       !response.targetText.isEmpty, completed.insert(key).inserted else { continue }
                 current.blocks[index].translation = response.targetText
                 translatedBlockCount = current.blocks.count - pendingAppleIDs.count + completed.count
-                document = current
+                if lastPublish.duration(to: .now) >= .milliseconds(80) {
+                    document = current
+                    lastPublish = .now
+                }
             }
             guard isActive(processID) else { return }
             guard completed.count == requests.count else { throw AIServiceError.incompleteTranslation }
+            document = current
             finish(processID)
         } catch {
             guard isActive(processID) else { return }

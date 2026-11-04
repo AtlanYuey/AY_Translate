@@ -18804,7 +18804,7 @@
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "这不是有效的屏幕翻译配置。"
+            "value": "这不是有效的 AY Translate 配置。"
           }
         },
         "zh-Hant": {
@@ -20303,6 +20303,57 @@
           "stringUnit": {
             "state": "translated",
             "value": "识别 %.2f 秒 · 翻译 %.2f 秒"
+          }
+        }
+      }
+    },
+    "Upload This Device’s Settings": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Upload This Device’s Settings"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "将本机设置存入 iCloud"
+          }
+        }
+      }
+    },
+    "Other devices read your iCloud settings first. On your first device, upload once; later changes sync automatically.": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Other devices read your iCloud settings first. On your first device, upload once; later changes sync automatically."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "其他设备优先读取 iCloud 设置。首次使用时，在已配置好的设备上传一次，之后的修改会自动同步。"
+          }
+        }
+      }
+    },
+    "OCR %.2f s · Translation %.2f s · Background %.2f s": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "OCR %.2f s · Translation %.2f s · Background %.2f s"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "识别 %.2f 秒 · 翻译 %.2f 秒 · 背景 %.2f 秒"
           }
         }
       }
