@@ -70,12 +70,15 @@ final class ScreenTranslateUITests: XCTestCase {
     private func openExtension(_ app: XCUIApplication, source: XCUIElement) {
         source.tap()
         // Share extensions appear in the app row, not the Action list below it.
-        let shareButton = app.buttons["Translate Screen"].firstMatch
-        let shareCell = app.cells.containing(.staticText, identifier: "Translate Screen").firstMatch
+        // iOS 26 gives title labels the identifier "cellTitleLabel". Match the
+        // activity cell's accessibility label, rather than treating its title
+        // as an identifier or searching for an unrelated navigation button.
+        let shareCell = app.cells.matching(NSPredicate(format: "label == %@", "Translate Screen")).firstMatch
         for _ in 0..<5 {
-            if shareButton.waitForExistence(timeout: 2), shareButton.isHittable { shareButton.tap(); return }
-            if shareCell.exists, shareCell.isHittable { shareCell.tap(); return }
-            app.swipeUp()
+            if shareCell.waitForExistence(timeout: 2), shareCell.isHittable { shareCell.tap(); return }
+            let appRow = app.scrollViews.containing(.cell, identifier: "shareCell").firstMatch
+            if appRow.exists { appRow.swipeLeft() }
+            else { app.swipeUp() }
         }
         XCTFail("Share extension was not discoverable in the system app row.\n" + app.debugDescription)
     }
