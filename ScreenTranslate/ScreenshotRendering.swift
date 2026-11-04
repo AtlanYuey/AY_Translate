@@ -251,21 +251,27 @@ enum ScreenshotRendering {
         UIGraphicsPushContext(context)
         let font = UIFont.systemFont(ofSize: layout.fontSize, weight: .semibold)
         let outline: UIColor = color == .white ? .black : .white
-        let ink: [NSAttributedString.Key: Any] = [.font: font, .foregroundColor: color, .strokeColor: outline, .strokeWidth: -6]
-        if let vertical = layout.vertical {
-            for glyph in vertical.glyphs {
-                let attributes = ink
-                let size = (glyph.text as NSString).size(withAttributes: attributes)
-                (glyph.text as NSString).draw(at: CGPoint(x: layout.textRect.minX + glyph.center.x - size.width / 2,
-                    y: layout.textRect.minY + glyph.center.y - size.height / 2), withAttributes: attributes)
+        let ink: [NSAttributedString.Key: Any] = [.font: font, .foregroundColor: color]
+        func draw(_ attributes: [NSAttributedString.Key: Any]) {
+            if let vertical = layout.vertical {
+                for glyph in vertical.glyphs {
+                    let size = (glyph.text as NSString).size(withAttributes: ink)
+                    (glyph.text as NSString).draw(at: CGPoint(x: layout.textRect.minX + glyph.center.x - size.width / 2,
+                        y: layout.textRect.minY + glyph.center.y - size.height / 2), withAttributes: attributes)
+                }
+            } else {
+                let paragraph = NSMutableParagraphStyle()
+                paragraph.alignment = isRTL ? .right : .left
+                paragraph.lineBreakMode = .byWordWrapping
+                (text as NSString).draw(with: layout.textRect, options: [.usesLineFragmentOrigin, .usesFontLeading],
+                    attributes: attributes.merging([.paragraphStyle: paragraph]) { _, new in new }, context: nil)
             }
-        } else {
-            let paragraph = NSMutableParagraphStyle()
-            paragraph.alignment = isRTL ? .right : .left
-            paragraph.lineBreakMode = .byWordWrapping
-            (text as NSString).draw(with: layout.textRect, options: [.usesLineFragmentOrigin, .usesFontLeading],
-                attributes: ink.merging([.paragraphStyle: paragraph]) { _, new in new }, context: nil)
         }
+        // A single negative strokeWidth fills first, then paints a centered
+        // outline over the glyph. At small image-relative sizes that can erase
+        // thin CJK strokes. Paint the outline first and the intact fill last.
+        draw(ink.merging([.strokeColor: outline, .strokeWidth: 6]) { _, new in new })
+        draw(ink)
         UIGraphicsPopContext()
         context.restoreGState()
     }
