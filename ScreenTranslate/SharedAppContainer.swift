@@ -32,8 +32,7 @@ enum SharedAppContainer {
     }
 
     static func isPreferenceKey(_ key: String) -> Bool {
-        ["defaultSourceLanguage", "defaultTargetLanguage", "translationAppearance", "saveTranslationHistory", "ocrEngine", "translationEngine", "translationPreference", "overlayTextScale", "defaultResultMode", "interfaceLanguage"].contains(key)
-            || key.hasPrefix("ai.") || key.hasPrefix("cloudConsent.")
+        SharedPreferenceKeys.contains(key)
     }
 
     private static func migrateHistory() {

@@ -61,7 +61,8 @@ enum ScreenReader {
                     // Aligned first characters in ordinary horizontal rows can
                     // look like a column. Never overwrite those verified rows.
                     let existing = blocks.filter { overlap($0.boundingBox, box) > 0.7 }
-                    guard !existing.contains(where: { $0.flow == .horizontal && $0.boundingBox.width > box.width * 1.5 }) else { continue }
+                    let conflicts = VerticalOCRGeometry.horizontalConflicts(column: column, blocks: blocks, imageSize: size)
+                    guard !conflicts.protected else { continue }
                     guard let strip = stripImage(cgImage, glyphs: column) else { continue }
                     let recognized = try read(strip, language: language ?? "ja")
                     let text = recognized.sorted { $0.boundingBox.minX < $1.boundingBox.minX }.map(\.original).joined()
@@ -72,7 +73,7 @@ enum ScreenReader {
                     let height = column.map(\.height).sorted()[column.count / 2]
                     // Remove fragments only after a complete local transcription
                     // of the same column exists; never erase unknown text.
-                    blocks.removeAll { overlap($0.boundingBox, box) > 0.7 && $0.boundingBox.width < box.width * 1.5 }
+                    blocks.removeAll { conflicts.fragmentedRows.contains($0.id) || (overlap($0.boundingBox, box) > 0.7 && $0.boundingBox.width < box.width * 1.5) }
                     blocks.append(RecognizedBlock(id: UUID(), original: text, translation: text, boundingBox: box,
                         confidence: recognized.map(\.confidence).min() ?? 0, sourceLineHeight: height, flow: .vertical, sourceColumnWidth: width))
                 }
@@ -90,9 +91,9 @@ enum ScreenReader {
         request.usesLanguageCorrection = true
         request.automaticallyDetectsLanguage = language == nil
         let supported = try request.supportedRecognitionLanguages()
-        let desired = language.map { [$0] } ?? ["en-US", "ja-JP", "zh-Hans", "ko-KR", "es-ES", "fr-FR", "de-DE"]
+        let desired = language.map { [$0] } ?? (Locale.preferredLanguages + ["en-US", "ja-JP", "zh-Hans", "zh-Hant", "ko-KR", "es-ES", "fr-FR", "de-DE", "it-IT", "pt-PT", "ru-RU", "ar-SA"])
         let selected = desired.compactMap { code in supported.first { $0 == code || $0.hasPrefix(code + "-") || code.hasPrefix($0 + "-") } }
-        if !selected.isEmpty { request.recognitionLanguages = selected }
+        if !selected.isEmpty { request.recognitionLanguages = selected.reduce(into: [String]()) { if !$0.contains($1) { $0.append($1) } } }
         #if targetEnvironment(simulator)
         request.usesCPUOnly = true
         #endif

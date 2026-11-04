@@ -42,6 +42,28 @@ nonisolated struct VerticalTextLayout: Sendable {
 /// Locate candidate upright vertical columns using locally detected character
 /// boxes. Stitching these glyphs into a horizontal strip preserves orientation.
 nonisolated enum VerticalOCRGeometry {
+    static func horizontalConflicts(column: [CGRect], blocks: [RecognizedBlock], imageSize: CGSize) -> (protected: Bool, fragmentedRows: Set<UUID>) {
+        var fragments = Set<UUID>()
+        for block in blocks where block.flow == .horizontal {
+            let touchesGlyph = column.contains { glyph in
+                let overlap = glyph.intersection(block.boundingBox)
+                return !overlap.isNull && overlap.width * overlap.height / max(0.000001, glyph.width * glyph.height) > 0.7
+            }
+            guard touchesGlyph else { continue }
+            let count = max(1, block.original.filter { !$0.isWhitespace }.count)
+            let advance = block.boundingBox.width * imageSize.width / CGFloat(count)
+            let height = block.originalLineHeight * imageSize.height
+            // CJK horizontal prose has roughly square, closely spaced glyphs.
+            // Sparse rows across adjacent vertical columns are not reliable
+            // horizontal text, even when Vision returns a horizontal box.
+            if !VerticalTextLayout.supports(block.original) || advance <= height * 1.3 {
+                return (true, [])
+            }
+            fragments.insert(block.id)
+        }
+        return (false, fragments)
+    }
+
     static func columns(_ boxes: [CGRect], imageSize: CGSize) -> [[CGRect]] {
         let valid = boxes.filter {
             let w = $0.width * imageSize.width, h = $0.height * imageSize.height

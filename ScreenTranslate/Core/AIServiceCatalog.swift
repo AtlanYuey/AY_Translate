@@ -1,5 +1,11 @@
 import Foundation
 
+@MainActor
+protocol APIKeyStoring {
+    func read(_ profile: APIKeySlot) throws -> String
+    func save(_ key: String, for profile: APIKeySlot) throws
+}
+
 /// All presets use the vendor's documented OpenAI-compatible endpoint.
 /// Model IDs remain editable: availability changes independently of the app.
 nonisolated enum AIProviderPreset: String, CaseIterable, Codable, Identifiable, Sendable {

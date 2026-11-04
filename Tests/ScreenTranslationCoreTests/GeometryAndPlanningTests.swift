@@ -41,6 +41,22 @@ final class GeometryAndPlanningTests: XCTestCase {
         XCTAssertEqual(result.map(\.count).sorted(), [3, 6])
     }
 
+    func testVerticalSupplementDoesNotReinterpretAlignedHorizontalRows() {
+        let column = (0..<4).map { CGRect(x: 0.2, y: 0.8 - Double($0) * 0.03, width: 0.02, height: 0.02) }
+        let horizontal = RecognizedBlock(id: UUID(), original: "这是一段正常的横排文字", translation: "", boundingBox: CGRect(x: 0.2, y: 0.8, width: 0.24, height: 0.02), confidence: 1)
+        let conflicts = VerticalOCRGeometry.horizontalConflicts(column: column, blocks: [horizontal], imageSize: CGSize(width: 1000, height: 1000))
+        XCTAssertTrue(conflicts.protected)
+        XCTAssertTrue(conflicts.fragmentedRows.isEmpty)
+    }
+
+    func testVerticalSupplementDropsSparseCrossColumnFragmentsOnlyAfterRecovery() {
+        let column = (0..<4).map { CGRect(x: 0.2, y: 0.8 - Double($0) * 0.03, width: 0.02, height: 0.02) }
+        let crossRow = RecognizedBlock(id: UUID(), original: "食しケ", translation: "", boundingBox: CGRect(x: 0.2, y: 0.8, width: 0.12, height: 0.02), confidence: 0.5)
+        let conflicts = VerticalOCRGeometry.horizontalConflicts(column: column, blocks: [crossRow], imageSize: CGSize(width: 1000, height: 1000))
+        XCTAssertFalse(conflicts.protected)
+        XCTAssertEqual(conflicts.fragmentedRows, [crossRow.id])
+    }
+
     func testCoordinateOriginRoundTrip() throws {
         let original = CGRect(x: 0.1, y: 0.7, width: 0.5, height: 0.1)
         let box = OCRAlignment.topLeftBox(original)

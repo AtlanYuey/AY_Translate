@@ -1,11 +1,6 @@
 import Foundation
 import Security
 
-protocol APIKeyStoring {
-    func read(_ profile: APIKeySlot) throws -> String
-    func save(_ key: String, for profile: APIKeySlot) throws
-}
-
 struct KeychainStore: APIKeyStoring {
     private let service: String
 
