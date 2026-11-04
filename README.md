@@ -19,7 +19,7 @@ See foreign text → press the Action Button → see the translated screen.
 
 截图翻译改用“截屏 → 与屏幕翻译共享”的全屏 Action 扩展，在系统宿主中显示并返回来源 App，移除 Siri 片段卡片。默认跟随系统语言，提供十二种界面语言及本地文字名；加入应用图标，历史标签仅在保存历史开启时显示。
 
-一键导入器和双动作模板已准备，但公开分发所需签名仍需要已登录 iCloud 的 Mac；当前无有效签名文件时会明确禁用自动导入。不会把未签名模板当作可用安装文件。
+已内置签名的双动作快捷指令，可点击“添加截屏翻译快捷指令”进入系统导入界面，再确认添加。操作按钮或轻点背面的绑定仍需在系统设置选择。CI 验证 Apple 证书链、归档签名和实际动作内容，不依赖运行时签名服务。
 
 实现依据、签名限制与验收范围：[全屏扩展与快捷指令调查](docs/全屏扩展与快捷指令调查.md)。
 
@@ -92,7 +92,9 @@ Layout-preserving overlays
 
 ## Action Button Setup
 
-Run Translate Screen once after installing it, then create a shortcut with these two actions:
+Run Translate Screen once after installing it, then open **Settings → Action Button & Shortcuts → Add Screenshot Shortcut**. Open the bundled file in Shortcuts and confirm **Add Shortcut**. Its two actions are already connected. Then assign it in **Settings → Action Button** or **Accessibility → Touch → Back Tap**.
+
+For manual setup or a build with a changed bundle identifier, create this workflow:
 
 1. Add **Take Screenshot**.
 2. Add **Share with Translate Screen** directly below it (the installed Action extension).
@@ -109,7 +111,7 @@ The resulting workflow is:
 Take Screenshot → Share with Translate Screen → Full-screen extension → Return to host
 ```
 
-No photo picker, conditional action, or separate Open action is required. iOS requires the system **Take Screenshot** action to be added during this one-time setup; third-party apps cannot silently capture the contents of other apps.
+No photo picker, conditional action, or separate Open action is required. iOS asks you to confirm importing the shortcut; third-party apps cannot silently capture the contents of other apps. If signing changes the app's bundle identifier, regenerate the signed template with the matching `WFAppIdentifier` or use the manual setup above.
 
 Devices without an Action Button can run the same shortcut from Shortcuts, Siri, a Home Screen shortcut, or another supported automation trigger.
 

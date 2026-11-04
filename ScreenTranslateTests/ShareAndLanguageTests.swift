@@ -79,6 +79,8 @@ final class ShareAndLanguageTests: XCTestCase {
         XCTAssertEqual(plist["SharedAppGroup"] as? String, Bundle.main.object(forInfoDictionaryKey: "SharedAppGroup") as? String)
         XCTAssertEqual(plist["SharedKeychainGroup"] as? String, Bundle.main.object(forInfoDictionaryKey: "SharedKeychainGroup") as? String)
         XCTAssertEqual(plist["CFBundleShortVersionString"] as? String, Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String)
+        let shortcut = try XCTUnwrap(ShortcutInstaller.bundledFile)
+        XCTAssertEqual(try Data(contentsOf: shortcut).prefix(4), Data("AEA1".utf8))
     }
 
     func testPreferenceMigrationDoesNotCopyUnrelatedSystemData() {

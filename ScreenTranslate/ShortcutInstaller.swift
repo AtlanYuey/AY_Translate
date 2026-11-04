@@ -7,7 +7,10 @@ final class ShortcutInstaller: NSObject, UIDocumentInteractionControllerDelegate
     private static let shared = ShortcutInstaller()
     private var controller: UIDocumentInteractionController?
     static let name = "Translate Screen"
-    static var bundledFile: URL? { Bundle.main.url(forResource: "TranslateScreen", withExtension: "shortcut") }
+    static var bundledFile: URL? {
+        Bundle.main.url(forResource: "TranslateScreen", withExtension: "shortcut")
+            ?? Bundle.main.url(forResource: "TranslateScreen", withExtension: "shortcut", subdirectory: "Resources")
+    }
     static var runURL: URL {
         var url = URLComponents(string: "shortcuts://run-shortcut")!
         url.queryItems = [URLQueryItem(name: "name", value: name)]

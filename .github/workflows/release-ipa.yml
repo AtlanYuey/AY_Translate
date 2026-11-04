@@ -58,24 +58,11 @@ jobs:
           set -euo pipefail
           swift test --jobs 3 2>&1 | tee "$RUNNER_TEMP/core-tests.log"
 
-      - name: Check signed Shortcut generation support
-        continue-on-error: true
+      - name: Verify bundled Shortcut signature and actions
         shell: bash
         run: |
-          python3 - <<'PYTHON'
-          import os, plistlib
-          from pathlib import Path
-          workflow = {"WFWorkflowActions": [{"WFWorkflowActionIdentifier": "is.workflow.actions.takescreenshot", "WFWorkflowActionParameters": {}}], "WFWorkflowClientVersion": "3036.0.4", "WFWorkflowMinimumClientVersion": 900, "WFWorkflowIcon": {"WFWorkflowIconStartColor": 4282601983, "WFWorkflowIconGlyphNumber": 59511}, "WFWorkflowImportQuestions": [], "WFWorkflowTypes": ["NCWidget"], "WFWorkflowInputContentItemClasses": ["WFImageContentItem"]}
-          Path(os.environ["RUNNER_TEMP"], "ShortcutProbe.shortcut").write_bytes(plistlib.dumps(workflow))
-          PYTHON
-          shortcuts sign --mode anyone --input "$RUNNER_TEMP/ShortcutProbe.shortcut" --output "$RUNNER_TEMP/ShortcutProbe-signed.shortcut" 2>&1 | tee "$RUNNER_TEMP/shortcut-sign.log"
-          python3 - <<'PYTHON'
-          import os
-          from pathlib import Path
-          file = Path(os.environ["RUNNER_TEMP"], "ShortcutProbe-signed.shortcut")
-          if not file.exists() or file.read_bytes()[:4] != b'AEA1':
-              raise SystemExit('Signing requires an iCloud-authenticated Mac. No signed Shortcut was produced.')
-          PYTHON
+          set -euo pipefail
+          python3 .github/scripts/verify-bundled-shortcut.py | tee "$RUNNER_TEMP/shortcut-verification.json"
 
       - name: Resolve version and artifact name
         id: metadata
@@ -154,11 +141,6 @@ jobs:
             CODE_SIGNING_ALLOWED=YES CODE_SIGNING_REQUIRED=NO CODE_SIGN_IDENTITY="-" DEVELOPMENT_TEAM="" \
             2>&1 | tee "$RUNNER_TEMP/ios-test-build.log"
 
-      - name: Inspect shared-action platform metadata
-        continue-on-error: true
-        shell: bash
-        run: python3 .github/scripts/inspect-shortcut-actions.py > "$RUNNER_TEMP/shortcut-actions.json"
-
       - name: Test iOS workflow, Vision, Keychain and system extension interface
         timeout-minutes: 25
         env:
@@ -218,9 +200,7 @@ jobs:
             ${{ runner.temp }}/TestBuild.xcresult
             ${{ runner.temp }}/BuildResults.xcresult
             ${{ runner.temp }}/interface-screenshots
-            ${{ runner.temp }}/shortcut-sign.log
-            ${{ runner.temp }}/ShortcutProbe-signed.shortcut
-            ${{ runner.temp }}/shortcut-actions.json
+            ${{ runner.temp }}/shortcut-verification.json
             Shortcuts/TranslateScreen.unsigned.plist
           if-no-files-found: warn
           retention-days: 14
