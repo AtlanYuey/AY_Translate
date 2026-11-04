@@ -60,8 +60,8 @@ final class ZoomScrollController<Content: View>: UIViewController, UIScrollViewD
         loadViewIfNeeded()
         if fitted != size, size.width > 0, size.height > 0 {
             let zoom = scroll.zoomScale
-            let center = CGPoint(x: (scroll.contentOffset.x + scroll.bounds.midX) / max(1, fitted.width * zoom),
-                                 y: (scroll.contentOffset.y + scroll.bounds.midY) / max(1, fitted.height * zoom))
+            let center = CGPoint(x: (scroll.contentOffset.x + scroll.bounds.width / 2) / max(1, fitted.width * zoom),
+                                 y: (scroll.contentOffset.y + scroll.bounds.height / 2) / max(1, fitted.height * zoom))
             let hadContent = fitted != .zero
             scroll.setZoomScale(1, animated: false)
             fitted = size
@@ -70,8 +70,11 @@ final class ZoomScrollController<Content: View>: UIViewController, UIScrollViewD
             if hadContent {
                 scroll.setZoomScale(zoom, animated: false)
                 centerContent()
-                scroll.contentOffset = CGPoint(x: min(1, max(0, center.x)) * size.width * zoom - scroll.bounds.midX,
-                                               y: min(1, max(0, center.y)) * size.height * zoom - scroll.bounds.midY)
+                let x = min(1, max(0, center.x)) * size.width * zoom - scroll.bounds.width / 2
+                let y = min(1, max(0, center.y)) * size.height * zoom - scroll.bounds.height / 2
+                scroll.contentOffset = CGPoint(
+                    x: min(max(-scroll.contentInset.left, x), max(-scroll.contentInset.left, scroll.contentSize.width - scroll.bounds.width + scroll.contentInset.right)),
+                    y: min(max(-scroll.contentInset.top, y), max(-scroll.contentInset.top, scroll.contentSize.height - scroll.bounds.height + scroll.contentInset.bottom)))
             }
         }
         if self.resetID != resetID {
