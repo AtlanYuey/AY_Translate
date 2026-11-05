@@ -43,7 +43,7 @@ final class InterfaceAndServiceTests: XCTestCase {
     func testActivityBorderSurvivesRoundedDisplayMasksInBothOrientations() throws {
         for size in [CGSize(width: 393, height: 852), CGSize(width: 852, height: 393), CGSize(width: 744, height: 1133)] {
             let renderer = ImageRenderer(content: Color.black.overlay { ProcessingEdgeGlow() }
-                .environment(\.accessibilityReduceMotion, true).frame(width: size.width, height: size.height))
+                .frame(width: size.width, height: size.height))
             renderer.scale = 1
             let image = try XCTUnwrap(renderer.uiImage)
             let cg = try XCTUnwrap(image.cgImage)
