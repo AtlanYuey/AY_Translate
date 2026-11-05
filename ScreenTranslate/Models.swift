@@ -77,6 +77,12 @@ enum AppLanguage: String, CaseIterable, Identifiable, Codable {
 
     static var sourceLanguages: [AppLanguage] { allCases }
     static var targetLanguages: [AppLanguage] { allCases.filter { $0 != .automatic } }
+
+    static func targetLanguage(saved: String?, preferred: String) -> AppLanguage {
+        if let saved, let language = AppLanguage(rawValue: saved), language != .automatic { return language }
+        if preferred.hasPrefix("zh") { return .chinese }
+        return targetLanguages.first { preferred == $0.rawValue || preferred.hasPrefix($0.rawValue + "-") } ?? .english
+    }
 }
 
 enum TranslationAppearance: String, CaseIterable, Identifiable {
@@ -135,11 +141,13 @@ final class AppSettings: ObservableObject {
     @Published private(set) var iCloudSyncMessage: String?
     private var cloudSync: CloudSettingsSync?
     private var applyingCloudSettings = false
+    private var refreshingSharedSettings = false
+    private let isPersistentSettings: Bool
 
     private func configureCloudSync() {
         cloudSync?.stop(); cloudSync = nil
         #if !SCREEN_TRANSLATE_SHARE_EXTENSION
-        guard iCloudSyncEnabled, syncThroughKeychain else { return }
+        guard iCloudSyncEnabled, isPersistentSettings else { return }
         let sync = CloudSettingsSync(defaults: defaults, apply: { [weak self] changes in
             guard let self else { return false }
             // A synced endpoint change must never send the old device's key to
@@ -171,6 +179,7 @@ final class AppSettings: ObservableObject {
     }
 
     func uploadSettingsToCloud() { cloudSync?.uploadLocalSettings() }
+    func resumeSettingsSync() { refreshSharedPreferences(); cloudSync?.resume() }
 
     @Published var source: AppLanguage {
         didSet { persist(source.rawValue, forKey: Keys.source) }
@@ -219,17 +228,20 @@ final class AppSettings: ObservableObject {
     init(defaults suppliedDefaults: UserDefaults? = nil, keyStore suppliedStore: (any APIKeyStoring)? = nil, syncThroughKeychain: Bool? = nil) {
         let defaults = suppliedDefaults ?? SharedAppContainer.preferences
         let store = suppliedStore ?? KeychainStore()
-        let synchronize = syncThroughKeychain ?? (suppliedDefaults == nil)
+        // A real App Group is authoritative. A stale Keychain mirror must not
+        // overwrite its target language; the bridge is only a signing fallback.
+        let synchronize = syncThroughKeychain ?? (suppliedDefaults == nil && SharedAppContainer.url == nil)
         self.defaults = defaults
         self.keyStore = store
         self.syncThroughKeychain = synchronize
+        self.isPersistentSettings = suppliedDefaults == nil
         var syncMessage: String?
         if synchronize {
             do { try PreferencesBridge.synchronize(defaults, store: store) }
             catch { syncMessage = error.localizedDescription }
         }
         source = AppLanguage(rawValue: defaults.string(forKey: Keys.source) ?? "") ?? .automatic
-        target = AppLanguage(rawValue: defaults.string(forKey: Keys.target) ?? "") ?? AppLanguage(rawValue: InterfaceLanguage.system.resolvedIdentifier()) ?? .english
+        target = AppLanguage.targetLanguage(saved: defaults.string(forKey: Keys.target), preferred: InterfaceLanguage.system.resolvedIdentifier())
         appearance = TranslationAppearance(rawValue: defaults.string(forKey: Keys.appearance) ?? "") ?? .natural
         savesHistory = defaults.bool(forKey: Keys.savesHistory)
         ocrEngine = OCREngine(rawValue: defaults.string(forKey: "ocrEngine") ?? "") ?? .appleVision
@@ -255,9 +267,10 @@ final class AppSettings: ObservableObject {
             do { try PreferencesBridge.synchronize(defaults, store: keyStore); synchronizationError = nil }
             catch { synchronizationError = error.localizedDescription }
         }
-        let wasApplying = applyingCloudSettings
-        applyingCloudSettings = true
-        defer { applyingCloudSettings = wasApplying }
+        // Refresh is a read. Publishing an unchanged or default property here
+        // used to write the whole snapshot back into the shared mirror.
+        refreshingSharedSettings = true
+        defer { refreshingSharedSettings = false }
         let saved = AppSettings(defaults: defaults, keyStore: keyStore, syncThroughKeychain: false)
         source = saved.source; target = saved.target; appearance = saved.appearance
         savesHistory = saved.savesHistory; ocrEngine = saved.ocrEngine; translationEngine = saved.translationEngine
@@ -399,6 +412,7 @@ final class AppSettings: ObservableObject {
     }
 
     private func persist(_ value: Any, forKey key: String) {
+        guard !refreshingSharedSettings else { return }
         defaults.set(value, forKey: key)
         if !applyingCloudSettings { cloudSync?.changed(value, key: key) }
         guard syncThroughKeychain else { return }

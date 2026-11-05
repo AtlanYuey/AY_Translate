@@ -47,13 +47,13 @@ nonisolated enum TextInkRestoration {
             return Patch(pixels: pixels, width: width, height: height, changedPixels: 0)
         }
         let radius = min(32, max(3, Int(glyphSize * 0.65)))
-        var luminance = [Int](repeating: 0, count: width * height)
+        var luminance = [UInt8](repeating: 0, count: width * height)
         for index in luminance.indices {
             let pixel = index * 4
             let red = Int(pixels[pixel]) * 77
             let green = Int(pixels[pixel + 1]) * 150
             let blue = Int(pixels[pixel + 2]) * 29
-            luminance[index] = (red + green + blue) / 256
+            luminance[index] = UInt8((red + green + blue) / 256)
         }
         var allowed = [Bool](repeating: false, count: width * height)
         for rect in glyphs {
@@ -71,14 +71,14 @@ nonisolated enum TextInkRestoration {
             var samples: [Int] = []
             for (dx, dy) in [(-radius,0),(radius,0),(0,-radius),(0,radius),(-radius,-radius),(radius,-radius),(-radius,radius),(radius,radius)] {
                 let xx = min(width - 1, max(0, x + dx)), yy = min(height - 1, max(0, y + dy))
-                samples.append(luminance[yy * width + xx])
+                samples.append(Int(luminance[yy * width + xx]))
             }
             samples.sort()
             let middle = (samples[3] + samples[4]) / 2
-            localBackground[i] = middle
+            localBackground[i] = UInt8(middle)
             // Ignore uncertain picture edges; outlined text remains readable
             // there even if conservative restoration retains some original ink.
-            mask[i] = abs(luminance[i] - middle) > 58 && samples[5] - samples[2] < 80
+            mask[i] = abs(Int(luminance[i]) - middle) > 58 && samples[5] - samples[2] < 80
         }
         // Recover connected stroke edges from a confirmed ink seed. Periodic
         // letters can contaminate the surrounding samples at a cap/descender.
@@ -92,7 +92,7 @@ nonisolated enum TextInkRestoration {
                     let xx = x + dx, yy = y + dy
                     guard xx >= 0, xx < width, yy >= 0, yy < height else { continue }
                     let j = yy * width + xx
-                    if allowed[j] && !mask[j] && abs(luminance[j] - localBackground[i]) > 8 {
+                    if allowed[j] && !mask[j] && abs(Int(luminance[j]) - Int(localBackground[i])) > 8 {
                         mask[j] = true
                         localBackground[j] = localBackground[i]
                         next.append(j)
@@ -111,7 +111,7 @@ nonisolated enum TextInkRestoration {
                     let xx = x + dx * step, yy = y + dy * step
                     if xx < 0 || xx >= width || yy < 0 || yy >= height { break }
                     let j = yy * width + xx
-                    if !mask[j] && abs(luminance[j] - localBackground[i]) < 40 { samples.append((j, step)); break }
+                    if !mask[j] && abs(Int(luminance[j]) - Int(localBackground[i])) < 40 { samples.append((j, step)); break }
                 }
             }
             guard samples.count >= 3 else { continue }

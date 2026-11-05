@@ -5,6 +5,29 @@ import UniformTypeIdentifiers
 
 @MainActor
 final class ShareAndLanguageTests: XCTestCase {
+    func testTargetFallbackNeverUsesAutomaticOrLosesChineseRegionalLanguage() {
+        XCTAssertEqual(AppLanguage.targetLanguage(saved: "zh-Hans", preferred: "en-US"), .chinese)
+        XCTAssertEqual(AppLanguage.targetLanguage(saved: "automatic", preferred: "zh-Hant-TW"), .chinese)
+        XCTAssertEqual(AppLanguage.targetLanguage(saved: nil, preferred: "ja-JP"), .japanese)
+    }
+
+    func testLargeEncodedImagesAreDownsampledBeforeOCRAndKeepOrientation() throws {
+        let format = UIGraphicsImageRendererFormat(); format.scale = 1; format.preferredRange = .standard
+        let original = UIGraphicsImageRenderer(size: CGSize(width: 3600, height: 1800), format: format).image { context in
+            UIColor.white.setFill(); context.fill(CGRect(x: 0, y: 0, width: 3600, height: 1800))
+            UIColor.blue.setFill(); context.fill(CGRect(x: 0, y: 0, width: 900, height: 900))
+        }
+        let rotated = UIImage(cgImage: try XCTUnwrap(original.cgImage), scale: 1, orientation: .right)
+        let decoded = try ScreenshotInput.bounded(rotated)
+        XCTAssertEqual(decoded.imageOrientation, .up)
+        XCTAssertGreaterThan(decoded.size.height, decoded.size.width)
+        XCTAssertLessThanOrEqual(max(try XCTUnwrap(decoded.cgImage).width, try XCTUnwrap(decoded.cgImage).height), 3072)
+        let fromData = try ScreenshotInput.decode(XCTUnwrap(original.jpegData(compressionQuality: 0.8)))
+        XCTAssertEqual(fromData.cgImage?.width, 3072)
+        XCTAssertEqual(fromData.cgImage?.height, 1536)
+        XCTAssertEqual(fromData.cgImage?.bitsPerComponent, 8)
+        XCTAssertTrue(try ScreenshotInput.bounded(fromData) === fromData, "Upright screenshot pixels must be reused")
+    }
     func testLanguageChoicesUseTheirOwnNamesAndFollowSystemByDefault() {
         let suite = "ShareLanguages." + UUID().uuidString
         let defaults = UserDefaults(suiteName: suite)!

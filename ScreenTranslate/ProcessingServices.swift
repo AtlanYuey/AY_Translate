@@ -20,7 +20,7 @@ struct ProcessingServices {
                 return try await client.recognize(imageData: data, anchors: anchors, configuration: configuration, apiKey: key)
             },
             aiTranslation: { blocks, source, target, preference, configuration, key in
-                try await client.translate(blocks, source: source == .automatic ? "auto-detect" : source.name, target: target.name, preference: preference, configuration: configuration, apiKey: key)
+                try await client.translate(blocks, source: source == .automatic ? "auto-detect" : source.name, target: target.name + " (" + target.rawValue + ")", preference: preference, configuration: configuration, apiKey: key)
             }
         )
     }
@@ -31,6 +31,7 @@ struct ProcessingServices {
         let factor = min(1, maxDimension / max(image.size.width, image.size.height))
         let size = CGSize(width: image.size.width * factor, height: image.size.height * factor)
         let format = UIGraphicsImageRendererFormat()
+        format.preferredRange = .standard
         format.scale = 1
         format.opaque = true
         let normalized = UIGraphicsImageRenderer(size: size, format: format).image { context in

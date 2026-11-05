@@ -226,7 +226,7 @@ private struct ConfigurationSyncView: View {
                 Toggle("Sync Settings with iCloud", isOn: $settings.iCloudSyncEnabled)
                 if settings.iCloudSyncEnabled {
                     Button("Upload This Device’s Settings") { settings.uploadSettingsToCloud() }
-                    Text("Other devices read your iCloud settings first. On your first device, upload once; later changes sync automatically.")
+                    Text("Saved settings sync automatically after enabling. Changes are sent after a short pause; opening the app also checks other devices. Manual upload is only a fallback.")
                         .font(.footnote).foregroundStyle(.secondary)
                 }
                 Text("Sync languages, display preferences and AI service details across your devices. API keys, screenshots, history and cloud permissions stay on this device.")

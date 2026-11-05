@@ -57,7 +57,7 @@ struct ContentView: View {
         }
         .onChange(of: scenePhase) { _, phase in
             if phase == .active {
-                settings.refreshSharedPreferences()
+                settings.resumeSettingsSync()
                 appState.history.load()
                 loadPendingShortcutImage()
             }
@@ -118,7 +118,7 @@ private struct HomeView: View {
             guard let newValue else { return }
             Task {
                 guard let data = try? await newValue.loadTransferable(type: Data.self),
-                      let image = UIImage(data: data) else { return }
+                      let image = try? ScreenshotInput.decode(data) else { return }
                 appState.process(image)
                 photoItem = nil
             }

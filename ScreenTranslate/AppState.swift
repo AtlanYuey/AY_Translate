@@ -26,6 +26,7 @@ final class AppState: ObservableObject {
     let settings: AppSettings
     let history: HistoryStore
     var hasSourceImage: Bool { sourceImage != nil }
+    var isProcessing: Bool { phase == .reading || phase == .translating || phase == .preparing }
 
     private let services: ProcessingServices
     @Published private(set) var sourceImage: UIImage?
@@ -221,6 +222,9 @@ final class AppState: ObservableObject {
         guard let processID, isActive(processID), appleRequestID == processID,
               phase == .translating, var current = document else { return }
         do {
+            guard session.targetLanguage?.languageCode == current.target.localeLanguage?.languageCode else {
+                throw AIServiceError.incompleteTranslation
+            }
             // prepareTranslation throws when source is nil. Resolve it locally
             // first when possible, then let the system request model downloads.
             if let source = appleResolvedSource, let target = current.target.localeLanguage,
@@ -238,6 +242,9 @@ final class AppState: ObservableObject {
                 guard isActive(processID) else { session.cancel(); return }
                 guard let key = response.clientIdentifier, let index = indices[key],
                       !response.targetText.isEmpty, completed.insert(key).inserted else { continue }
+                guard response.targetLanguage.languageCode == current.target.localeLanguage?.languageCode else {
+                    throw AIServiceError.incompleteTranslation
+                }
                 current.blocks[index].translation = response.targetText
                 translatedBlockCount = current.blocks.count - pendingAppleIDs.count + completed.count
                 if lastPublish.duration(to: .now) >= .milliseconds(80) {

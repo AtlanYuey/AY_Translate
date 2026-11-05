@@ -9,6 +9,25 @@ import FoundationNetworking
 @testable import ScreenTranslationCore
 
 final class OpenAIClientTests: XCTestCase {
+    func testChineseTargetRepairsEnglishSentencesAndDoesNotPublishASecondWrongAnswer() async throws {
+        for fixed in ["你的嘴角有奶油。", "Your mouth is dripping."] {
+            let source = block("口元にクリームがついています")
+            var calls = 0
+            let service = client { request in
+                calls += 1
+                let body = try XCTUnwrap(JSONSerialization.jsonObject(with: XCTUnwrap(request.httpBody)) as? [String: Any])
+                let messages = try XCTUnwrap(body["messages"] as? [[String: Any]])
+                XCTAssertTrue((messages[0]["content"] as? String)?.contains("简体中文") == true)
+                let text = calls == 1 ? "Your mouth is dripping." : fixed
+                let payload = try JSONSerialization.data(withJSONObject: ["translations": [["id": "0", "text": text]]])
+                return (200, try self.response(String(decoding: payload, as: UTF8.self)))
+            }
+            let result = try await service.translate([source], source: "Japanese", target: "Chinese (zh-Hans)", preference: .speed, configuration: configuration, apiKey: "")
+            XCTAssertEqual(calls, 2)
+            XCTAssertEqual(result[source.id], fixed == "你的嘴角有奶油。" ? fixed : source.original)
+        }
+    }
+
     private let configuration = AIServiceConfiguration(baseURL: "https://example.test/custom/v1", model: "test-model")
 
     override func tearDown() {

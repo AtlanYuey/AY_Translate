@@ -123,6 +123,7 @@ enum ScreenshotRendering {
         let factor = min(1, 640 / max(document.image.size.width, document.image.size.height))
         let size = CGSize(width: max(1, floor(document.image.size.width * factor)), height: max(1, floor(document.image.size.height * factor)))
         let format = UIGraphicsImageRendererFormat()
+        format.preferredRange = .standard
         format.scale = 1
         format.opaque = true
         let upright = UIGraphicsImageRenderer(size: size, format: format).image { renderer in
@@ -157,13 +158,14 @@ enum ScreenshotRendering {
     static func restorationsAsync(for document: TranslationDocument) async -> [UUID: RestoredRegion] {
         guard let image = restorationImage(document.image) else { return [:] }
         let blocks = document.blocks
-        return await Task.detached(priority: .userInitiated) { restore(image, blocks: blocks) }.value
+        let task = Task.detached(priority: .userInitiated) { restore(image, blocks: blocks) }
+        return await withTaskCancellationHandler(operation: { await task.value }, onCancel: { task.cancel() })
     }
 
     private static func restorationImage(_ image: UIImage) -> CGImage? {
         let factor = min(image.scale, 2048 / max(1, max(image.size.width, image.size.height)))
         let size = CGSize(width: image.size.width * factor, height: image.size.height * factor)
-        let format = UIGraphicsImageRendererFormat(); format.scale = 1; format.opaque = true
+        let format = UIGraphicsImageRendererFormat(); format.scale = 1; format.opaque = true; format.preferredRange = .standard
         return UIGraphicsImageRenderer(size: size, format: format).image { _ in image.draw(in: CGRect(origin: .zero, size: size)) }.cgImage
     }
 
@@ -176,7 +178,7 @@ enum ScreenshotRendering {
             let source = CGRect(x: block.boundingBox.minX * width, y: (1 - block.boundingBox.maxY) * height,
                                 width: block.boundingBox.width * width, height: block.boundingBox.height * height)
             let rect = source.insetBy(dx: -font, dy: -font).integral.intersection(CGRect(x: 0, y: 0, width: width, height: height))
-            guard let crop = image.cropping(to: rect), crop.width * crop.height <= 1_000_000 else { continue }
+            guard let crop = image.cropping(to: rect), crop.width * crop.height <= 400_000 else { continue }
             var bytes = [UInt8](repeating: 0, count: crop.width * crop.height * 4)
             let rendered = bytes.withUnsafeMutableBytes { buffer -> Bool in
                 guard let cg = CGContext(data: buffer.baseAddress, width: crop.width, height: crop.height, bitsPerComponent: 8, bytesPerRow: crop.width * 4,
@@ -222,6 +224,7 @@ enum ScreenshotRendering {
         let width: CGFloat = 390
         let size = CGSize(width: width, height: width * document.image.size.height / max(1, document.image.size.width))
         let format = UIGraphicsImageRendererFormat()
+        format.preferredRange = .standard
         format.scale = min(3, 2560 / max(size.width, size.height))
         format.opaque = true
         let restorations = restorationImage(document.image).map { restore($0, blocks: document.blocks) } ?? [:]
@@ -269,7 +272,7 @@ enum ScreenshotRendering {
         // A single negative strokeWidth fills first, then paints a centered
         // outline over the glyph. At small image-relative sizes that can erase
         // thin CJK strokes. Paint the outline first and the intact fill last.
-        draw(ink.merging([.strokeColor: outline, .strokeWidth: 6]) { _, new in new })
+        draw(ink.merging([.strokeColor: outline, .strokeWidth: 10]) { _, new in new })
         draw(ink)
         UIGraphicsPopContext()
         context.restoreGState()

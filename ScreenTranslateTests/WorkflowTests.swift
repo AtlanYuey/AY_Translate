@@ -154,6 +154,32 @@ final class WorkflowTests: XCTestCase {
         XCTAssertFalse(state.presentsResult)
     }
 
+    func testSlowAIKeepsResultOpenAndUsesTheCapturedChineseTarget() async throws {
+        try settings.saveConfiguration(.init(baseURL: "https://example.test/v1", model: "deepseek-chat"), keyReplacement: nil, for: .translation)
+        settings.translationEngine = .ai; settings.grantConsent(for: .translation)
+        let region = block("これは何ですか")
+        var continuation: CheckedContinuation<[UUID: String], Never>?
+        var injected = services { _, _ in [region] }
+        injected.aiTranslation = { _, _, target, _, _, _ in
+            XCTAssertEqual(target, .chinese)
+            return await withCheckedContinuation { continuation = $0 }
+        }
+        let state = AppState(settings: settings, history: HistoryStore(fileURL: historyURL), services: injected)
+        state.process(image())
+        try await waitUntil { continuation != nil }
+        settings.target = .english // A later settings change is for the next image.
+        try await Task.sleep(for: .milliseconds(100))
+        XCTAssertTrue(state.isProcessing)
+        XCTAssertTrue(state.presentsResult)
+        XCTAssertNotNil(state.displayedDocument)
+        continuation?.resume(returning: [region.id: "这是什么？"])
+        try await waitUntil { state.phase == .ready }
+        XCTAssertTrue(state.presentsResult)
+        XCTAssertEqual(state.document?.target, .chinese)
+        XCTAssertEqual(state.document?.translatedText, "这是什么？")
+        state.closeResult()
+    }
+
     func testFailedAIRecognitionFallsBackToLocalAnchors() async throws {
         try settings.saveConfiguration(.init(baseURL: "https://example.test/v1", model: "vision"), keyReplacement: nil, for: .ocr)
         settings.ocrEngine = .ai

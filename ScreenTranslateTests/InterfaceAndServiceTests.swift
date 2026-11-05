@@ -48,6 +48,16 @@ final class InterfaceAndServiceTests: XCTestCase {
         XCTAssertTrue(CloudSettingsRecord.allowedKeys.contains("showsTextDetailsOnTap"))
     }
 
+    func testRefreshingPreferencesIsReadOnlyAndPreservesSelectedChineseTarget() throws {
+        let bridged = AppSettings(defaults: defaults, keyStore: keys, syncThroughKeychain: true)
+        bridged.target = .chinese
+        let writes = keys.sharedWrites
+        bridged.refreshSharedPreferences()
+        bridged.refreshSharedPreferences()
+        XCTAssertEqual(bridged.target, .chinese)
+        XCTAssertEqual(keys.sharedWrites, writes, "Refreshing must not republish default properties")
+    }
+
     func testNativeZoomKeepsTheRequestedFocalPointAndSurvivesContentUpdates() {
         let controller = ZoomScrollController(root: Color.white)
         let window = UIWindow(frame: CGRect(x: 0, y: 0, width: 400, height: 800))
@@ -85,7 +95,7 @@ final class InterfaceAndServiceTests: XCTestCase {
         }
     }
 
-    func testCloudSyncWaitsForRemoteBeforeSeedingDefaultsAndKeepsLocalChanges() throws {
+    func testCloudSyncBootstrapsAutomaticallyButNewerRemoteEditsWin() throws {
         defaults.set("en", forKey: "defaultTargetLanguage")
         let cloud = MemoryCloudSettings()
         var imported: [String: Any] = [:]
@@ -94,7 +104,8 @@ final class InterfaceAndServiceTests: XCTestCase {
         }, status: { _ in })
         sync.start()
         defer { sync.stop() }
-        XCTAssertTrue(cloud.values.isEmpty, "An empty local iCloud cache may still be downloading; do not upload defaults")
+        let initial = try JSONDecoder().decode(CloudSettingsRecord.self, from: XCTUnwrap(cloud.data(forKey: "ay.settings.v1.defaultTargetLanguage")))
+        XCTAssertEqual(initial.timestamp, 1, "Existing saved settings seed automatically at migration priority")
         let remote = try CloudSettingsRecord(value: "ja", timestamp: 100, device: "other")
         cloud.set(try JSONEncoder().encode(remote), forKey: "ay.settings.v1.defaultTargetLanguage")
         sync.merge()
@@ -106,6 +117,25 @@ final class InterfaceAndServiceTests: XCTestCase {
         sync.changed(true, key: "saveTranslationHistory")
         XCTAssertNil(cloud.data(forKey: "ay.settings.v1.APIKey"))
         XCTAssertNil(cloud.data(forKey: "ay.settings.v1.saveTranslationHistory"))
+    }
+
+    func testCloudSyncAutomaticallyFlushesEditsAndResumesExtensionChanges() async throws {
+        let cloud = MemoryCloudSettings()
+        let sync = CloudSettingsSync(defaults: defaults, store: cloud, apply: { _ in true }, status: { _ in })
+        sync.start()
+        let initialCalls = cloud.syncCalls
+        defaults.set("zh-Hans", forKey: "defaultTargetLanguage")
+        sync.changed("zh-Hans", key: "defaultTargetLanguage")
+        try await Task.sleep(for: .milliseconds(800))
+        XCTAssertGreaterThan(cloud.syncCalls, initialCalls)
+        defaults.set("ja", forKey: "defaultTargetLanguage") // Share extension edit while app suspended.
+        sync.resume()
+        let record = try JSONDecoder().decode(CloudSettingsRecord.self, from: XCTUnwrap(cloud.data(forKey: "ay.settings.v1.defaultTargetLanguage")))
+        XCTAssertEqual(record.decodedValue(for: "defaultTargetLanguage") as? String, "ja")
+        sync.stop()
+        sync.changed("es", key: "defaultTargetLanguage")
+        let stopped = try JSONDecoder().decode(CloudSettingsRecord.self, from: XCTUnwrap(cloud.data(forKey: "ay.settings.v1.defaultTargetLanguage")))
+        XCTAssertEqual(stopped, record)
     }
 
     func testChangingTranslationServiceReusesLocalRecognitionAndClosingClearsTheCache() async throws {
@@ -555,9 +585,10 @@ final class InterfaceAndServiceTests: XCTestCase {
 
     func testChineseFullScreenAndSettingsSnapshots() async throws {
         settings.interfaceLanguage = .simplifiedChinese
+        await attach(Color.black.overlay { ProcessingEdgeGlow() }, name: "处理中-彩色边缘提示")
         await attach(NavigationStack {
             AIRequestOptionsView(options: .constant(AIRequestOptions(preset: .deepSeekFast, bodyJSON: #"{"temperature":0.2}"#)))
-        }.environmentObject(settings), name: "中文-模型预设与自定义参数")
+        }.environmentObject(settings).environment(\.locale, settings.interfaceLocale), name: "中文-模型预设与自定义参数")
         await attach(List {
             ForEach(AIProviderPreset.allCases) { preset in
                 HStack { ProviderIcon(preset: preset).frame(width: 32, height: 32); Text(preset.name) }
@@ -657,9 +688,11 @@ final class InterfaceAndServiceTests: XCTestCase {
 @MainActor
 private final class ServiceTestKeys: APIKeyStoring {
     private var values: [APIKeySlot: String] = [:]
+    var sharedWrites = 0
     var failServiceWrites = false
     func read(_ slot: APIKeySlot) throws -> String { values[slot] ?? "" }
     func save(_ key: String, for slot: APIKeySlot) throws {
+        if slot == .sharedPreferences { sharedWrites += 1 }
         if case .service = slot, failServiceWrites { throw KeychainError(status: -25308) }
         values[slot] = key
     }
@@ -668,7 +701,8 @@ private final class ServiceTestKeys: APIKeyStoring {
 @MainActor
 private final class MemoryCloudSettings: CloudKeyValueStoring {
     var values: [String: Any] = [:]
+    var syncCalls = 0
     func data(forKey key: String) -> Data? { values[key] as? Data }
     func set(_ value: Any?, forKey key: String) { values[key] = value }
-    func synchronize() -> Bool { true }
+    func synchronize() -> Bool { syncCalls += 1; return true }
 }

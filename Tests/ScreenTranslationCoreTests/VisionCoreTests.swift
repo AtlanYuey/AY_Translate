@@ -89,6 +89,19 @@ final class VisionCoreTests: XCTestCase {
         try record(image, blocks: recovered, name: "supplemental-lower-left")
     }
 
+    func testSupplementalGeometryCanReadTextOnAGrayBubble() async throws {
+        let context = try canvas()
+        context.setFillColor(CGColor(gray: 0.70, alpha: 1))
+        context.fill(CGRect(x: 80, y: 280, width: 150, height: 360))
+        for (row, glyph) in "実はそうですね".enumerated() {
+            draw(String(glyph), x: 120, y: CGFloat(1000 + row * 34), font: "HiraginoSans-W6", size: 28, context: context)
+        }
+        let image = try XCTUnwrap(context.makeImage())
+        let recovered = try await VisionTextRecognizer.supplementVerticalGaps(image, blocks: [], language: "ja")
+        try record(image, blocks: recovered, name: "gray-bubble-supplement")
+        XCTAssertTrue(recovered.map(\.original).joined().contains("そうです"), recovered.map(\.original).joined())
+    }
+
     private func canvas() throws -> CGContext {
         let context = try XCTUnwrap(CGContext(data: nil, width: 900, height: 1600, bitsPerComponent: 8, bytesPerRow: 0,
             space: CGColorSpaceCreateDeviceRGB(), bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue))

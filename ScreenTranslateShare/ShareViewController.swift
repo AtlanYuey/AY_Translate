@@ -29,6 +29,7 @@ final class ShareViewController: UIViewController {
         // Configure presentation in init, before the system presents the
         // principal controller. viewDidLoad can run after adaptation to a sheet.
         view.backgroundColor = .black
+        isModalInPresentation = true
         let settings = AppSettings.shared
         settings.refreshSharedPreferences()
         let state = AppState(settings: settings, history: .shared)
@@ -44,6 +45,7 @@ final class ShareViewController: UIViewController {
             host.view.topAnchor.constraint(equalTo: view.topAnchor), host.view.bottomAnchor.constraint(equalTo: view.bottomAnchor)
         ])
         host.didMove(toParent: self)
+        host.isModalInPresentation = true
     }
 
     override func viewDidAppear(_ animated: Bool) {

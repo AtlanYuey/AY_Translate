@@ -18,6 +18,7 @@ final class CloudSettingsSync {
     private let apply: ([String: Any]) -> Bool
     private let status: (String) -> Void
     private var observer: NSObjectProtocol?
+    private var uploadTask: Task<Void, Never>?
     private let device: String
     private var active = false
     private let prefix = "ay.settings.v1."
@@ -30,6 +31,7 @@ final class CloudSettingsSync {
     }
 
     func start() {
+        guard !active else { return }
         active = true
         observer = NotificationCenter.default.addObserver(forName: NSUbiquitousKeyValueStore.didChangeExternallyNotification, object: store, queue: .main) { [weak self] notification in
             let reason = notification.userInfo?[NSUbiquitousKeyValueStoreChangeReasonKey] as? Int
@@ -48,34 +50,75 @@ final class CloudSettingsSync {
                 merge()
             }
         }
-        if !store.synchronize() { status("iCloud sync is unavailable. Check your iCloud account and signing profile.") }
-        else { status("iCloud settings sync requested. Other devices update when the app opens.") }
-        merge()
+        // Seed existing saved choices automatically. A migration baseline is
+        // older than any dated remote edit, so another device's record wins.
+        // Unset defaults are not seeded. Later explicit edits use real dates.
+        for key in CloudSettingsRecord.allowedKeys where defaults.data(forKey: prefix + key) == nil {
+            if let value = defaults.object(forKey: key),
+               let record = try? CloudSettingsRecord(value: value, timestamp: 1, device: device),
+               record.decodedValue(for: key) != nil {
+                defaults.set(try? JSONEncoder().encode(record), forKey: prefix + key)
+            }
+        }
+        resume()
+        scheduleUpload()
     }
 
     func stop() {
         active = false
+        uploadTask?.cancel(); uploadTask = nil
         if let observer { NotificationCenter.default.removeObserver(observer) }
         observer = nil
     }
 
     func changed(_ value: Any, key: String) {
-        guard CloudSettingsRecord.allowedKeys.contains(key),
+        guard active, CloudSettingsRecord.allowedKeys.contains(key),
               let record = try? CloudSettingsRecord(value: value, timestamp: Date().timeIntervalSince1970, device: device),
               record.decodedValue(for: key) != nil,
               let data = try? JSONEncoder().encode(record) else { return }
         defaults.set(data, forKey: prefix + key)
         store.set(data, forKey: prefix + key)
+        scheduleUpload()
+    }
+
+    private func scheduleUpload() {
+        uploadTask?.cancel()
+        uploadTask = Task { [weak self] in
+            do { try await Task.sleep(for: .milliseconds(600)) } catch { return }
+            guard let self, active else { return }
+            requestSynchronization()
+        }
+    }
+
+    private func requestSynchronization() {
+        if !store.synchronize() { status("iCloud sync is unavailable. Check your iCloud account and signing profile.") }
+        else { status("Automatic sync is active. Changes are queued to iCloud; delivery depends on the account and network.") }
+    }
+
+    /// Reconcile edits made in the Share extension while the app was suspended.
+    /// iCloud does not require the user to press an upload button on returning.
+    func resume() {
+        guard active else { return }
+        for key in CloudSettingsRecord.allowedKeys {
+            guard let value = defaults.object(forKey: key) else { continue }
+            let current = try? PropertyListSerialization.data(fromPropertyList: ["value": value], format: .binary, options: 0)
+            let record = defaults.data(forKey: prefix + key).flatMap { try? JSONDecoder().decode(CloudSettingsRecord.self, from: $0) }
+            if current != record?.value { changed(value, key: key) }
+        }
+        requestSynchronization()
+        merge()
     }
 
     func uploadLocalSettings() {
+        guard active else { return }
         for key in CloudSettingsRecord.allowedKeys {
             if let value = defaults.object(forKey: key) { changed(value, key: key) }
         }
-        if !store.synchronize() { status("iCloud sync is unavailable. Check your iCloud account and signing profile.") }
+        requestSynchronization()
     }
 
     func merge() {
+        guard active else { return }
         var changes: [String: Any] = [:]
         var accepted: [String: Data] = [:]
         for key in CloudSettingsRecord.allowedKeys {

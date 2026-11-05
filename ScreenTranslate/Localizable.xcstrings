@@ -20677,6 +20677,38 @@
           }
         }
       }
+    },
+    "Automatic sync is active. Changes are queued to iCloud; delivery depends on the account and network.": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Automatic sync is active. Changes are queued to iCloud; delivery depends on the account and network."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "自动同步已开启。修改会自动提交到 iCloud，其他设备的接收时间取决于账号与网络状态。"
+          }
+        }
+      }
+    },
+    "Saved settings sync automatically after enabling. Changes are sent after a short pause; opening the app also checks other devices. Manual upload is only a fallback.": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Saved settings sync automatically after enabling. Changes are sent after a short pause; opening the app also checks other devices. Manual upload is only a fallback."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "开启后自动同步已保存的设置。修改会稍作合并后自动发送，打开 App 时也会检查其他设备的更新；手动上传仅作为备用。"
+          }
+        }
+      }
     }
   },
   "version": "1.0"

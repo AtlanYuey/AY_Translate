@@ -29,11 +29,25 @@ nonisolated enum VisionTextRecognizer {
     /// Check only uncovered vertical runs, not every recognized column. Never
     /// upload additional images or discard successful native OCR on a failure.
     static func supplementVerticalGaps(_ image: CGImage, blocks: [RecognizedBlock], language: String?) async throws -> [RecognizedBlock] {
-        guard language == "ja" || language?.hasPrefix("zh") == true || blocks.contains(where: { $0.flow == .vertical }) else { return blocks }
+        guard language == "ja" || language?.hasPrefix("zh") == true || blocks.contains(where: {
+            $0.flow == .vertical || $0.original.unicodeScalars.contains { (0x3041...0x30FF).contains($0.value) }
+        }) else { return blocks }
         let task = Task.detached(priority: .userInitiated) {
             guard let raster = grayscaleImage(image) else { return blocks }
             let size = CGSize(width: image.width, height: image.height)
-            let columns = VerticalInkDetector.columns(grayscale: raster.bytes, width: raster.width, height: raster.height)
+            let inkColumns = VerticalInkDetector.columns(grayscale: raster.bytes, width: raster.width, height: raster.height)
+            // Halftones, outlines and art behind a glyph can defeat the local
+            // uniform-ring detector. Vision's independent character detector
+            // supplies extra geometry; only uncovered columns are transcribed.
+            let detection = VNDetectTextRectanglesRequest()
+            detection.reportCharacterBoxes = true
+            #if targetEnvironment(simulator) || os(macOS)
+            detection.usesCPUOnly = true
+            #endif
+            try? VNImageRequestHandler(cgImage: image).perform([detection])
+            try Task.checkCancellation()
+            let detected = VerticalOCRGeometry.columns((detection.results ?? []).flatMap { $0.characterBoxes ?? [] }.map(\.boundingBox), imageSize: size)
+            let columns = VerticalOCRGeometry.mergingColumns(detected, supplemental: inkColumns)
             let missing = OCRCoverage.uncoveredColumns(columns, blocks: blocks, imageSize: size)
             var result = blocks
             for column in missing.prefix(6) {
@@ -137,9 +151,16 @@ nonisolated enum VisionTextRecognizer {
         request.textRecognitionOptions.minimumTextHeightFraction = 0.0025
         request.textRecognitionOptions.useLanguageCorrection = true
         request.textRecognitionOptions.automaticallyDetectLanguage = language == nil
-        if let language {
-            request.textRecognitionOptions.recognitionLanguages = [Locale.Language(identifier: language)]
+        // Automatic detection still needs a multilingual candidate list; the
+        // framework's initial recognitionLanguages can otherwise favor English.
+        let desired = language.map { [$0] } ?? (Locale.preferredLanguages + ["ja", "zh-Hans", "zh-Hant", "en", "ko", "es", "fr", "de", "it", "pt", "ru", "ar"])
+        let supported = request.supportedRecognitionLanguages
+        var languages: [Locale.Language] = []
+        for code in desired {
+            if let match = supported.first(where: { $0.minimalIdentifier == Locale.Language(identifier: code).minimalIdentifier }),
+               !languages.contains(match) { languages.append(match) }
         }
+        if !languages.isEmpty { request.textRecognitionOptions.recognitionLanguages = languages }
         let observations = try await request.perform(on: image)
         try Task.checkCancellation()
         return observations.flatMap { observation in
@@ -147,7 +168,8 @@ nonisolated enum VisionTextRecognizer {
                 guard let candidate = line.topCandidates(1).first,
                       !candidate.string.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else { return nil }
                 let box = line.boundingRegion.boundingBox.cgRect
-                let vertical = line.textDirection == .topToBottom
+                let vertical = line.textDirection == .topToBottom || (VerticalTextLayout.supports(candidate.string)
+                    && box.height * CGFloat(image.height) > box.width * CGFloat(image.width) * 2.2 && candidate.string.count >= 3)
                 // These are guidance boxes. Background restoration still segments
                 // the actual ink within them instead of erasing the rectangles.
                 let glyphs = candidate.string.indices.prefix(256).compactMap { index -> CGRect? in

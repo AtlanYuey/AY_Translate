@@ -24,16 +24,13 @@ enum SharedImageLoader {
         let providers = items.flatMap { $0.attachments ?? [] }
         for provider in providers {
             try Task.checkCancellation()
-            // A system activity may vend a UIImage object rather than encoded
-            // bytes. In that case loadDataRepresentation can return nil even
-            // though this is a valid image attachment.
-            if provider.canLoadObject(ofClass: UIImage.self),
-               let image = try? await objectImage(from: provider) {
-                try Task.checkCancellation()
-                return try validate(image)
-            }
             let types = provider.registeredTypeIdentifiers.filter { UTType($0)?.conforms(to: .image) == true }
             for type in types {
+                // Prefer encoded bytes so ImageIO downsamples before decoding.
+                if let data = try? await encodedData(from: provider, type: type) {
+                    try Task.checkCancellation()
+                    if let image = try decoded(data) { return image }
+                }
                 if let item = try? await sharedItem(from: provider, type: type) {
                     try Task.checkCancellation()
                     switch item {
@@ -48,10 +45,11 @@ enum SharedImageLoader {
                         if let data = try? Data(contentsOf: url, options: .mappedIfSafe), let image = try decoded(data) { return image }
                     }
                 }
-                if let data = try? await encodedData(from: provider, type: type) {
-                    try Task.checkCancellation()
-                    if let image = try decoded(data) { return image }
-                }
+            }
+            // Some hosts only vend UIImage objects; retain that fallback.
+            if provider.canLoadObject(ofClass: UIImage.self), let image = try? await objectImage(from: provider) {
+                try Task.checkCancellation()
+                return try validate(image)
             }
         }
         try Task.checkCancellation()
@@ -89,14 +87,13 @@ enum SharedImageLoader {
 
     private static func decoded(_ data: Data) throws -> UIImage? {
         guard data.count <= 32 * 1_024 * 1_024 else { throw SharedImageError.tooLarge }
-        guard let image = UIImage(data: data) else { return nil }
-        return try validate(image)
+        return try? ScreenshotInput.decode(data)
     }
 
     private static func validate(_ image: UIImage) throws -> UIImage {
         let pixels = image.size.width * image.scale * image.size.height * image.scale
         guard pixels.isFinite, pixels > 0, image.cgImage != nil else { throw SharedImageError.noImage }
         guard pixels <= 30_000_000 else { throw SharedImageError.tooLarge }
-        return image
+        return try ScreenshotInput.bounded(image)
     }
 }

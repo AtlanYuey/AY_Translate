@@ -37,6 +37,9 @@ final class ParametersAndCoverageTests: XCTestCase {
         XCTAssertFalse(TranslationCoverage.needsRetry(original: "一口だけです", translation: "只吃一口", target: "Chinese"))
         for text in ["1234", "中文原文", "カノウ"] { XCTAssertFalse(TranslationCoverage.needsRetry(original: text, translation: text, target: "Chinese")) }
         XCTAssertFalse(TranslationCoverage.needsRetry(original: "一口だけです", translation: "一口だけです", target: "Japanese"))
+        XCTAssertTrue(TranslationCoverage.needsRetry(original: "これ何ですか", translation: "What is this thing?", target: "Chinese"))
+        XCTAssertFalse(TranslationCoverage.needsRetry(original: "これはiPhoneです", translation: "这是 iPhone", target: "Chinese"))
+        XCTAssertFalse(TranslationCoverage.needsRetry(original: "アッシュ", translation: "Ash", target: "Chinese"))
     }
     func testAntialiasedStrokeEdgesDisappearWithoutChangingCleanBackground() {
         let width = 60, height = 60

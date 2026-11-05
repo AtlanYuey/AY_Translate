@@ -22,7 +22,7 @@ struct TranslationResultView: View {
     @State private var settingsAfterRecovery = false
 
     private var showsImage: Bool { appState.displayedDocument != nil && (mode != .text || appState.document == nil) }
-    private var usesRootDismissGesture: Bool { !showsImage && mode != .text && imageZoom <= 1.01 }
+    private var usesRootDismissGesture: Bool { !appState.isProcessing && !showsImage && mode != .text && imageZoom <= 1.01 }
 
     var body: some View {
         let requestID = appState.appleRequestID
@@ -31,6 +31,7 @@ struct TranslationResultView: View {
                 Color.black
                 resultContent
                     .frame(maxWidth: .infinity, maxHeight: .infinity)
+                if appState.isProcessing { ProcessingEdgeGlow() }
                 controls
                     .padding(.trailing, 12)
                     .padding(.bottom, max(geometry.safeAreaInsets.bottom, 8) + 6)
@@ -111,7 +112,7 @@ struct TranslationResultView: View {
                 } else {
                     ZoomableScreenshot(document: document, showsOriginal: mode == .original, appearance: settings.appearance,
                                        textScale: settings.overlayTextScale, allowsTextDetails: settings.showsTextDetailsOnTap, palette: palette, restorations: restorations, resetZoom: resetZoom,
-                                       zoomChanged: { imageZoom = $0 }, dismissAction: close) { selectedBlock = $0 }
+                                       zoomChanged: { imageZoom = $0 }, dismissAction: { if !appState.isProcessing { close() } }) { selectedBlock = $0 }
                         .id(document.id)
                 }
                 switch appState.phase {

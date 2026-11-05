@@ -19,6 +19,10 @@ nonisolated struct CloudSettingsRecord: Codable, Equatable {
         guard Self.allowedKeys.contains(key), version == 1, timestamp.isFinite, timestamp > 0,
               value.count < 250_000, let dictionary = try? PropertyListSerialization.propertyList(from: value, format: nil) as? [String: Any],
               let value = dictionary["value"] else { return nil }
+        if key == "defaultTargetLanguage" {
+            guard let language = value as? String,
+                  ["en", "ar", "zh-Hans", "ja", "ko", "es", "fr", "de", "it", "pt", "ru"].contains(language) else { return nil }
+        }
         if key == "ai.services.v1" {
             guard let data = value as? Data, let catalog = try? JSONDecoder().decode(AIServiceCatalog.self, from: data),
                   catalog.services.count <= 100, Set(catalog.services.map(\.id)).count == catalog.services.count,
