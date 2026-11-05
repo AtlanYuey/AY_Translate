@@ -80,17 +80,27 @@ nonisolated enum TextInkRestoration {
             // there even if conservative restoration retains some original ink.
             mask[i] = abs(luminance[i] - middle) > 58 && samples[5] - samples[2] < 80
         }
-        // Include faint antialiased edges, but never paint clean surrounding pixels.
-        let seed = mask
-        for i in seed.indices where seed[i] {
-            let x = i % width, y = i / width
-            for dy in -2...2 { for dx in -2...2 {
-                let xx = x + dx, yy = y + dy
-                if xx >= 0 && xx < width && yy >= 0 && yy < height {
+        // Recover connected stroke edges from a confirmed ink seed. Periodic
+        // letters can contaminate the surrounding samples at a cap/descender.
+        // Stay inside OCR guidance and limit growth to a fraction of a glyph.
+        var frontier = mask.indices.filter { mask[$0] }
+        for _ in 0..<min(8, max(2, Int(ceil(glyphSize * 0.2)))) {
+            var next: [Int] = []
+            for i in frontier {
+                let x = i % width, y = i / width
+                for (dx, dy) in [(-1,0),(1,0),(0,-1),(0,1)] {
+                    let xx = x + dx, yy = y + dy
+                    guard xx >= 0, xx < width, yy >= 0, yy < height else { continue }
                     let j = yy * width + xx
-                    if allowed[j] && abs(luminance[j] - localBackground[j]) > 8 { mask[j] = true }
+                    if allowed[j] && !mask[j] && abs(luminance[j] - localBackground[i]) > 8 {
+                        mask[j] = true
+                        localBackground[j] = localBackground[i]
+                        next.append(j)
+                    }
                 }
-            } }
+            }
+            frontier = next
+            if frontier.isEmpty { break }
         }
         var output = pixels, changed = 0
         for i in mask.indices where mask[i] {
