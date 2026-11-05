@@ -188,9 +188,17 @@ enum ScreenshotRendering {
                 return true
             }
             guard rendered else { continue }
+            // Vision's individual character boxes can exclude cap/descender
+            // edges even when the enclosing line is correct. Give each glyph
+            // a relative margin, bounded by its own text region. This guides
+            // the ink mask only; it never fills the enclosing rectangle.
+            let glyphPadding = max(2, font * 0.25)
+            let inkBounds = source.insetBy(dx: -font * 0.1, dy: -font * 0.1)
+                .offsetBy(dx: -rect.minX, dy: -rect.minY)
             let glyphs = (block.sourceGlyphBoxes ?? [block.boundingBox]).map {
                 CGRect(x: $0.minX * width - rect.minX, y: (1 - $0.maxY) * height - rect.minY,
-                       width: $0.width * width, height: $0.height * height).insetBy(dx: -1, dy: -1)
+                       width: $0.width * width, height: $0.height * height)
+                    .insetBy(dx: -glyphPadding, dy: -glyphPadding).intersection(inkBounds)
             }
             let patch = TextInkRestoration.restore(pixels: bytes, width: crop.width, height: crop.height, glyphs: glyphs, glyphSize: font)
             let transparent = TextInkRestoration.compositingPixels(original: bytes, patch: patch)

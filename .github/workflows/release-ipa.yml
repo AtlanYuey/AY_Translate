@@ -236,6 +236,29 @@ jobs:
             CODE_SIGNING_ALLOWED=YES CODE_SIGNING_REQUIRED=NO CODE_SIGN_IDENTITY="-" DEVELOPMENT_TEAM="" \
             2>&1 | tee "$RUNNER_TEMP/ios-tests.log"
 
+      - name: Export hosted rendering screenshots
+        if: always()
+        shell: bash
+        run: |
+          if [[ -d "$RUNNER_TEMP/HostedResults.xcresult" ]]; then
+            xcrun xcresulttool export attachments \
+              --path "$RUNNER_TEMP/HostedResults.xcresult" \
+              --output-path "$RUNNER_TEMP/hosted-screenshots" \
+              || echo "::warning::Hosted test attachments remain in their result bundle."
+          fi
+
+      - name: Upload native rendering evidence before UI automation
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: native-rendering-${{ github.run_id }}-${{ github.run_attempt }}
+          path: |
+            ${{ runner.temp }}/ios-tests.log
+            ${{ runner.temp }}/HostedResults.xcresult
+            ${{ runner.temp }}/hosted-screenshots
+          if-no-files-found: warn
+          retention-days: 14
+
       - name: Restart simulator services before UI automation
         if: ${{ !cancelled() && steps.hosted_tests.outcome != 'skipped' }}
         timeout-minutes: 10
@@ -280,13 +303,6 @@ jobs:
               --output-path "$RUNNER_TEMP/interface-screenshots" \
               || echo "::warning::Screenshot export failed; attachments remain in the test result bundle."
           fi
-          if [[ -d "$RUNNER_TEMP/HostedResults.xcresult" ]]; then
-            xcrun xcresulttool export attachments \
-              --path "$RUNNER_TEMP/HostedResults.xcresult" \
-              --output-path "$RUNNER_TEMP/hosted-screenshots" \
-              || echo "::warning::Hosted test attachments remain in their result bundle."
-          fi
-
       - name: Verify Share UI completed every interaction
         if: always()
         shell: bash
