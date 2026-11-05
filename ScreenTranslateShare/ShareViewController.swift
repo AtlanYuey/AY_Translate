@@ -29,6 +29,7 @@ final class ShareViewController: UIViewController {
         // Configure presentation in init, before the system presents the
         // principal controller. viewDidLoad can run after adaptation to a sheet.
         view.backgroundColor = .clear
+        view.isOpaque = false
         isModalInPresentation = true
         let settings = AppSettings.shared
         settings.refreshSharedPreferences()
@@ -38,6 +39,7 @@ final class ShareViewController: UIViewController {
             .environmentObject(state).environmentObject(settings).environmentObject(state.history)
             .environment(\.locale, settings.interfaceLocale).environment(\.layoutDirection, settings.interfaceLayoutDirection))
         host.view.backgroundColor = .clear
+        host.view.isOpaque = false
         addChild(host)
         host.view.translatesAutoresizingMaskIntoConstraints = false
         view.addSubview(host.view)
