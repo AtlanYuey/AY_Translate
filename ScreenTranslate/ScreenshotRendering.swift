@@ -222,11 +222,15 @@ enum ScreenshotRendering {
     /// Render an already processed document without repeating OCR or translation.
     static func translatedImage(_ document: TranslationDocument, palette: [UUID: SampledColor], textScale: Double) -> UIImage {
         let width: CGFloat = 390
-        let size = CGSize(width: width, height: width * document.image.size.height / max(1, document.image.size.width))
+        let naturalSize = CGSize(width: width, height: width * document.image.size.height / max(1, document.image.size.width))
         let format = UIGraphicsImageRendererFormat()
         format.preferredRange = .standard
-        format.scale = min(3, 2560 / max(size.width, size.height))
+        format.scale = min(3, 2560 / max(naturalSize.width, naturalSize.height))
         format.opaque = true
+        // The renderer rounds fractional pixel dimensions up. Draw through the
+        // same pixel boundary so an opaque canvas cannot leave a black last row.
+        let size = CGSize(width: ceil(naturalSize.width * format.scale) / format.scale,
+                          height: ceil(naturalSize.height * format.scale) / format.scale)
         let restorations = restorationImage(document.image).map { restore($0, blocks: document.blocks) } ?? [:]
         return UIGraphicsImageRenderer(size: size, format: format).image { renderer in
             document.image.draw(in: CGRect(origin: .zero, size: size))
