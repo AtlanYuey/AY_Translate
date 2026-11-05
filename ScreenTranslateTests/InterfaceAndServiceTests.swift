@@ -104,14 +104,15 @@ final class InterfaceAndServiceTests: XCTestCase {
         }, status: { _ in })
         sync.start()
         defer { sync.stop() }
-        let initial = try JSONDecoder().decode(CloudSettingsRecord.self, from: XCTUnwrap(cloud.data(forKey: "ay.settings.v1.defaultTargetLanguage")))
+        let outgoing = "ay.settings.v2." + (try XCTUnwrap(defaults.string(forKey: "icloud.device"))) + ".defaultTargetLanguage"
+        let initial = try JSONDecoder().decode(CloudSettingsRecord.self, from: XCTUnwrap(cloud.data(forKey: outgoing)))
         XCTAssertEqual(initial.timestamp, 1, "Existing saved settings seed automatically at migration priority")
         let remote = try CloudSettingsRecord(value: "ja", timestamp: 100, device: "other")
         cloud.set(try JSONEncoder().encode(remote), forKey: "ay.settings.v1.defaultTargetLanguage")
         sync.merge()
         XCTAssertEqual(imported["defaultTargetLanguage"] as? String, "ja")
         sync.changed("es", key: "defaultTargetLanguage")
-        let sent = try JSONDecoder().decode(CloudSettingsRecord.self, from: XCTUnwrap(cloud.data(forKey: "ay.settings.v1.defaultTargetLanguage")))
+        let sent = try JSONDecoder().decode(CloudSettingsRecord.self, from: XCTUnwrap(cloud.data(forKey: outgoing)))
         XCTAssertEqual(sent.decodedValue(for: "defaultTargetLanguage") as? String, "es")
         sync.changed("private", key: "APIKey")
         sync.changed(true, key: "saveTranslationHistory")
@@ -123,6 +124,7 @@ final class InterfaceAndServiceTests: XCTestCase {
         let cloud = MemoryCloudSettings()
         let sync = CloudSettingsSync(defaults: defaults, store: cloud, apply: { _ in true }, status: { _ in })
         sync.start()
+        let outgoing = "ay.settings.v2." + (try XCTUnwrap(defaults.string(forKey: "icloud.device"))) + ".defaultTargetLanguage"
         let initialCalls = cloud.syncCalls
         defaults.set("zh-Hans", forKey: "defaultTargetLanguage")
         sync.changed("zh-Hans", key: "defaultTargetLanguage")
@@ -130,12 +132,32 @@ final class InterfaceAndServiceTests: XCTestCase {
         XCTAssertGreaterThan(cloud.syncCalls, initialCalls)
         defaults.set("ja", forKey: "defaultTargetLanguage") // Share extension edit while app suspended.
         sync.resume()
-        let record = try JSONDecoder().decode(CloudSettingsRecord.self, from: XCTUnwrap(cloud.data(forKey: "ay.settings.v1.defaultTargetLanguage")))
+        let record = try JSONDecoder().decode(CloudSettingsRecord.self, from: XCTUnwrap(cloud.data(forKey: outgoing)))
         XCTAssertEqual(record.decodedValue(for: "defaultTargetLanguage") as? String, "ja")
         sync.stop()
         sync.changed("es", key: "defaultTargetLanguage")
-        let stopped = try JSONDecoder().decode(CloudSettingsRecord.self, from: XCTUnwrap(cloud.data(forKey: "ay.settings.v1.defaultTargetLanguage")))
+        let stopped = try JSONDecoder().decode(CloudSettingsRecord.self, from: XCTUnwrap(cloud.data(forKey: outgoing)))
         XCTAssertEqual(stopped, record)
+    }
+
+    func testFirstCloudDownloadCannotBeOverwrittenByAnotherDevicesBaseline() throws {
+        defaults.set("en", forKey: "defaultTargetLanguage")
+        let cloud = MemoryCloudSettings()
+        var imported: String?
+        let sync = CloudSettingsSync(defaults: defaults, store: cloud, apply: { changes in
+            imported = changes["defaultTargetLanguage"] as? String
+            return true
+        }, status: { _ in })
+        sync.start(); defer { sync.stop() }
+        let ownSlots = Set(cloud.values.keys)
+        let remoteKey = "ay.settings.v2.other-device.defaultTargetLanguage"
+        let remote = try CloudSettingsRecord(value: "zh-Hans", timestamp: 100, device: "other-device")
+        let bytes = try JSONEncoder().encode(remote)
+        cloud.set(bytes, forKey: remoteKey) // Delayed first download.
+        sync.merge()
+        XCTAssertEqual(imported, "zh-Hans")
+        XCTAssertEqual(cloud.data(forKey: remoteKey), bytes)
+        XCTAssertTrue(ownSlots.isDisjoint(with: [remoteKey]))
     }
 
     func testChangingTranslationServiceReusesLocalRecognitionAndClosingClearsTheCache() async throws {
@@ -701,6 +723,7 @@ private final class ServiceTestKeys: APIKeyStoring {
 @MainActor
 private final class MemoryCloudSettings: CloudKeyValueStoring {
     var values: [String: Any] = [:]
+    var dictionaryRepresentation: [String: Any] { values }
     var syncCalls = 0
     func data(forKey key: String) -> Data? { values[key] as? Data }
     func set(_ value: Any?, forKey key: String) { values[key] = value }

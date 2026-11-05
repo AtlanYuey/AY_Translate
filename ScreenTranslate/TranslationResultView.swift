@@ -125,6 +125,7 @@ struct TranslationResultView: View {
                     HStack(spacing: 8) {
                         ProgressView().controlSize(.small)
                         Text(LocalizedStringKey(appState.phase == .reading ? "Reading screen…" : "Translating…")).font(.footnote)
+                        Text(verbatim: "→ " + document.target.nativeName).font(.footnote.weight(.medium))
                     }.padding(.horizontal, 12).padding(.vertical, 8)
                         .glassEffect(.regular, in: Capsule()).padding(.top, 14)
                 default: EmptyView()
@@ -175,6 +176,11 @@ struct TranslationResultView: View {
                 }
                 engineMenu(.ocr)
                 engineMenu(.translation)
+                Menu("Target Language") {
+                    ForEach(AppLanguage.targetLanguages) { language in
+                        Button(language.nativeName) { settings.target = language; appState.retry() }
+                    }
+                }
                 Button("Processing Time", systemImage: "stopwatch") { showsTiming = true }
                 Button("Settings", systemImage: "slider.horizontal.3") { showsSettings = true }
                 if case .failed = appState.phase {

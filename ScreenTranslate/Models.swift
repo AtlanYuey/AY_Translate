@@ -148,6 +148,12 @@ final class AppSettings: ObservableObject {
         cloudSync?.stop(); cloudSync = nil
         #if !SCREEN_TRANSLATE_SHARE_EXTENSION
         guard iCloudSyncEnabled, isPersistentSettings else { return }
+        if let profileURL = Bundle.main.url(forResource: "embedded", withExtension: "mobileprovision"),
+           let profile = try? Data(contentsOf: profileURL, options: .mappedIfSafe),
+           SigningCapabilities.permitsCloudSettings(profile: profile) == false {
+            iCloudSyncMessage = "This signing profile does not permit iCloud settings sync. Re-sign with an iCloud Key-Value Store enabled profile and keep the same app identity on every device."
+            return
+        }
         let sync = CloudSettingsSync(defaults: defaults, apply: { [weak self] changes in
             guard let self else { return false }
             // A synced endpoint change must never send the old device's key to

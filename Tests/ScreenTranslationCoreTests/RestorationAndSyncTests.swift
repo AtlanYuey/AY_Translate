@@ -5,6 +5,16 @@ import CoreGraphics
 @testable import ScreenTranslationCore
 
 final class RestorationAndSyncTests: XCTestCase {
+    func testSigningProfileDiagnosticDistinguishesMissingPermissionFromUnknownProfile() throws {
+        for allowed in [false, true] {
+            let entitlements: [String: Any] = allowed ? ["com.apple.developer.ubiquity-kvstore-identifier": "TEAM.example.app"] : [:]
+            let plist = try PropertyListSerialization.data(fromPropertyList: ["Entitlements": entitlements], format: .xml, options: 0)
+            let cmsLike = Data([0x30, 0x82, 0xff]) + plist + Data([0, 0])
+            XCTAssertEqual(SigningCapabilities.permitsCloudSettings(profile: cmsLike), allowed)
+        }
+        XCTAssertNil(SigningCapabilities.permitsCloudSettings(profile: Data("unknown".utf8)))
+        XCTAssertNil(try CloudSettingsRecord(value: "automatic", timestamp: 10, device: "test").decodedValue(for: "defaultTargetLanguage"))
+    }
     func testResizingARepairDoesNotRevealSourceInkThroughTransparentEdges() {
         for background: UInt8 in [255, 30] {
             var source = [UInt8](repeating: background, count: 9 * 9 * 4)

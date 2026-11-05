@@ -2,6 +2,7 @@ import Foundation
 
 @MainActor
 protocol CloudKeyValueStoring: AnyObject {
+    var dictionaryRepresentation: [String: Any] { get }
     func data(forKey key: String) -> Data?
     func set(_ value: Any?, forKey key: String)
     func synchronize() -> Bool
@@ -22,6 +23,9 @@ final class CloudSettingsSync {
     private let device: String
     private var active = false
     private let prefix = "ay.settings.v1."
+    private let remotePrefix = "ay.settings.v2."
+
+    private func remoteKey(_ key: String) -> String { remotePrefix + device + "." + key }
 
     init(defaults: UserDefaults, store: any CloudKeyValueStoring = NSUbiquitousKeyValueStore.default,
          apply: @escaping ([String: Any]) -> Bool, status: @escaping (String) -> Void) {
@@ -77,7 +81,7 @@ final class CloudSettingsSync {
               record.decodedValue(for: key) != nil,
               let data = try? JSONEncoder().encode(record) else { return }
         defaults.set(data, forKey: prefix + key)
-        store.set(data, forKey: prefix + key)
+        store.set(data, forKey: remoteKey(key))
         scheduleUpload()
     }
 
@@ -121,18 +125,25 @@ final class CloudSettingsSync {
         guard active else { return }
         var changes: [String: Any] = [:]
         var accepted: [String: Data] = [:]
+        let cloudValues = store.dictionaryRepresentation
         for key in CloudSettingsRecord.allowedKeys {
-            let remote = store.data(forKey: prefix + key).flatMap { try? JSONDecoder().decode(CloudSettingsRecord.self, from: $0) }
+            // Each device writes only its own slot. A new install cannot erase
+            // another device's unseen settings while the first download is in
+            // flight. Continue reading v1 records for upgrade compatibility.
+            let candidates = cloudValues.filter { $0.key == prefix + key || ($0.key.hasPrefix(remotePrefix) && $0.key.hasSuffix("." + key)) }
+            let records = candidates.values.compactMap { value -> CloudSettingsRecord? in
+                guard let data = value as? Data, let record = try? JSONDecoder().decode(CloudSettingsRecord.self, from: data),
+                      record.decodedValue(for: key) != nil else { return nil }
+                return record
+            }
+            let remote = records.reduce(nil as CloudSettingsRecord?) { latest, record in record.isNewer(than: latest) ? record : latest }
             let local = defaults.data(forKey: prefix + key).flatMap { try? JSONDecoder().decode(CloudSettingsRecord.self, from: $0) }
             if let remote, let value = remote.decodedValue(for: key), remote.isNewer(than: local) {
                 changes[key] = value
                 accepted[key] = try? JSONEncoder().encode(remote)
             } else if let local, local.isNewer(than: remote), local.decodedValue(for: key) != nil {
-                store.set(try? JSONEncoder().encode(local), forKey: prefix + key)
+                store.set(try? JSONEncoder().encode(local), forKey: remoteKey(key))
             }
-            // Do not seed an empty local KVS cache on first launch: the remote
-            // account may not have downloaded yet. Default values must never
-            // overwrite an existing device's settings before initial sync.
         }
         if !changes.isEmpty && apply(changes) {
             for (key, data) in accepted { defaults.set(data, forKey: prefix + key) }

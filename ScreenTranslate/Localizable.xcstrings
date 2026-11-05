@@ -20709,6 +20709,22 @@
           }
         }
       }
+    },
+    "This signing profile does not permit iCloud settings sync. Re-sign with an iCloud Key-Value Store enabled profile and keep the same app identity on every device.": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "This signing profile does not permit iCloud settings sync. Re-sign with an iCloud Key-Value Store enabled profile and keep the same app identity on every device."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "当前签名描述文件不允许 iCloud 设置同步。请使用支持 iCloud 键值存储的描述文件重新签名，并确保各设备使用相同的 App 身份。"
+          }
+        }
+      }
     }
   },
   "version": "1.0"
