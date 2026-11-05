@@ -199,7 +199,7 @@ enum ScreenshotRendering {
                 CGRect(x: $0.minX * width - rect.minX, y: (1 - $0.maxY) * height - rect.minY,
                        width: $0.width * width, height: $0.height * height)
                     .insetBy(dx: -glyphPadding, dy: -glyphPadding).intersection(inkBounds)
-            }
+            }.filter { !$0.isNull && !$0.isEmpty }
             let patch = TextInkRestoration.restore(pixels: bytes, width: crop.width, height: crop.height, glyphs: glyphs, glyphSize: font)
             let transparent = TextInkRestoration.compositingPixels(original: bytes, patch: patch)
             guard patch.changedPixels > 0, let provider = CGDataProvider(data: Data(transparent) as CFData),
