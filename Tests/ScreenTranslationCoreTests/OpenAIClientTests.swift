@@ -9,23 +9,24 @@ import FoundationNetworking
 @testable import ScreenTranslationCore
 
 final class OpenAIClientTests: XCTestCase {
-    func testChineseTargetRepairsEnglishSentencesAndDoesNotPublishASecondWrongAnswer() async throws {
-        for fixed in ["你的嘴角有奶油。", "Your mouth is dripping."] {
-            let source = block("口元にクリームがついています")
-            var calls = 0
-            let service = client { request in
-                calls += 1
-                let body = try XCTUnwrap(JSONSerialization.jsonObject(with: XCTUnwrap(request.httpBody)) as? [String: Any])
-                let messages = try XCTUnwrap(body["messages"] as? [[String: Any]])
-                XCTAssertTrue((messages[0]["content"] as? String)?.contains("简体中文") == true)
-                let text = calls == 1 ? "Your mouth is dripping." : fixed
-                let payload = try JSONSerialization.data(withJSONObject: ["translations": [["id": "0", "text": text]]])
-                return (200, try self.response(String(decoding: payload, as: UTF8.self)))
-            }
-            let result = try await service.translate([source], source: "Japanese", target: "Chinese (zh-Hans)", preference: .speed, configuration: configuration, apiKey: "")
-            XCTAssertEqual(calls, 2)
-            XCTAssertEqual(result[source.id], fixed == "你的嘴角有奶油。" ? fixed : source.original)
+    func testChineseTargetIsFixedOnFirstRequestAndWrongLanguageIsRejectedWithoutRetry() async throws {
+        let source = block("口元にクリームがついています")
+        var calls = 0
+        let service = client { request in
+            calls += 1
+            let body = try XCTUnwrap(JSONSerialization.jsonObject(with: XCTUnwrap(request.httpBody)) as? [String: Any])
+            let messages = try XCTUnwrap(body["messages"] as? [[String: Any]])
+            XCTAssertTrue((messages[0]["content"] as? String)?.contains("简体中文") == true)
+            XCTAssertTrue((messages[0]["content"] as? String)?.contains("Chinese (zh-Hans)") == true)
+            XCTAssertTrue((messages[1]["content"] as? String)?.contains("Required output language (fixed for this request): Chinese (zh-Hans)") == true)
+            return (200, try self.response(#"{"translations":[{"id":"0","text":"Your mouth is dripping."}]}"#))
         }
+        do {
+            _ = try await service.translate([source], source: "Japanese", target: "Chinese (zh-Hans)", preference: .speed, configuration: configuration, apiKey: "")
+            XCTFail("A wrong-language sentence must never be published")
+        } catch { XCTAssertEqual(error as? AIServiceError, .wrongTargetLanguage) }
+        XCTAssertEqual(calls, 1, "Wrong-language output must not start automatic retranslation")
+        XCTAssertThrowsError(try AIRequestOptions(bodyJSON: #"{"target_language":"en"}"#).parameters())
     }
 
     private let configuration = AIServiceConfiguration(baseURL: "https://example.test/custom/v1", model: "test-model")

@@ -102,6 +102,22 @@ final class VisionCoreTests: XCTestCase {
         XCTAssertTrue(recovered.map(\.original).joined().contains("そうです"), recovered.map(\.original).joined())
     }
 
+    func testBatchedSupplementCoversMoreThanSixIndependentBubbles() async throws {
+        let context = try canvas()
+        for column in 0..<8 {
+            for (row, glyph) in "これは何ですか".enumerated() {
+                draw(String(glyph), x: CGFloat(45 + column * 100), y: CGFloat(900 + row * 34), font: "HiraginoSans-W6", size: 28, context: context)
+            }
+        }
+        let image = try XCTUnwrap(context.makeImage())
+        let blocks = try await VisionTextRecognizer.supplementVerticalGaps(image, blocks: [], language: "ja")
+        try record(image, blocks: blocks, name: "eight-bubble-supplement")
+        XCTAssertEqual(blocks.count, 8)
+        XCTAssertTrue(blocks.allSatisfy { $0.original.contains("何ですか") }, blocks.map(\.original).joined(separator: " | "))
+        let repeated = try await VisionTextRecognizer.supplementVerticalGaps(image, blocks: blocks, language: "ja")
+        XCTAssertEqual(repeated.map(\.id), blocks.map(\.id))
+    }
+
     private func canvas() throws -> CGContext {
         let context = try XCTUnwrap(CGContext(data: nil, width: 900, height: 1600, bitsPerComponent: 8, bytesPerRow: 0,
             space: CGColorSpaceCreateDeviceRGB(), bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue))

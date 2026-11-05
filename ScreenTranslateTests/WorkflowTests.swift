@@ -180,6 +180,41 @@ final class WorkflowTests: XCTestCase {
         state.closeResult()
     }
 
+    func testUnexpectedRequestCancellationKeepsOriginalAndRecordsTheOutcome() async throws {
+        try settings.saveConfiguration(.init(baseURL: "https://example.test/v1", model: "fixture"), keyReplacement: nil, for: .translation)
+        settings.translationEngine = .ai; settings.grantConsent(for: .translation)
+        let secretText = "PRIVATE_SCREEN_TEXT"
+        var injected = services { _, _ in [self.block(secretText)] }
+        injected.aiTranslation = { _, _, _, _, _, _ in throw CancellationError() }
+        let diagnostics = ProcessingDiagnostics(defaults: defaults, keys: keys, context: "share")
+        let state = AppState(settings: settings, history: HistoryStore(fileURL: historyURL), services: injected, diagnostics: diagnostics)
+        state.process(image())
+        try await waitUntil { if case .failed = state.phase { return true }; return false }
+        XCTAssertTrue(state.presentsResult)
+        XCTAssertTrue(state.hasSourceImage)
+        XCTAssertEqual(state.displayedDocument?.originalText, secretText)
+        let record = try XCTUnwrap(diagnostics.reports().first)
+        XCTAssertEqual(record.outcome, "cancelled")
+        XCTAssertEqual(record.target, "zh-Hans")
+        let encoded = String(decoding: try JSONEncoder().encode(record), as: UTF8.self)
+        XCTAssertFalse(encoded.contains(secretText))
+        XCTAssertFalse(encoded.contains("example.test"))
+        state.closeResult()
+    }
+
+    func testDiagnosticJournalSurvivesUnfinishedWorkWithoutCallingItACrash() throws {
+        let journal = ProcessingDiagnostics(defaults: defaults, keys: keys, context: "share")
+        journal.begin(id: UUID(), target: "zh-Hans")
+        journal.stage("translating"); journal.memoryWarning(); journal.event("host_disappeared")
+        let reloaded = ProcessingDiagnostics(defaults: defaults, keys: keys, context: "app")
+        let entry = try XCTUnwrap(reloaded.reports().first)
+        XCTAssertEqual(entry.outcome, "unfinished")
+        XCTAssertEqual(entry.memoryWarnings, 1)
+        XCTAssertEqual(entry.event, "host_disappeared")
+        journal.end("closed")
+        XCTAssertEqual(reloaded.reports().first?.outcome, "closed")
+    }
+
     func testFailedAIRecognitionFallsBackToLocalAnchors() async throws {
         try settings.saveConfiguration(.init(baseURL: "https://example.test/v1", model: "vision"), keyReplacement: nil, for: .ocr)
         settings.ocrEngine = .ai

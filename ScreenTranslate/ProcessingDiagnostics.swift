@@ -1,0 +1,127 @@
+import Foundation
+import SwiftUI
+import UIKit
+
+/// A small device-local journal, not screenshot/recognition history. No image,
+/// text, endpoint, model name, credential or provider response is recorded.
+@MainActor
+final class ProcessingDiagnostics {
+    static let shared = ProcessingDiagnostics()
+    struct Entry: Codable, Identifiable {
+        var id: UUID
+        var started: Date
+        var updated: Date
+        var context: String
+        var target: String
+        var stage: String
+        var outcome: String
+        var event: String
+        var memoryWarnings: Int = 0
+    }
+    private let defaults: UserDefaults
+    private let keys: any APIKeyStoring
+    private let context: String
+    private var entries: [Entry]
+    private var current: UUID?
+    private var memoryObserver: NSObjectProtocol?
+
+    init(defaults: UserDefaults? = nil, keys: (any APIKeyStoring)? = nil, context: String? = nil) {
+        self.defaults = defaults ?? SharedAppContainer.preferences
+        self.keys = keys ?? KeychainStore()
+        self.context = context ?? (Bundle.main.bundleURL.pathExtension == "appex" ? "share" : "app")
+        entries = self.defaults.data(forKey: "processing.diagnostics." + self.context)
+            .flatMap { try? JSONDecoder().decode([Entry].self, from: $0) } ?? []
+        memoryObserver = NotificationCenter.default.addObserver(forName: UIApplication.didReceiveMemoryWarningNotification,
+            object: nil, queue: .main) { [weak self] _ in
+                Task { @MainActor [weak self] in self?.memoryWarning() }
+            }
+    }
+
+    func begin(id: UUID, target: String) {
+        if current != nil { end("replaced") }
+        current = id
+        let now = Date()
+        entries.append(Entry(id: id, started: now, updated: now, context: context, target: target,
+            stage: "reading", outcome: "unfinished", event: "started"))
+        entries = Array(entries.suffix(8))
+        persist()
+    }
+
+    func stage(_ value: String) { update { $0.stage = value } }
+    func event(_ value: String) { update { $0.event = value } }
+    func end(_ outcome: String) {
+        update { $0.outcome = outcome }
+        current = nil
+    }
+    func memoryWarning() { update { $0.memoryWarnings += 1; $0.event = "memory_warning" } }
+    func beginRendering(id: UUID) {
+        guard let index = entries.firstIndex(where: { $0.id == id }), entries[index].outcome == "completed" else { return }
+        current = id
+        update { $0.stage = "background"; $0.outcome = "unfinished"; $0.event = "preparing_image" }
+    }
+
+    private func update(_ change: (inout Entry) -> Void) {
+        guard let current, let index = entries.firstIndex(where: { $0.id == current }) else { return }
+        change(&entries[index]); entries[index].updated = Date(); persist()
+    }
+    private func persist() {
+        guard let data = try? JSONEncoder().encode(entries) else { return }
+        defaults.set(data, forKey: "processing.diagnostics." + context)
+        // Reuse the existing local shared-Keychain bridge when Feather has
+        // removed App Groups. This slot is never included in iCloud settings.
+        try? keys.save(String(decoding: data, as: UTF8.self), for: .processingDiagnostics(context))
+    }
+
+    func reports() -> [Entry] {
+        var found: [UUID: Entry] = [:]
+        for context in ["app", "share"] {
+            let local = defaults.data(forKey: "processing.diagnostics." + context)
+            let shared = (try? keys.read(.processingDiagnostics(context))).map { Data($0.utf8) }
+            for data in [local, shared].compactMap({ $0 }) where data.count <= 32_000 {
+                for entry in (try? JSONDecoder().decode([Entry].self, from: data)) ?? [] {
+                    if found[entry.id].map({ $0.updated < entry.updated }) ?? true { found[entry.id] = entry }
+                }
+            }
+        }
+        return found.values.sorted { $0.started > $1.started }
+    }
+}
+
+struct ProcessingDiagnosticsView: View {
+    @EnvironmentObject private var settings: AppSettings
+    @State private var entries: [ProcessingDiagnostics.Entry] = []
+    var body: some View {
+        List {
+            Section {
+                Text("Only processing stages and exit states are recorded, without image content or API keys. An unfinished record does not prove a crash or memory termination.")
+                    .font(.footnote).foregroundStyle(.secondary)
+                Button("Copy Processing Report", systemImage: "doc.on.doc") {
+                    let encoder = JSONEncoder(); encoder.outputFormatting = [.prettyPrinted, .sortedKeys]
+                    if let data = try? encoder.encode(entries) { UIPasteboard.general.string = String(decoding: data, as: UTF8.self) }
+                }.disabled(entries.isEmpty)
+            }
+            ForEach(entries) { entry in
+                Section {
+                    LabeledContent("Status", value: settings.text(status(entry.outcome)))
+                    LabeledContent("Stage", value: settings.text(entry.stage == "reading" ? "Reading screen…" : entry.stage == "background" ? "Preparing image…" : "Translating…"))
+                    LabeledContent("Target Language", value: AppLanguage(rawValue: entry.target)?.nativeName ?? entry.target)
+                    LabeledContent("Memory Warnings", value: String(entry.memoryWarnings))
+                    Text(entry.context == "share" ? "Share Extension" : "AY Translate").font(.caption).foregroundStyle(.secondary)
+                } header: { Text(entry.started, style: .date) + Text(" · ") + Text(entry.started, style: .time) }
+            }
+        }
+        .navigationTitle("Processing Diagnostics")
+        .onAppear { entries = ProcessingDiagnostics.shared.reports() }
+        .refreshable { entries = ProcessingDiagnostics.shared.reports() }
+    }
+    private func status(_ outcome: String) -> String {
+        switch outcome {
+        case "completed": "Completed"
+        case "closed": "Closed by user"
+        case "failed": "Request failed"
+        case "cancelled": "Request interrupted"
+        case "replaced": "Replaced by another request"
+        default: "No completion recorded"
+        }
+    }
+}

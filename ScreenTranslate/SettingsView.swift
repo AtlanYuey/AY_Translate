@@ -62,6 +62,7 @@ struct SettingsView: View {
             }
             #endif
             Section("Information") {
+                NavigationLink { ProcessingDiagnosticsView() } label: { Label("Processing Diagnostics", systemImage: "waveform.path.ecg") }
                 Button { showsAbout = true } label: { Label("About AY Translate", systemImage: "info.circle") }
             }
         }

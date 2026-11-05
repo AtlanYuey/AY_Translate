@@ -31,13 +31,18 @@ final class ParametersAndCoverageTests: XCTestCase {
         XCTAssertEqual(OCRCoverage.uncoveredColumns([column], blocks: [partial], imageSize: CGSize(width: 1000, height: 1000)).count, 1)
         let complete = RecognizedBlock(id: partial.id, original: "あいうえお", translation: "あいうえお", boundingBox: column.reduce(.null) { $0.union($1) }, confidence: 1, flow: .vertical)
         XCTAssertTrue(OCRCoverage.uncoveredColumns([column], blocks: [complete], imageSize: CGSize(width: 1000, height: 1000)).isEmpty)
+        let misleadingBox = RecognizedBlock(id: partial.id, original: "あい", translation: "あい", boundingBox: complete.boundingBox,
+            confidence: 1, flow: .vertical, sourceGlyphBoxes: Array(column.prefix(2)))
+        XCTAssertEqual(OCRCoverage.uncoveredColumns([column], blocks: [misleadingBox], imageSize: CGSize(width: 1000, height: 1000)).count, 1,
+                       "A large line box must not hide glyphs that were never transcribed")
     }
     func testTranslationCoverageDoesNotRetryNumbersChineseOrNames() {
         XCTAssertTrue(TranslationCoverage.needsRetry(original: "一口だけです", translation: "一口だけです", target: "Chinese"))
         XCTAssertFalse(TranslationCoverage.needsRetry(original: "一口だけです", translation: "只吃一口", target: "Chinese"))
         for text in ["1234", "中文原文", "カノウ"] { XCTAssertFalse(TranslationCoverage.needsRetry(original: text, translation: text, target: "Chinese")) }
         XCTAssertFalse(TranslationCoverage.needsRetry(original: "一口だけです", translation: "一口だけです", target: "Japanese"))
-        XCTAssertTrue(TranslationCoverage.needsRetry(original: "これ何ですか", translation: "What is this thing?", target: "Chinese"))
+        XCTAssertFalse(TranslationCoverage.needsRetry(original: "これ何ですか", translation: "What is this thing?", target: "Chinese"))
+        XCTAssertTrue(TranslationCoverage.hasWrongTargetScript(original: "これ何ですか", translation: "What is this thing?", target: "Chinese"))
         XCTAssertFalse(TranslationCoverage.needsRetry(original: "これはiPhoneです", translation: "这是 iPhone", target: "Chinese"))
         XCTAssertFalse(TranslationCoverage.needsRetry(original: "アッシュ", translation: "Ash", target: "Chinese"))
     }

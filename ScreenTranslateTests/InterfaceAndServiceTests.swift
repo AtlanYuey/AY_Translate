@@ -40,6 +40,57 @@ final class InterfaceAndServiceTests: XCTestCase {
         ProcessingServices(vision: { _, _ in regions }, aiOCR: { _, _, _, _ in XCTFail("Unexpected cloud OCR"); throw AIServiceError.transport }, aiTranslation: { _, _, _, _, _, _ in XCTFail("Unexpected cloud translation"); throw AIServiceError.transport })
     }
 
+    func testActivityBorderSurvivesRoundedDisplayMasksInBothOrientations() throws {
+        for size in [CGSize(width: 393, height: 852), CGSize(width: 852, height: 393), CGSize(width: 744, height: 1133)] {
+            let renderer = ImageRenderer(content: Color.black.overlay { ProcessingEdgeGlow() }
+                .environment(\.accessibilityReduceMotion, true).frame(width: size.width, height: size.height))
+            renderer.scale = 1
+            let image = try XCTUnwrap(renderer.uiImage)
+            let cg = try XCTUnwrap(image.cgImage)
+            let width = cg.width, height = cg.height
+            var bytes = [UInt8](repeating: 0, count: width * height * 4)
+            try bytes.withUnsafeMutableBytes { raw in
+                let context = try XCTUnwrap(CGContext(data: raw.baseAddress, width: width, height: height,
+                    bitsPerComponent: 8, bytesPerRow: width * 4, space: CGColorSpaceCreateDeviceRGB(),
+                    bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue))
+                context.draw(cg, in: CGRect(origin: .zero, size: size))
+            }
+            let mask = UIBezierPath(roundedRect: CGRect(origin: .zero, size: size), cornerRadius: 64).cgPath
+            var corners = [Int](repeating: 0, count: 4), clipped = 0
+            for y in 0..<height { for x in 0..<width {
+                guard (0..<3).contains(where: { bytes[(y * width + x) * 4 + $0] > 45 }) else { continue }
+                if !mask.contains(CGPoint(x: CGFloat(x) + 0.5, y: CGFloat(y) + 0.5)) { clipped += 1 }
+                if (x < 115 || x >= width - 115) && (y < 115 || y >= height - 115) {
+                    corners[(x < 115 ? 0 : 1) + (y < 115 ? 0 : 2)] += 1
+                }
+            } }
+            XCTAssertEqual(clipped, 0, "Visible glow must stay inside rounded display/sheet masks")
+            XCTAssertTrue(corners.allSatisfy { $0 > 100 }, "All four corners must contain a continuous visible arc: \(corners)")
+            let attachment = XCTAttachment(image: image)
+            attachment.name = "四角完整的处理边框-\(Int(size.width))x\(Int(size.height))"
+            attachment.lifetime = .keepAlways; add(attachment)
+        }
+    }
+
+    func testShareLoadingCanvasKeepsTheInvokingImageVisibleInsteadOfBlack() throws {
+        let state = AppState(settings: settings, history: HistoryStore(fileURL: FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)), services: services([]))
+        let renderer = ImageRenderer(content: ZStack {
+            Color.green
+            TranslationResultView().environmentObject(state).environmentObject(settings).environmentObject(state.history)
+        }.frame(width: 393, height: 852))
+        renderer.scale = 1
+        let image = try XCTUnwrap(renderer.uiImage?.cgImage)
+        var pixel = [UInt8](repeating: 0, count: 4)
+        try pixel.withUnsafeMutableBytes { raw in
+            let context = try XCTUnwrap(CGContext(data: raw.baseAddress, width: 1, height: 1, bitsPerComponent: 8, bytesPerRow: 4,
+                space: CGColorSpaceCreateDeviceRGB(), bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue))
+            context.translateBy(x: -196, y: -426)
+            context.draw(image, in: CGRect(x: 0, y: 0, width: 393, height: 852))
+        }
+        XCTAssertGreaterThan(pixel[1], 100, "The host remains visible until the screenshot arrives")
+        XCTAssertGreaterThan(pixel[1], pixel[0])
+    }
+
     func testTextDetailsAreOptInAndPersistAcrossSettingsReload() {
         XCTAssertFalse(settings.showsTextDetailsOnTap)
         settings.showsTextDetailsOnTap = true

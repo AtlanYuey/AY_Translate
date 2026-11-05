@@ -13,7 +13,7 @@ nonisolated struct AIRequestOptions: Codable, Equatable, Sendable {
                 throw AIParameterError.invalidJSON
             }
             // Preserve prompt/region integrity, one response and JSON decoding.
-            let reserved: Set<String> = ["messages", "model", "stream", "n", "tools", "tool_choice", "functions", "function_call", "api_key", "authorization"]
+            let reserved: Set<String> = ["messages", "model", "stream", "n", "tools", "tool_choice", "functions", "function_call", "api_key", "authorization", "prompt", "instructions", "input", "target_language", "source_language", "language"]
             guard object.keys.allSatisfy({ !reserved.contains($0.lowercased()) }) else { throw AIParameterError.reservedField }
             result.merge(object) { _, custom in custom }
         }

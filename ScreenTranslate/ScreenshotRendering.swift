@@ -157,56 +157,66 @@ enum ScreenshotRendering {
 
     static func restorationsAsync(for document: TranslationDocument) async -> [UUID: RestoredRegion] {
         guard let image = restorationImage(document.image) else { return [:] }
-        let blocks = document.blocks
+        let blocks = document.blocks.filter { $0.translation != $0.original }
         let task = Task.detached(priority: .userInitiated) { restore(image, blocks: blocks) }
         return await withTaskCancellationHandler(operation: { await task.value }, onCancel: { task.cancel() })
     }
 
     private static func restorationImage(_ image: UIImage) -> CGImage? {
-        let factor = min(image.scale, 2048 / max(1, max(image.size.width, image.size.height)))
-        let size = CGSize(width: image.size.width * factor, height: image.size.height * factor)
-        let format = UIGraphicsImageRendererFormat(); format.scale = 1; format.opaque = true; format.preferredRange = .standard
-        return UIGraphicsImageRenderer(size: size, format: format).image { _ in image.draw(in: CGRect(origin: .zero, size: size)) }.cgImage
+        // Imported images are already upright. Keep that storage and downsample
+        // only individual text patches, not another full 2048px bitmap.
+        if image.imageOrientation == .up { return image.cgImage }
+        return try? ScreenshotInput.bounded(image).cgImage
     }
 
     private nonisolated static func restore(_ image: CGImage, blocks: [RecognizedBlock]) -> [UUID: RestoredRegion] {
         var result: [UUID: RestoredRegion] = [:]
-        let width = CGFloat(image.width), height = CGFloat(image.height)
-        for block in blocks where block.placement == .overlay {
+        var retainedPixels = 0
+        for block in blocks where block.placement == .overlay && block.translation != block.original {
             if Task.isCancelled { break }
-            let font = block.flow == .vertical ? block.originalColumnWidth * width : block.originalLineHeight * height
-            let source = CGRect(x: block.boundingBox.minX * width, y: (1 - block.boundingBox.maxY) * height,
-                                width: block.boundingBox.width * width, height: block.boundingBox.height * height)
-            let rect = source.insetBy(dx: -font, dy: -font).integral.intersection(CGRect(x: 0, y: 0, width: width, height: height))
-            guard let crop = image.cropping(to: rect), crop.width * crop.height <= 400_000 else { continue }
-            var bytes = [UInt8](repeating: 0, count: crop.width * crop.height * 4)
-            let rendered = bytes.withUnsafeMutableBytes { buffer -> Bool in
-                guard let cg = CGContext(data: buffer.baseAddress, width: crop.width, height: crop.height, bitsPerComponent: 8, bytesPerRow: crop.width * 4,
-                    space: CGColorSpaceCreateDeviceRGB(), bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue) else { return false }
-                // A bitmap context drawing a CGImage produces its original row
-                // order (same boundary as grayscaleImage). Do not apply UIKit's
-                // display flip here; glyph masks use top-left raster rows.
-                cg.draw(crop, in: CGRect(x: 0, y: 0, width: crop.width, height: crop.height))
-                return true
+            let restored = autoreleasepool { restoreRegion(image, block: block) }
+            if let restored {
+                let pixels = restored.image.width * restored.image.height
+                // Bound accumulated patches too, not only each temporary crop.
+                if retainedPixels + pixels <= 4_000_000 {
+                    result[block.id] = restored
+                    retainedPixels += pixels
+                }
             }
-            guard rendered else { continue }
-            // Guide removal with the actual glyph bounds and a one-pixel
-            // antialias margin. Recovery grows along confirmed ink, rather
-            // than widening the mask into surrounding artwork.
-            let glyphs = (block.sourceGlyphBoxes ?? [block.boundingBox]).map {
-                CGRect(x: $0.minX * width - rect.minX, y: (1 - $0.maxY) * height - rect.minY,
-                       width: $0.width * width, height: $0.height * height)
-                    .insetBy(dx: -1, dy: -1)
-            }
-            let patch = TextInkRestoration.restore(pixels: bytes, width: crop.width, height: crop.height, glyphs: glyphs, glyphSize: font)
-            let transparent = TextInkRestoration.compositingPixels(original: bytes, patch: patch)
-            guard patch.changedPixels > 0, let provider = CGDataProvider(data: Data(transparent) as CFData),
-                  let restored = CGImage(width: crop.width, height: crop.height, bitsPerComponent: 8, bitsPerPixel: 32, bytesPerRow: crop.width * 4,
-                    space: CGColorSpaceCreateDeviceRGB(), bitmapInfo: CGBitmapInfo(rawValue: CGImageAlphaInfo.premultipliedLast.rawValue), provider: provider,
-                    decode: nil, shouldInterpolate: true, intent: .defaultIntent) else { continue }
-            result[block.id] = RestoredRegion(image: restored, rect: CGRect(x: rect.minX / width, y: rect.minY / height, width: rect.width / width, height: rect.height / height))
         }
         return result
+    }
+
+    private nonisolated static func restoreRegion(_ image: CGImage, block: RecognizedBlock) -> RestoredRegion? {
+        let width = CGFloat(image.width), height = CGFloat(image.height)
+        let font = block.flow == .vertical ? block.originalColumnWidth * width : block.originalLineHeight * height
+        let source = CGRect(x: block.boundingBox.minX * width, y: (1 - block.boundingBox.maxY) * height,
+                            width: block.boundingBox.width * width, height: block.boundingBox.height * height)
+        let rect = source.insetBy(dx: -font, dy: -font).integral.intersection(CGRect(x: 0, y: 0, width: width, height: height))
+        guard !rect.isEmpty, let crop = image.cropping(to: rect) else { return nil }
+        let factor = min(1, 2048 / max(width, height), sqrt(390_000 / (rect.width * rect.height)))
+        let w = max(1, Int(ceil(rect.width * factor))), h = max(1, Int(ceil(rect.height * factor)))
+        let sx = CGFloat(w) / rect.width, sy = CGFloat(h) / rect.height
+        var bytes = [UInt8](repeating: 0, count: w * h * 4)
+        let rendered = bytes.withUnsafeMutableBytes { buffer -> Bool in
+            guard let cg = CGContext(data: buffer.baseAddress, width: w, height: h, bitsPerComponent: 8, bytesPerRow: w * 4,
+                space: CGColorSpaceCreateDeviceRGB(), bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue) else { return false }
+            cg.draw(crop, in: CGRect(x: 0, y: 0, width: w, height: h))
+            return true
+        }
+        guard rendered, !Task.isCancelled else { return nil }
+        let glyphs = (block.sourceGlyphBoxes ?? [block.boundingBox]).map {
+            CGRect(x: ($0.minX * width - rect.minX) * sx, y: ((1 - $0.maxY) * height - rect.minY) * sy,
+                   width: $0.width * width * sx, height: $0.height * height * sy).insetBy(dx: -1, dy: -1)
+        }
+        let patch = TextInkRestoration.restore(pixels: bytes, width: w, height: h, glyphs: glyphs, glyphSize: font * min(sx, sy))
+        guard patch.changedPixels > 0, !Task.isCancelled else { return nil }
+        let transparent = TextInkRestoration.compositingPixels(original: bytes, patch: patch)
+        guard let provider = CGDataProvider(data: Data(transparent) as CFData),
+              let restored = CGImage(width: w, height: h, bitsPerComponent: 8, bitsPerPixel: 32, bytesPerRow: w * 4,
+                space: CGColorSpaceCreateDeviceRGB(), bitmapInfo: CGBitmapInfo(rawValue: CGImageAlphaInfo.premultipliedLast.rawValue), provider: provider,
+                decode: nil, shouldInterpolate: true, intent: .defaultIntent) else { return nil }
+        return RestoredRegion(image: restored, rect: CGRect(x: rect.minX / width, y: rect.minY / height, width: rect.width / width, height: rect.height / height))
     }
 
     static func drawRestoration(_ restored: RestoredRegion?, canvas: CGSize, in context: CGContext) {

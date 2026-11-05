@@ -50,30 +50,36 @@ nonisolated enum VisionTextRecognizer {
             let columns = VerticalOCRGeometry.mergingColumns(detected, supplemental: inkColumns)
             let missing = OCRCoverage.uncoveredColumns(columns, blocks: blocks, imageSize: size)
             var result = blocks
-            for column in missing.prefix(6) {
+            let pending = Array(missing.prefix(12))
+            // Four upright columns become four horizontal rows in one small
+            // OCR request. This covers short bubbles beyond the old six-column
+            // limit without starting a separate Vision request for every column.
+            for start in stride(from: 0, to: pending.count, by: 4) {
                 try Task.checkCancellation()
-                guard !OCRCoverage.uncoveredColumns([column], blocks: result, imageSize: size).isEmpty else { continue }
-                guard let strip = stripImage(image, glyphs: column),
-                      let recognized = try? read(strip, language: language ?? "ja") else { continue }
-                let text = recognized.sorted { $0.boundingBox.minX < $1.boundingBox.minX }.map(\.original).joined()
-                guard text.count >= 2, VerticalTextLayout.supports(text),
-                      text.count >= column.count / 2, text.count <= column.count * 2,
-                      (recognized.map(\.confidence).min() ?? 0) >= 0.45 else { continue }
-                let box = column.reduce(CGRect.null) { $0.union($1) }
-                let conflicts = VerticalOCRGeometry.horizontalConflicts(column: column, blocks: result, imageSize: size)
-                guard !conflicts.protected, !result.contains(where: { $0.flow == .vertical && overlap(box, $0.boundingBox) > 0.7 && $0.original.count >= text.count }) else { continue }
-                // Replace a partial fragment only once the complete local run
-                // was successfully read; independent bubbles stay independent.
-                result.removeAll { block in
-                    if conflicts.fragmentedRows.contains(block.id) { return true }
-                    return block.flow == .vertical && text.count > block.original.count
-                        && box.contains(CGPoint(x: block.boundingBox.midX, y: block.boundingBox.midY))
-                        && overlap(box, block.boundingBox) > 0.7
+                let batch = Array(pending[start..<min(start + 4, pending.count)])
+                guard let rows = try? readColumns(image, columns: batch, language: language ?? "ja") else { continue }
+                for (column, recognized) in zip(batch, rows) {
+                    guard !OCRCoverage.uncoveredColumns([column], blocks: result, imageSize: size).isEmpty else { continue }
+                    let text = recognized.sorted { $0.boundingBox.minX < $1.boundingBox.minX }.map(\.original).joined()
+                    guard text.count >= 2, VerticalTextLayout.supports(text),
+                          text.count >= column.count / 2, text.count <= column.count * 2,
+                          (recognized.map(\.confidence).min() ?? 0) >= 0.45 else { continue }
+                    let box = column.reduce(CGRect.null) { $0.union($1) }
+                    let conflicts = VerticalOCRGeometry.horizontalConflicts(column: column, blocks: result, imageSize: size)
+                    guard !conflicts.protected, !result.contains(where: { $0.flow == .vertical && overlap(box, $0.boundingBox) > 0.7 && $0.original.count >= text.count }) else { continue }
+                    // Replace a partial fragment only once the complete local run
+                    // was successfully read; independent bubbles stay independent.
+                    result.removeAll { block in
+                        if conflicts.fragmentedRows.contains(block.id) { return true }
+                        return block.flow == .vertical && text.count > block.original.count
+                            && box.contains(CGPoint(x: block.boundingBox.midX, y: block.boundingBox.midY))
+                            && overlap(box, block.boundingBox) > 0.7
+                    }
+                    let widths = column.map(\.width).sorted(), heights = column.map(\.height).sorted()
+                    result.append(RecognizedBlock(id: UUID(), original: text, translation: text, boundingBox: box,
+                        confidence: recognized.map(\.confidence).min() ?? 0, sourceLineHeight: heights[heights.count / 2],
+                        flow: .vertical, sourceColumnWidth: widths[widths.count / 2], sourceGlyphBoxes: column))
                 }
-                let widths = column.map(\.width).sorted(), heights = column.map(\.height).sorted()
-                result.append(RecognizedBlock(id: UUID(), original: text, translation: text, boundingBox: box,
-                    confidence: recognized.map(\.confidence).min() ?? 0, sourceLineHeight: heights[heights.count / 2],
-                    flow: .vertical, sourceColumnWidth: widths[widths.count / 2], sourceGlyphBoxes: column))
             }
             return result
         }
@@ -230,6 +236,31 @@ nonisolated enum VisionTextRecognizer {
                 if addition.original.count >= blocks[index].original.count && addition.confidence > blocks[index].confidence { blocks[index] = addition }
             } else { blocks.append(addition) }
         }
+    }
+
+    private static func readColumns(_ image: CGImage, columns: [[CGRect]], language: String) throws -> [[RecognizedBlock]] {
+        let width = max(48, (columns.map(\.count).max() ?? 1) * 48)
+        let height = columns.count * 96
+        guard columns.count <= 4, width <= 3840, height > 0,
+              let context = CGContext(data: nil, width: width, height: height, bitsPerComponent: 8, bytesPerRow: 0,
+                  space: CGColorSpaceCreateDeviceRGB(), bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue) else { return [] }
+        context.setFillColor(CGColor(gray: 1, alpha: 1))
+        context.fill(CGRect(x: 0, y: 0, width: width, height: height))
+        for (index, column) in columns.enumerated() {
+            try Task.checkCancellation()
+            if let strip = stripImage(image, glyphs: column) {
+                context.draw(strip, in: CGRect(x: 0, y: height - (index + 1) * 96 + 16, width: strip.width, height: 64))
+            }
+        }
+        guard let composite = context.makeImage() else { return [] }
+        let recognized = try read(composite, language: language)
+        var rows = [[RecognizedBlock]](repeating: [], count: columns.count)
+        for block in recognized {
+            let row = Int((1 - block.boundingBox.midY) * CGFloat(height) / 96)
+            // Reject a spurious box spanning two packed rows.
+            if rows.indices.contains(row), block.boundingBox.height * CGFloat(height) < 80 { rows[row].append(block) }
+        }
+        return rows
     }
 
     nonisolated static func stripImage(_ image: CGImage, glyphs: [CGRect]) -> CGImage? {

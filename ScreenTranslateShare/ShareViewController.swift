@@ -28,7 +28,7 @@ final class ShareViewController: UIViewController {
         super.viewDidLoad()
         // Configure presentation in init, before the system presents the
         // principal controller. viewDidLoad can run after adaptation to a sheet.
-        view.backgroundColor = .black
+        view.backgroundColor = .clear
         isModalInPresentation = true
         let settings = AppSettings.shared
         settings.refreshSharedPreferences()
@@ -37,6 +37,7 @@ final class ShareViewController: UIViewController {
         let host = UIHostingController(rootView: TranslationResultView(onClose: { [weak self] in self?.finish() })
             .environmentObject(state).environmentObject(settings).environmentObject(state.history)
             .environment(\.locale, settings.interfaceLocale).environment(\.layoutDirection, settings.interfaceLayoutDirection))
+        host.view.backgroundColor = .clear
         addChild(host)
         host.view.translatesAutoresizingMaskIntoConstraints = false
         view.addSubview(host.view)
@@ -46,12 +47,26 @@ final class ShareViewController: UIViewController {
         ])
         host.didMove(toParent: self)
         host.isModalInPresentation = true
+        loadSharedImageIfAvailable()
     }
 
     override func viewDidAppear(_ animated: Bool) {
         super.viewDidAppear(animated)
+        loadSharedImageIfAvailable()
+        if loading == nil { state?.failImport(SharedImageError.noImage) }
+    }
+
+    override func viewDidDisappear(_ animated: Bool) {
+        super.viewDidDisappear(animated)
+        if !completed, state?.isProcessing == true { ProcessingDiagnostics.shared.event("host_disappeared") }
+    }
+
+    private func loadSharedImageIfAvailable() {
         guard loading == nil, !completed else { return }
         let items = extensionContext?.inputItems.compactMap { $0 as? NSExtensionItem } ?? []
+        // Usually available in viewDidLoad: decode during presentation rather
+        // than waiting for its animation to finish. Retry when the host appears.
+        guard !items.isEmpty else { return }
         let state = self.state
         loading = Task { [weak self, weak state] in
             do {

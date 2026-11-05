@@ -20,18 +20,24 @@ struct TranslationResultView: View {
     @State private var isClosing = false
     @State private var showsRecovery = false
     @State private var settingsAfterRecovery = false
+    @State private var preparedDocumentID: UUID?
 
     private var showsImage: Bool { appState.displayedDocument != nil && (mode != .text || appState.document == nil) }
-    private var usesRootDismissGesture: Bool { !appState.isProcessing && !showsImage && mode != .text && imageZoom <= 1.01 }
+    private var preparingImage: Bool { appState.phase == .ready && appState.document != nil && preparedDocumentID != appState.document?.id }
+    private var processing: Bool { appState.isProcessing || preparingImage }
+    private var usesRootDismissGesture: Bool { !processing && !showsImage && mode != .text && imageZoom <= 1.01 }
 
     var body: some View {
         let requestID = appState.appleRequestID
         GeometryReader { geometry in
             ZStack(alignment: .bottomTrailing) {
-                Color.black
+                // Before the shared image arrives, keep the host visible. An
+                // opaque black loading canvas was the flash after screenshot.
+                if appState.hasSourceImage || appState.phase != .idle { Color.black }
+                else { Color.clear }
                 resultContent
                     .frame(maxWidth: .infinity, maxHeight: .infinity)
-                if appState.isProcessing { ProcessingEdgeGlow() }
+                if processing { ProcessingEdgeGlow() }
                 controls
                     .padding(.trailing, 12)
                     .padding(.bottom, max(geometry.safeAreaInsets.bottom, 8) + 6)
@@ -86,12 +92,16 @@ struct TranslationResultView: View {
             palette = [:]
             restorations = [:]
             backgroundSeconds = 0
+            preparedDocumentID = nil
             imageZoom = 1
             guard appState.document != nil else { return }
             mode = settings.defaultResultMode
         }
-        .task(id: appState.document?.id) {
-            guard let document = appState.document else { return }
+        .task(id: appState.phase == .ready ? appState.document?.id : nil) {
+            // Vision/model decoding and inpainting must not allocate their
+            // largest buffers at the same time inside the Share extension.
+            guard appState.phase == .ready, let document = appState.document else { return }
+            appState.beginRendering(id: document.id)
             let backgroundStart = ContinuousClock.now
             async let colors = ScreenshotRendering.paletteAsync(for: document)
             async let patches = ScreenshotRendering.restorationsAsync(for: document)
@@ -101,6 +111,8 @@ struct TranslationResultView: View {
             restorations = restored
             let duration = backgroundStart.duration(to: .now).components
             backgroundSeconds = Double(duration.seconds) + Double(duration.attoseconds) / 1e18
+            preparedDocumentID = document.id
+            appState.finishRendering(id: document.id)
         }
     }
 
@@ -110,12 +122,15 @@ struct TranslationResultView: View {
                 if mode == .text && appState.document != nil {
                     FullTextContent(document: document).contentMargins(.bottom, 90)
                 } else {
-                    ZoomableScreenshot(document: document, showsOriginal: mode == .original, appearance: settings.appearance,
+                    ZoomableScreenshot(document: document, showsOriginal: mode == .original || processing, appearance: settings.appearance,
                                        textScale: settings.overlayTextScale, allowsTextDetails: settings.showsTextDetailsOnTap, palette: palette, restorations: restorations, resetZoom: resetZoom,
-                                       zoomChanged: { imageZoom = $0 }, dismissAction: { if !appState.isProcessing { close() } }) { selectedBlock = $0 }
+                                       zoomChanged: { imageZoom = $0 }, dismissAction: { if !processing { close() } }) { selectedBlock = $0 }
                         .id(document.id)
                 }
                 switch appState.phase {
+                case .ready where preparingImage:
+                    ProgressView("Preparing image…").font(.footnote).padding(12)
+                        .glassEffect(.regular, in: Capsule()).padding(.top, 14)
                 case .failed:
                     Button { showsRecovery = true } label: {
                         Label("Translation incomplete · Original preserved", systemImage: "exclamationmark.circle")

@@ -29,6 +29,7 @@ final class AppState: ObservableObject {
     var isProcessing: Bool { phase == .reading || phase == .translating || phase == .preparing }
 
     private let services: ProcessingServices
+    private let diagnostics: ProcessingDiagnostics?
     @Published private(set) var sourceImage: UIImage?
     private var previewID = UUID()
     /// A failed OCR/translation must never replace the user's image with a blank screen.
@@ -63,13 +64,15 @@ final class AppState: ObservableObject {
         return Double(duration.seconds) + Double(duration.attoseconds) / 1e18
     }
 
-    init(settings: AppSettings, history: HistoryStore, services: ProcessingServices? = nil) {
+    init(settings: AppSettings, history: HistoryStore, services: ProcessingServices? = nil, diagnostics: ProcessingDiagnostics? = nil) {
         self.settings = settings
         self.history = history
         self.services = services ?? .live
+        self.diagnostics = diagnostics ?? (services == nil ? .shared : nil)
     }
 
     func process(_ image: UIImage) {
+        diagnostics?.end("replaced")
         cancelCurrentWork()
         let processID = UUID()
         previewID = processID
@@ -88,6 +91,7 @@ final class AppState: ObservableObject {
         let translator = settings.translationEngine
         let source = settings.source
         let target = settings.target
+        diagnostics?.begin(id: processID, target: target.rawValue)
         let preference = settings.preference
         let ocrConfiguration = settings.aiOCR
         let translationConfiguration = settings.aiTranslation
@@ -96,11 +100,13 @@ final class AppState: ObservableObject {
         do {
             for profile in profiles { try settings.configuration(for: profile).validate() }
         } catch {
+            diagnostics?.end("failed")
             phase = .failed(error.localizedDescription)
             return
         }
         let missingConsent = profiles.filter { !settings.hasConsent(for: $0) }
         if !missingConsent.isEmpty {
+            diagnostics?.event("awaiting_consent")
             pendingConsentIDs = Dictionary(uniqueKeysWithValues: profiles.map { ($0, settings.consentIdentity(for: $0)) })
             consentDestinations = missingConsent.map { profile in
                 let host = (try? settings.configuration(for: profile).endpoint().host) ?? "selected provider"
@@ -119,6 +125,7 @@ final class AppState: ObservableObject {
             ocrKey = ocrEngine == .ai ? try settings.readAPIKey(for: .ocr) : ""
             translationKey = translator == .ai ? try settings.readAPIKey(for: .translation) : ""
         } catch {
+            diagnostics?.end("failed")
             phase = .failed(error.localizedDescription)
             return
         }
@@ -149,6 +156,7 @@ final class AppState: ObservableObject {
                 guard !result.blocks.isEmpty else { throw ScreenReadingError.noText }
                 recognitionSeconds = seconds(since: startedAt)
                 translationStartedAt = .now
+                diagnostics?.stage("translating")
                 let blocks = TranslationPlanner.paragraphs(result.blocks, preference: preference)
                 notice = result.notice
                 document = TranslationDocument(id: processID, image: image, blocks: blocks, source: source, target: target, createdAt: Date())
@@ -193,9 +201,7 @@ final class AppState: ObservableObject {
                     finish(processID)
                 }
             } catch {
-                guard isActive(processID) else { return }
-                // Only local, sanitized client errors reach this screen. Never log screenshots, text, keys, or provider bodies.
-                phase = .failed(error.localizedDescription)
+                fail(error, processID: processID)
             }
         }
     }
@@ -257,7 +263,11 @@ final class AppState: ObservableObject {
             document = current
             finish(processID)
         } catch {
-            guard isActive(processID) else { return }
+            guard activeProcessID == processID else { return }
+            if error is CancellationError || Task.isCancelled {
+                fail(error, processID: processID)
+                return
+            }
             // Keep completed regions and all remaining originals visible. A
             // single unsupported label must not discard an otherwise useful image.
             if current.blocks.contains(where: { $0.translation != $0.original }) {
@@ -277,6 +287,7 @@ final class AppState: ObservableObject {
                 guard isActive(processID) else { return }
                 phase = .failed(AppLocalization.formatted("Translation couldn’t be completed: %@", settings.text(error.localizedDescription), language: settings.interfaceLanguage))
             }
+            diagnostics?.end("failed")
         }
     }
 
@@ -316,7 +327,11 @@ final class AppState: ObservableObject {
         phase = .ready
     }
 
+    func beginRendering(id: UUID) { if document?.id == id { diagnostics?.beginRendering(id: id) } }
+    func finishRendering(id: UUID) { if document?.id == id { diagnostics?.end("completed") } }
+
     func closeResult() {
+        diagnostics?.end("closed")
         cancelCurrentWork()
         presentsResult = false
         document = nil
@@ -337,7 +352,20 @@ final class AppState: ObservableObject {
         translationSeconds = seconds(since: translationStartedAt)
         Logger(subsystem: "AYTranslate", category: "Performance").info("OCR seconds: \(self.recognitionSeconds); translation seconds: \(self.translationSeconds)")
         phase = .ready
+        diagnostics?.end("completed")
         if settings.savesHistory { history.add(document) }
+    }
+
+    private func fail(_ error: Error, processID: UUID) {
+        // A cancelled framework/network request can still belong to the active
+        // screen. Keep the image and show recovery; never leave it spinning or
+        // silently dismiss it. Explicit Close invalidates the ID beforehand.
+        guard activeProcessID == processID else { return }
+        let interrupted = error is CancellationError || Task.isCancelled
+        diagnostics?.end(interrupted ? "cancelled" : "failed")
+        phase = .failed(interrupted
+            ? "The translation request was interrupted. The original image is still here; retry to continue."
+            : error.localizedDescription)
     }
 
     private func cancelCurrentWork() {

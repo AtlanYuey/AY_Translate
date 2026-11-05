@@ -5,7 +5,9 @@ nonisolated enum TranslationCoverage {
         // Do not treat numbers, Chinese source labels or Katakana names as
         // missing translations. Only a verbatim Japanese sentence in Chinese.
         guard isChinese(target) else { return false }
-        if hasWrongTargetScript(original: original, translation: translation, target: target) { return true }
+        // Wrong-language output is a rejected response, never an automatic
+        // second translation. This repair path is only for missing source text.
+        if hasWrongTargetScript(original: original, translation: translation, target: target) { return false }
         func compact(_ value: String) -> String { value.filter { !$0.isWhitespace } }
         let source = compact(original)
         return source == compact(translation) && source.count >= 4

@@ -13,8 +13,13 @@ nonisolated enum OCRCoverage {
             let uncovered = column.filter { glyph in
                 !blocks.contains { block in
                     guard block.flow == .vertical else { return false }
-                    let intersection = glyph.intersection(block.boundingBox)
-                    return !intersection.isNull && intersection.width * intersection.height >= glyph.width * glyph.height * 0.65
+                    // A paragraph box can span characters the recognizer never
+                    // read. Prefer its actual glyph evidence when available.
+                    let evidence = block.sourceGlyphBoxes?.isEmpty == false ? block.sourceGlyphBoxes! : [block.boundingBox]
+                    return evidence.contains { box in
+                        let intersection = glyph.intersection(box)
+                        return !intersection.isNull && intersection.width * intersection.height >= glyph.width * glyph.height * 0.65
+                    }
                 }
             }.count
             return uncovered >= 2 && Double(uncovered) / Double(column.count) >= 0.25

@@ -66,7 +66,7 @@ nonisolated struct AIServiceConfiguration: Codable, Equatable, Sendable {
 
 nonisolated enum AIServiceError: LocalizedError, Equatable {
     case invalidEndpoint, missingModel, invalidResponse, invalidRegions, incompleteTranslation
-    case requestTooLarge, responseTooLarge, transport, http(Int)
+    case requestTooLarge, responseTooLarge, transport, http(Int), wrongTargetLanguage
 
     var errorDescription: String? {
         switch self {
@@ -75,6 +75,7 @@ nonisolated enum AIServiceError: LocalizedError, Equatable {
         case .invalidResponse: "The AI service did not return the requested JSON. Try another model or use Apple’s engine."
         case .invalidRegions: "The AI service returned invalid OCR regions. Local recognition is available as a fallback."
         case .incompleteTranslation: "The translation service omitted or duplicated text regions. Retry or choose a different translation engine."
+        case .wrongTargetLanguage: "The model did not follow the selected target language. The original image is preserved. Choose another model or retry."
         case .requestTooLarge: "This screenshot contains too much text for one AI request. Use Apple’s engines or a smaller screenshot."
         case .responseTooLarge: "The AI service response exceeded the size limit. Try a smaller screenshot."
         case .transport: "Could not reach the AI service securely. Check the endpoint and your connection."
