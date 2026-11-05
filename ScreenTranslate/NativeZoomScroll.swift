@@ -7,6 +7,7 @@ struct NativeZoomScroll<Content: View>: UIViewControllerRepresentable {
     let size: CGSize
     let resetID: UUID
     let zoomChanged: (CGFloat) -> Void
+    let allowsDismiss: Bool
     let dismissAction: () -> Void
     @ViewBuilder var content: () -> Content
 
@@ -17,6 +18,7 @@ struct NativeZoomScroll<Content: View>: UIViewControllerRepresentable {
         controller.host.rootView = content()
         controller.onZoom = zoomChanged
         controller.onDismiss = dismissAction
+        controller.allowsDismiss = allowsDismiss
         controller.update(size: size, resetID: resetID)
     }
 }
@@ -26,10 +28,10 @@ final class ZoomScrollController<Content: View>: UIViewController, UIScrollViewD
     let host: UIHostingController<Content>
     var onZoom: (CGFloat) -> Void = { _ in }
     var onDismiss: () -> Void = {}
+    var allowsDismiss = true
     private var fitted = CGSize.zero
     private var resetID: UUID?
     private var reportedZoomed = false
-    private var swipeStart = CGPoint.zero
     private var edgeSwipe: UIPanGestureRecognizer!
 
     init(root: Content) { host = UIHostingController(rootView: root); super.init(nibName: nil, bundle: nil) }
@@ -53,7 +55,7 @@ final class ZoomScrollController<Content: View>: UIViewController, UIScrollViewD
         scroll.addGestureRecognizer(doubleTap)
         edgeSwipe = UIPanGestureRecognizer(target: self, action: #selector(edgePanned(_:)))
         edgeSwipe.maximumNumberOfTouches = 1; edgeSwipe.delegate = self
-        scroll.addGestureRecognizer(edgeSwipe)
+        view.addGestureRecognizer(edgeSwipe)
     }
 
     func update(size: CGSize, resetID: UUID) {
@@ -112,15 +114,24 @@ final class ZoomScrollController<Content: View>: UIViewController, UIScrollViewD
     }
     func gestureRecognizerShouldBegin(_ gestureRecognizer: UIGestureRecognizer) -> Bool {
         guard gestureRecognizer === edgeSwipe else { return true }
-        swipeStart = gestureRecognizer.location(in: scroll)
-        let velocity = edgeSwipe.velocity(in: scroll)
-        return scroll.zoomScale <= 1.01 && swipeStart.y > scroll.bounds.maxY - 110
+        return shouldBeginBottomDismiss(edgeSwipe)
+    }
+    func shouldBeginBottomDismiss(_ gesture: UIPanGestureRecognizer) -> Bool {
+        // The delegate is called after the finger has moved. A fast first
+        // sample may already be outside the bottom strip. Recover the actual
+        // touch origin in the stationary viewport, not the scrolling content.
+        let location = gesture.location(in: view)
+        let translation = gesture.translation(in: view)
+        let start = CGPoint(x: location.x - translation.x, y: location.y - translation.y)
+        let velocity = gesture.velocity(in: view)
+        return allowsDismiss && scroll.zoomScale <= 1.01 && view.bounds.contains(start)
+            && start.y > view.bounds.maxY - 110
             && velocity.y < 0 && abs(velocity.y) > abs(velocity.x) * 1.5
     }
     func gestureRecognizer(_ gestureRecognizer: UIGestureRecognizer, shouldRecognizeSimultaneouslyWith other: UIGestureRecognizer) -> Bool {
         gestureRecognizer === edgeSwipe || other === edgeSwipe
     }
     @objc private func edgePanned(_ gesture: UIPanGestureRecognizer) {
-        if gesture.state == .ended, scroll.zoomScale <= 1.01, gesture.translation(in: scroll).y < -100 { onDismiss() }
+        if gesture.state == .ended, allowsDismiss, scroll.zoomScale <= 1.01, gesture.translation(in: view).y < -100 { onDismiss() }
     }
 }

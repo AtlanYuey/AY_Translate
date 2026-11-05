@@ -44,6 +44,7 @@ struct TranslationResultView: View {
             }
             .accessibilityElement(children: .contain)
             .accessibilityIdentifier("result.canvas")
+            .accessibilityValue(Text(processing ? "Processing…" : "Ready"))
             .simultaneousGesture(DragGesture(minimumDistance: 45).onEnded { value in
                 // The image handles its own drag to avoid competing parent and
                 // child recognizers. This fallback also lets loading/error
@@ -124,7 +125,7 @@ struct TranslationResultView: View {
                 } else {
                     ZoomableScreenshot(document: document, showsOriginal: mode == .original || processing, appearance: settings.appearance,
                                        textScale: settings.overlayTextScale, allowsTextDetails: settings.showsTextDetailsOnTap, palette: palette, restorations: restorations, resetZoom: resetZoom,
-                                       zoomChanged: { imageZoom = $0 }, dismissAction: { if !processing { close() } }) { selectedBlock = $0 }
+                                       zoomChanged: { imageZoom = $0 }, allowsDismiss: !processing, dismissAction: { if !processing { close() } }) { selectedBlock = $0 }
                         .id(document.id)
                 }
                 switch appState.phase {
@@ -296,13 +297,14 @@ private struct ZoomableScreenshot: View {
     let restorations: [UUID: ScreenshotRendering.RestoredRegion]
     let resetZoom: UUID
     let zoomChanged: (CGFloat) -> Void
+    let allowsDismiss: Bool
     let dismissAction: () -> Void
     let select: (RecognizedBlock) -> Void
 
     var body: some View {
         GeometryReader { proxy in
             let fitted = ImageViewport.fittedSize(image: document.image.size, container: proxy.size)
-            NativeZoomScroll(size: fitted, resetID: resetZoom, zoomChanged: zoomChanged, dismissAction: dismissAction) {
+            NativeZoomScroll(size: fitted, resetID: resetZoom, zoomChanged: zoomChanged, allowsDismiss: allowsDismiss, dismissAction: dismissAction) {
                 ZStack(alignment: .topLeading) {
                     Image(uiImage: document.image).resizable().frame(width: fitted.width, height: fitted.height)
                     if !showsOriginal {

@@ -28,6 +28,7 @@ final class ScreenTranslateUITests: XCTestCase {
         }
         let canvas = app.otherElements["result.canvas"]
         XCTAssertTrue(canvas.waitForExistence(timeout: 10))
+        guard waitUntilReady(canvas) else { failWithScreenshot(app, name: "首张译图未准备完成"); return }
         let canvasFrame = canvas.frame, screenFrame = app.frame
         let dimensions = XCTAttachment(string: "Share canvas: \(canvasFrame); source screen: \(screenFrame)")
         dimensions.name = "系统Share容器尺寸"; dimensions.lifetime = .keepAlways; add(dimensions)
@@ -49,8 +50,9 @@ final class ScreenTranslateUITests: XCTestCase {
         guard waitUntilHittable(source) else { failWithScreenshot(app, name: "叉号关闭后返回失败"); return }
         openExtension(app, source: source)
         XCTAssertTrue(original.waitForExistence(timeout: 120))
-        app.coordinate(withNormalizedOffset: CGVector(dx: 0.12, dy: 0.94))
-            .press(forDuration: 0.05, thenDragTo: app.coordinate(withNormalizedOffset: CGVector(dx: 0.12, dy: 0.60)))
+        guard waitUntilReady(canvas) else { failWithScreenshot(app, name: "第二张译图未准备完成"); return }
+        canvas.coordinate(withNormalizedOffset: CGVector(dx: 0.12, dy: 0.94))
+            .press(forDuration: 0.05, thenDragTo: canvas.coordinate(withNormalizedOffset: CGVector(dx: 0.12, dy: 0.60)))
         guard waitUntilHittable(source) else { failWithScreenshot(app, name: "上滑后返回失败"); return }
         let proof = XCTAttachment(string: "{\"recognized\":true,\"originalToggled\":true,\"closeReturnedToSource\":true,\"swipeReturnedToSource\":true}")
         proof.name = "ShareInteractionCompleted"; proof.lifetime = .keepAlways; add(proof)
@@ -161,6 +163,10 @@ final class ScreenTranslateUITests: XCTestCase {
 
     private func waitUntilHittable(_ element: XCUIElement) -> Bool {
         XCTWaiter.wait(for: [XCTNSPredicateExpectation(predicate: NSPredicate(format: "isHittable == true"), object: element)], timeout: 45) == .completed
+    }
+
+    private func waitUntilReady(_ canvas: XCUIElement) -> Bool {
+        XCTWaiter.wait(for: [XCTNSPredicateExpectation(predicate: NSPredicate(format: "value == %@", "Ready"), object: canvas)], timeout: 120) == .completed
     }
 
     private func failWithScreenshot(_ app: XCUIApplication, name: String) {

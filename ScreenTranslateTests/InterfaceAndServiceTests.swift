@@ -131,6 +131,31 @@ final class InterfaceAndServiceTests: XCTestCase {
         window.isHidden = true
     }
 
+    func testBottomDismissUsesTouchOriginAndIsDisabledDuringProcessingOrZoom() {
+        let controller = ZoomScrollController(root: Color.white)
+        controller.loadViewIfNeeded()
+        controller.view.frame = CGRect(x: 0, y: 0, width: 400, height: 800)
+        controller.view.layoutIfNeeded()
+        controller.update(size: CGSize(width: 400, height: 600), resetID: UUID())
+        let gesture = SampledBottomPan()
+        // The first delivered move has already left the bottom 110pt strip.
+        gesture.point = CGPoint(x: 48, y: 590)
+        gesture.movement = CGPoint(x: 0, y: -160)
+        gesture.speed = CGPoint(x: 0, y: -700)
+        XCTAssertTrue(controller.shouldBeginBottomDismiss(gesture))
+        controller.allowsDismiss = false
+        XCTAssertFalse(controller.shouldBeginBottomDismiss(gesture), "Processing must not be dismissed by an incidental drag")
+        controller.allowsDismiss = true
+        controller.scroll.setZoomScale(2, animated: false)
+        XCTAssertFalse(controller.shouldBeginBottomDismiss(gesture), "Dragging an enlarged image pans it instead")
+        controller.scroll.setZoomScale(1, animated: false)
+        gesture.movement = CGPoint(x: 0, y: -20)
+        XCTAssertFalse(controller.shouldBeginBottomDismiss(gesture), "A drag starting in the image centre must not close it")
+        gesture.movement = CGPoint(x: 0, y: -160)
+        gesture.speed = CGPoint(x: 700, y: -100)
+        XCTAssertFalse(controller.shouldBeginBottomDismiss(gesture), "A horizontal gesture must not close the image")
+    }
+
     func testEveryPackagedProviderMarkHasVisibleArtwork() throws {
         for preset in AIProviderPreset.allCases where preset != .other {
             let image = try XCTUnwrap(UIImage(named: "provider-" + preset.rawValue))
@@ -756,6 +781,16 @@ final class InterfaceAndServiceTests: XCTestCase {
         add(attachment)
         return image
     }
+}
+
+@MainActor
+private final class SampledBottomPan: UIPanGestureRecognizer {
+    var point = CGPoint.zero
+    var movement = CGPoint.zero
+    var speed = CGPoint.zero
+    override func location(in view: UIView?) -> CGPoint { point }
+    override func translation(in view: UIView?) -> CGPoint { movement }
+    override func velocity(in view: UIView?) -> CGPoint { speed }
 }
 
 @MainActor
