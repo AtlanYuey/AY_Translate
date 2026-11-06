@@ -293,6 +293,15 @@ jobs:
             CODE_SIGNING_ALLOWED=YES CODE_SIGNING_REQUIRED=NO CODE_SIGN_IDENTITY="-" DEVELOPMENT_TEAM="" \
             2>&1 | tee "$RUNNER_TEMP/ios-ui-tests.log"
 
+      - name: Export local processing stages
+        if: always() && steps.simulator.outputs.destination != ''
+        env:
+          TEST_DESTINATION: ${{ steps.simulator.outputs.destination }}
+        shell: bash
+        run: |
+          UDID="${TEST_DESTINATION##*id=}"
+          python3 .github/scripts/export-simulator-processing.py "$HOME/Library/Developer/CoreSimulator/Devices/$UDID/data/Containers" | tee "$RUNNER_TEMP/processing-stages.json"
+
       - name: Export interface review screenshots
         if: always()
         shell: bash
@@ -373,6 +382,7 @@ jobs:
             ${{ runner.temp }}/shortcut-package-verification.json
             ${{ runner.temp }}/shortcut-host-coverage.json
             ${{ runner.temp }}/share-ui-completion.json
+            ${{ runner.temp }}/processing-stages.json
             ${{ runner.temp }}/vision-core
             Shortcuts/TranslateScreen.unsigned.plist
           if-no-files-found: warn
