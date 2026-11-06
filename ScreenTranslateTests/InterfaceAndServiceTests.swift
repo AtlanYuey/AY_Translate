@@ -56,15 +56,19 @@ final class InterfaceAndServiceTests: XCTestCase {
                 context.draw(cg, in: CGRect(origin: .zero, size: size))
             }
             let mask = RoundedRectangle(cornerRadius: 64, style: .continuous).path(in: CGRect(origin: .zero, size: size)).cgPath
+            // At 1×, a correctly clipped curve still covers part of a pixel
+            // whose center lies outside the path. Permit only that 1 px fringe.
+            let antialiasFringe = mask.copy(strokingWithWidth: 2, lineCap: .round, lineJoin: .round, miterLimit: 1)
             var corners = [Int](repeating: 0, count: 4), clipped = 0
             for y in 0..<height { for x in 0..<width {
                 guard (0..<3).contains(where: { bytes[(y * width + x) * 4 + $0] > 45 }) else { continue }
-                if !mask.contains(CGPoint(x: CGFloat(x) + 0.5, y: CGFloat(y) + 0.5)) { clipped += 1 }
+                let point = CGPoint(x: CGFloat(x) + 0.5, y: CGFloat(y) + 0.5)
+                if !mask.contains(point) && !antialiasFringe.contains(point) { clipped += 1 }
                 if (x < 115 || x >= width - 115) && (y < 115 || y >= height - 115) {
                     corners[(x < 115 ? 0 : 1) + (y < 115 ? 0 : 2)] += 1
                 }
             } }
-            XCTAssertLessThanOrEqual(clipped, 8, "Only antialiased contour pixels may straddle the display mask")
+            XCTAssertEqual(clipped, 0, "No glow may extend beyond the 1 px antialias fringe")
             for (x, y) in [(0, height / 2), (width - 1, height / 2), (width / 2, 0), (width / 2, height - 1)] {
                 XCTAssertGreaterThan(bytes[(y * width + x) * 4 ..< (y * width + x) * 4 + 3].max() ?? 0, 100, "Light must reach the outermost edge without an inset gap")
             }
@@ -108,15 +112,21 @@ final class InterfaceAndServiceTests: XCTestCase {
         }.frame(width: 393, height: 852))
         renderer.scale = 1
         let image = try XCTUnwrap(renderer.uiImage?.cgImage)
-        var pixel = [UInt8](repeating: 0, count: 4)
-        try pixel.withUnsafeMutableBytes { raw in
-            let context = try XCTUnwrap(CGContext(data: raw.baseAddress, width: 1, height: 1, bitsPerComponent: 8, bytesPerRow: 4,
-                space: CGColorSpaceCreateDeviceRGB(), bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue))
-            context.translateBy(x: -196, y: -426)
-            context.draw(image, in: CGRect(x: 0, y: 0, width: 393, height: 852))
+        // The center contains ProgressView. Sample unobstructed background,
+        // not the UIKit progress view's ImageRenderer placeholder.
+        for point in [CGPoint(x: 100, y: 200), CGPoint(x: 290, y: 200), CGPoint(x: 100, y: 600), CGPoint(x: 290, y: 600)] {
+            var pixel = [UInt8](repeating: 0, count: 4)
+            try pixel.withUnsafeMutableBytes { raw in
+                let context = try XCTUnwrap(CGContext(data: raw.baseAddress, width: 1, height: 1, bitsPerComponent: 8, bytesPerRow: 4,
+                    space: CGColorSpaceCreateDeviceRGB(), bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue))
+                context.translateBy(x: -point.x, y: -point.y)
+                context.draw(image, in: CGRect(x: 0, y: 0, width: 393, height: 852))
+            }
+            XCTAssertGreaterThan(pixel[1], 100, "The host remains visible until the screenshot arrives")
+            XCTAssertGreaterThan(pixel[1], pixel[0])
         }
-        XCTAssertGreaterThan(pixel[1], 100, "The host remains visible until the screenshot arrives")
-        XCTAssertGreaterThan(pixel[1], pixel[0])
+        let attachment = XCTAttachment(image: UIImage(cgImage: image))
+        attachment.name = "导入中-透明背景与进度提示"; attachment.lifetime = .keepAlways; add(attachment)
     }
 
     func testTextDetailsAreOptInAndPersistAcrossSettingsReload() {

@@ -116,7 +116,7 @@ struct ProcessingDiagnosticsView: View {
             ForEach(entries) { entry in
                 Section {
                     LabeledContent("Status", value: settings.text(status(entry.outcome)))
-                    LabeledContent("Stage", value: settings.text(entry.stage == "reading" ? "Reading screen…" : entry.stage == "background" ? "Preparing image…" : "Translating…"))
+                    LabeledContent("Stage", value: settings.text(entry.stage == "reading" ? "Reading screen…" : ["background", "importing", "presenting"].contains(entry.stage) ? "Preparing image…" : "Translating…"))
                     LabeledContent("Target Language", value: AppLanguage(rawValue: entry.target)?.nativeName ?? entry.target)
                     LabeledContent("Memory Warnings", value: String(entry.memoryWarnings))
                     Text(entry.context == "share" ? "Share Extension" : "AY Translate").font(.caption).foregroundStyle(.secondary)

@@ -14,6 +14,7 @@ final class ShareViewController: UIViewController {
     private var pendingImage: UIImage?
     private var didStartLoading = false
     private var presentationReady = false
+    private var waitingForPresentation = false
     private var completed = false
 
     override init(nibName nibNameOrNil: String?, bundle nibBundleOrNil: Bundle?) {
@@ -64,6 +65,24 @@ final class ShareViewController: UIViewController {
         presentationReady = true
         loadSharedImageIfAvailable()
         if !didStartLoading { state?.failImport(SharedImageError.noImage) }
+        startWhenPresented()
+    }
+
+    override func viewDidLayoutSubviews() {
+        super.viewDidLayoutSubviews()
+        // A remote Share host may attach the window without forwarding the
+        // principal controller's appearance callback. Do not strand import in
+        // that state. Respect an available transition before starting Vision.
+        guard view.window != nil, !presentationReady, !waitingForPresentation, !completed else { return }
+        waitingForPresentation = true
+        if let coordinator = transitionCoordinator,
+           coordinator.animate(alongsideTransition: nil, completion: { [weak self] _ in self?.didAttachPresentation() }) { return }
+        didAttachPresentation()
+    }
+
+    private func didAttachPresentation() {
+        guard !completed else { return }
+        presentationReady = true
         startWhenPresented()
     }
 

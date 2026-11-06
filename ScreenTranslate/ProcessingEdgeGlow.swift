@@ -32,12 +32,16 @@ struct ProcessingEdgeGlow: View {
                                 center: CGPoint(x: geometry.size.width / 2, y: geometry.size.height / 2),
                                 angle: .degrees(angle + sin(time * 0.7) * 20))
                             let breathe = 1 + 0.12 * sin(time * 2.1)
-                            // Layered low-opacity strokes approximate a soft
-                            // falloff without offscreen Gaussian-blur textures.
-                            for (width, opacity) in [(40.0, 0.035), (32, 0.05), (24, 0.08), (16, 0.14), (10, 0.23), (5, 0.48), (2, 0.85)] {
+                            // Fine steps approximate Gaussian falloff without
+                            // coarse visible bands or offscreen blur textures.
+                            var previousOpacity = 0.0
+                            for step in stride(from: 24, through: 1, by: -1) {
+                                let distance = Double(step) * 0.75
+                                let opacity = 0.92 * exp(-pow(distance / 7.0, 1.35))
                                 var layer = context
-                                layer.opacity = opacity
-                                layer.stroke(path, with: paint, lineWidth: width * breathe)
+                                layer.opacity = (opacity - previousOpacity) / (1 - previousOpacity)
+                                layer.stroke(path, with: paint, lineWidth: distance * 2 * breathe)
+                                previousOpacity = opacity
                             }
                         }
                         .frame(width: tile.width, height: tile.height)
