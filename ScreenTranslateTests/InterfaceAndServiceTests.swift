@@ -42,7 +42,7 @@ final class InterfaceAndServiceTests: XCTestCase {
 
     func testActivityBorderSurvivesRoundedDisplayMasksInBothOrientations() throws {
         for size in [CGSize(width: 393, height: 852), CGSize(width: 852, height: 393), CGSize(width: 744, height: 1133)] {
-            let renderer = ImageRenderer(content: Color.black.overlay { ProcessingEdgeGlow() }
+            let renderer = ImageRenderer(content: Color.black.overlay { ProcessingEdgeGlow(frameTime: 0, cornerRadius: 64) }
                 .frame(width: size.width, height: size.height))
             renderer.scale = 1
             let image = try XCTUnwrap(renderer.uiImage)
@@ -55,7 +55,7 @@ final class InterfaceAndServiceTests: XCTestCase {
                     bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue))
                 context.draw(cg, in: CGRect(origin: .zero, size: size))
             }
-            let mask = UIBezierPath(roundedRect: CGRect(origin: .zero, size: size), cornerRadius: 64).cgPath
+            let mask = RoundedRectangle(cornerRadius: 64, style: .continuous).path(in: CGRect(origin: .zero, size: size)).cgPath
             var corners = [Int](repeating: 0, count: 4), clipped = 0
             for y in 0..<height { for x in 0..<width {
                 guard (0..<3).contains(where: { bytes[(y * width + x) * 4 + $0] > 45 }) else { continue }
@@ -64,16 +64,44 @@ final class InterfaceAndServiceTests: XCTestCase {
                     corners[(x < 115 ? 0 : 1) + (y < 115 ? 0 : 2)] += 1
                 }
             } }
-            XCTAssertEqual(clipped, 0, "Visible glow must stay inside rounded display/sheet masks")
+            XCTAssertLessThanOrEqual(clipped, 8, "Only antialiased contour pixels may straddle the display mask")
+            for (x, y) in [(0, height / 2), (width - 1, height / 2), (width / 2, 0), (width / 2, height - 1)] {
+                XCTAssertGreaterThan(bytes[(y * width + x) * 4 ..< (y * width + x) * 4 + 3].max() ?? 0, 100, "Light must reach the outermost edge without an inset gap")
+            }
+            XCTAssertEqual(bytes[(height / 2 * width + width / 2) * 4], 0, "The center remains untouched")
             XCTAssertTrue(corners.allSatisfy { $0 > 100 }, "All four corners must contain a continuous visible arc: \(corners)")
             let attachment = XCTAttachment(image: image)
-            attachment.name = "四角完整的处理边框-\(Int(size.width))x\(Int(size.height))"
+            attachment.name = "贴外缘的动态光晕-\(Int(size.width))x\(Int(size.height))"
             attachment.lifetime = .keepAlways; add(attachment)
         }
     }
 
+    func testEdgeLightAnimatesAndAllocatesOnlyPerimeterTiles() throws {
+        let size = CGSize(width: 393, height: 852)
+        let tiles = ProcessingEdgeGlow.tiles(size: size, radius: 64)
+        XCTAssertLessThan(tiles.reduce(0) { $0 + $1.width * $1.height }, size.width * size.height * 0.25)
+        for i in tiles.indices { for j in tiles.indices where j > i {
+            XCTAssertTrue(tiles[i].intersection(tiles[j]).isEmpty, "Tiles must not double-paint seams")
+        } }
+        var samples: [Data] = []
+        for time in [0.0, 2.0] {
+            for background in [Color.black, Color.white] {
+                let renderer = ImageRenderer(content: background.overlay { ProcessingEdgeGlow(frameTime: time, cornerRadius: 64) }.frame(width: size.width, height: size.height))
+                renderer.scale = 1
+                let image = try XCTUnwrap(renderer.uiImage)
+                samples.append(try XCTUnwrap(image.pngData()))
+                let attachment = XCTAttachment(image: image)
+                attachment.name = "外缘光晕-时间\(time)-背景\(samples.count)"
+                attachment.lifetime = .keepAlways; add(attachment)
+            }
+        }
+        XCTAssertNotEqual(samples[0], samples[2], "The light must flow over time")
+    }
+
     func testShareLoadingCanvasKeepsTheInvokingImageVisibleInsteadOfBlack() throws {
         let state = AppState(settings: settings, history: HistoryStore(fileURL: FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)), services: services([]))
+        state.beginImport()
+        XCTAssertTrue(state.isProcessing)
         let renderer = ImageRenderer(content: ZStack {
             Color.green
             TranslationResultView().environmentObject(state).environmentObject(settings).environmentObject(state.history)

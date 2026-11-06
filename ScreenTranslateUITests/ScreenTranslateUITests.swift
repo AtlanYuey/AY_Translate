@@ -54,6 +54,15 @@ final class ScreenTranslateUITests: XCTestCase {
         canvas.coordinate(withNormalizedOffset: CGVector(dx: 0.12, dy: 0.94))
             .press(forDuration: 0.05, thenDragTo: canvas.coordinate(withNormalizedOffset: CGVector(dx: 0.12, dy: 0.60)))
         guard waitUntilHittable(source) else { failWithScreenshot(app, name: "上滑后返回失败"); return }
+        // Reinvoke in the same host to catch controllers or images retained
+        // after completeRequest. The existing two paths test both close gestures.
+        for attempt in 3...4 {
+            openExtension(app, source: source)
+            XCTAssertTrue(original.waitForExistence(timeout: 120))
+            guard waitUntilReady(canvas) else { failWithScreenshot(app, name: "连续第\(attempt)次分享未完成"); return }
+            app.buttons["result.close"].tap()
+            guard waitUntilHittable(source) else { failWithScreenshot(app, name: "连续第\(attempt)次分享未返回"); return }
+        }
         let proof = XCTAttachment(string: "{\"recognized\":true,\"originalToggled\":true,\"closeReturnedToSource\":true,\"swipeReturnedToSource\":true}")
         proof.name = "ShareInteractionCompleted"; proof.lifetime = .keepAlways; add(proof)
         // continueAfterFailure=false can end a test even at an expected failure.

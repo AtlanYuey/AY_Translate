@@ -10,20 +10,22 @@ nonisolated struct AITranslation: Codable, Sendable {
 
 nonisolated struct OpenAIClient: Sendable {
     private let session: URLSession
+    // The Share process can host many successive invocations. A fresh delegated
+    // URLSession per invocation keeps its own connection/delegate resources.
+    // One credential-free ephemeral pool is enough; keys stay on each request.
+    private static let sharedSession: URLSession = {
+        let configuration = URLSessionConfiguration.ephemeral
+        configuration.urlCache = nil
+        configuration.httpCookieStorage = nil
+        configuration.urlCredentialStorage = nil
+        configuration.requestCachePolicy = .reloadIgnoringLocalCacheData
+        configuration.timeoutIntervalForRequest = 90
+        configuration.timeoutIntervalForResource = 180
+        return URLSession(configuration: configuration, delegate: RejectAIRedirects(), delegateQueue: nil)
+    }()
 
     init(session: URLSession? = nil) {
-        if let session {
-            self.session = session
-        } else {
-            let configuration = URLSessionConfiguration.ephemeral
-            configuration.urlCache = nil
-            configuration.httpCookieStorage = nil
-            configuration.urlCredentialStorage = nil
-            configuration.requestCachePolicy = .reloadIgnoringLocalCacheData
-            configuration.timeoutIntervalForRequest = 90
-            configuration.timeoutIntervalForResource = 180
-            self.session = URLSession(configuration: configuration, delegate: RejectAIRedirects(), delegateQueue: nil)
-        }
+        self.session = session ?? Self.sharedSession
     }
 
     /// Query the user's configured provider only. No model name is required for discovery.

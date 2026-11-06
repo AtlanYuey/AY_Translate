@@ -479,14 +479,18 @@ final class HistoryStore: ObservableObject {
     static let shared = HistoryStore()
     @Published private(set) var items: [HistoryItem] = []
     private let fileURL: URL
+    private var loaded = false
 
     init(fileURL: URL? = nil) {
         let folder = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask)[0]
         self.fileURL = fileURL ?? (SharedAppContainer.url ?? folder).appendingPathComponent("translation-history.json")
-        load()
+        // A screenshot extension does not need to decode the full archive at
+        // startup, especially when saving history is disabled.
+        if !ProcessingMemory.isExtension { load() }
     }
 
     func add(_ document: TranslationDocument) {
+        if !loaded { load() }
         guard let data = document.image.jpegData(compressionQuality: 0.55) else { return }
         let item = HistoryItem(
             id: document.id,
@@ -503,20 +507,25 @@ final class HistoryStore: ObservableObject {
     }
 
     func delete(at offsets: IndexSet) {
+        if !loaded { load() }
         items.remove(atOffsets: offsets)
         save()
     }
 
     func clear() {
+        loaded = true
         items.removeAll()
         save()
     }
 
     func load() {
+        loaded = true
         guard let data = try? Data(contentsOf: fileURL),
               let decoded = try? JSONDecoder().decode([HistoryItem].self, from: data) else { return }
         items = decoded
     }
+
+    func releaseCache() { items = []; loaded = false }
 
     private func save() {
         do {

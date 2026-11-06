@@ -118,6 +118,29 @@ final class VisionCoreTests: XCTestCase {
         XCTAssertEqual(repeated.map(\.id), blocks.map(\.id))
     }
 
+    func testExtensionWorkingImagePreservesVerticalTextAndSmallPrint() async throws {
+        let context = try canvas()
+        for (column, text) in ["これは何ですか", "一口だけ食べて", "とても甘いです"].enumerated() {
+            for (row, glyph) in text.enumerated() {
+                draw(String(glyph), x: CGFloat(640 - column * 44), y: CGFloat(180 + row * 34), font: "HiraginoSans-W3", size: 28, context: context)
+            }
+        }
+        draw("Small text survives", x: 120, y: 1200, font: "Helvetica", size: 22, context: context)
+        let source = try XCTUnwrap(context.makeImage())
+        let large = try XCTUnwrap(CGContext(data: nil, width: 1800, height: 3200, bitsPerComponent: 8, bytesPerRow: 0,
+            space: CGColorSpaceCreateDeviceRGB(), bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue))
+        large.interpolationQuality = .high
+        large.draw(source, in: CGRect(x: 0, y: 0, width: 1800, height: 3200))
+        let image = try XCTUnwrap(large.makeImage())
+        for pressure in [false, true] {
+            let blocks = try await VisionTextRecognizer.recognize(image, language: nil, memoryLimited: true, underPressure: pressure)
+            let text = blocks.map(\.original).joined().filter { !$0.isWhitespace }
+            for expected in ["これは何ですか", "一口だけ食べて", "とても甘いです"] { XCTAssertTrue(text.contains(expected), text) }
+            XCTAssertTrue(text.lowercased().contains("smalltextsurvives"), text)
+            try record(image, blocks: blocks, name: pressure ? "extension-pressure" : "extension-normal")
+        }
+    }
+
     private func canvas() throws -> CGContext {
         let context = try XCTUnwrap(CGContext(data: nil, width: 900, height: 1600, bitsPerComponent: 8, bytesPerRow: 0,
             space: CGColorSpaceCreateDeviceRGB(), bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue))

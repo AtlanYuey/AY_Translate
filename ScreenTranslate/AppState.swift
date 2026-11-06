@@ -9,7 +9,7 @@ import os
 @MainActor
 final class AppState: ObservableObject {
     enum Phase: Equatable {
-        case idle, awaitingConsent, reading, translating, preparing, ready
+        case idle, loading, awaitingConsent, reading, translating, preparing, ready
         case failed(String)
     }
 
@@ -26,7 +26,7 @@ final class AppState: ObservableObject {
     let settings: AppSettings
     let history: HistoryStore
     var hasSourceImage: Bool { sourceImage != nil }
-    var isProcessing: Bool { phase == .reading || phase == .translating || phase == .preparing }
+    var isProcessing: Bool { phase == .loading || phase == .reading || phase == .translating || phase == .preparing }
 
     private let services: ProcessingServices
     private let diagnostics: ProcessingDiagnostics?
@@ -71,10 +71,34 @@ final class AppState: ObservableObject {
         self.diagnostics = diagnostics ?? (services == nil ? .shared : nil)
     }
 
-    func process(_ image: UIImage) {
+    func beginImport() {
         diagnostics?.end("replaced")
         cancelCurrentWork()
-        let processID = UUID()
+        document = nil; sourceImage = nil; visionCache = nil
+        let id = UUID()
+        activeProcessID = id; previewID = id
+        notice = nil
+        presentsResult = true
+        phase = .loading
+        diagnostics?.begin(id: id, target: settings.target.rawValue, stage: "importing")
+    }
+
+    func displayImportedImage(_ image: UIImage) {
+        guard phase == .loading else { return }
+        sourceImage = image
+        diagnostics?.stage("presenting")
+    }
+
+    func releaseOptionalResources() {
+        visionCache = nil
+        if ProcessingMemory.isExtension { history.releaseCache() }
+    }
+
+    func process(_ image: UIImage) {
+        let importedID = phase == .loading ? activeProcessID : nil
+        if importedID == nil { diagnostics?.end("replaced") }
+        cancelCurrentWork()
+        let processID = importedID ?? UUID()
         previewID = processID
         activeProcessID = processID
         if sourceImage !== image { visionCache = nil }
@@ -91,7 +115,8 @@ final class AppState: ObservableObject {
         let translator = settings.translationEngine
         let source = settings.source
         let target = settings.target
-        diagnostics?.begin(id: processID, target: target.rawValue)
+        if importedID == nil { diagnostics?.begin(id: processID, target: target.rawValue) }
+        else { diagnostics?.stage("reading") }
         let preference = settings.preference
         let ocrConfiguration = settings.aiOCR
         let translationConfiguration = settings.aiTranslation
@@ -307,7 +332,8 @@ final class AppState: ObservableObject {
     }
 
     func failImport(_ error: Error) {
-        closeResult()
+        diagnostics?.end("failed")
+        cancelCurrentWork()
         presentsResult = true
         phase = .failed(error.localizedDescription)
     }
@@ -337,6 +363,7 @@ final class AppState: ObservableObject {
         document = nil
         sourceImage = nil
         visionCache = nil
+        if ProcessingMemory.isExtension { history.releaseCache() }
         notice = nil
         consentDestinations = []
         pendingConsentIDs = [:]

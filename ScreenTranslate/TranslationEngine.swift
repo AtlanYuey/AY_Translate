@@ -8,6 +8,7 @@ enum ScreenReader {
         // than allocating another full-size extended-range bitmap for Vision.
         let upright = try ScreenshotInput.bounded(image)
         guard let cgImage = upright.cgImage else { throw ScreenReadingError.invalidImage }
-        return try await VisionTextRecognizer.recognize(cgImage, language: source.recognitionCode)
+        return try await VisionTextRecognizer.recognize(cgImage, language: source.recognitionCode,
+            memoryLimited: ProcessingMemory.isExtension, underPressure: ProcessingMemory.isConstrained)
     }
 }

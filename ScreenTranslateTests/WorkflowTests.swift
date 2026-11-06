@@ -47,6 +47,55 @@ final class WorkflowTests: XCTestCase {
         XCTFail("Workflow did not reach the expected state")
     }
 
+    func testImportHasOneJournalAndKeepsTheImageBeforeRecognitionStarts() async throws {
+        let journal = ProcessingDiagnostics(defaults: defaults, keys: keys, context: "share")
+        var calls = 0
+        let state = AppState(settings: settings, history: HistoryStore(fileURL: historyURL), services: services { _, _ in calls += 1; return [self.block()] }, diagnostics: journal)
+        state.beginImport()
+        let id = try XCTUnwrap(journal.reports().first?.id)
+        XCTAssertEqual(journal.reports().first?.stage, "importing")
+        XCTAssertTrue(state.isProcessing)
+        let incoming = image()
+        state.displayImportedImage(incoming)
+        XCTAssertTrue(state.sourceImage === incoming)
+        XCTAssertEqual(calls, 0, "Present the image before starting memory-intensive OCR")
+        state.process(incoming)
+        try await waitUntil { state.phase == .translating }
+        XCTAssertEqual(calls, 1)
+        XCTAssertEqual(journal.reports().count, 1)
+        XCTAssertEqual(journal.reports().first?.id, id)
+        XCTAssertNotNil(journal.reports().first?.footprintBytes)
+        state.closeResult()
+        XCTAssertNil(state.sourceImage)
+        XCTAssertNil(state.document)
+    }
+
+    func testOldMemoryWarningReportsStillDecodeAndNewOnesRecordProcessBudget() throws {
+        let old = Data(#"{"id":"1CBFF70C-A1B9-470E-85C5-BA69E1628545","started":815641228.687115,"updated":815641228.721464,"context":"share","target":"zh-Hans","stage":"reading","outcome":"unfinished","event":"memory_warning","memoryWarnings":1}"#.utf8)
+        let entry = try JSONDecoder().decode(ProcessingDiagnostics.Entry.self, from: old)
+        XCTAssertNil(entry.footprintBytes)
+        XCTAssertEqual(entry.outcome, "unfinished")
+        let journal = ProcessingDiagnostics(defaults: defaults, keys: keys, context: "share")
+        journal.begin(id: UUID(), target: "zh-Hans", stage: "importing")
+        journal.memoryWarning()
+        let current = try XCTUnwrap(journal.reports().first)
+        XCTAssertGreaterThan(current.footprintBytes ?? 0, 0)
+        XCTAssertNotNil(current.availableBytes)
+        XCTAssertEqual(current.memoryWarnings, 1)
+        XCTAssertEqual(current.outcome, "unfinished", "A warning is not proof of a process kill")
+    }
+
+    func testReleasingHistoryCacheDoesNotLoseSavedItemsOnNextWrite() throws {
+        let history = HistoryStore(fileURL: historyURL)
+        func document() -> TranslationDocument { TranslationDocument(id: UUID(), image: image(), blocks: [block()], source: .english, target: .chinese, createdAt: Date()) }
+        history.add(document())
+        history.releaseCache()
+        XCTAssertTrue(history.items.isEmpty)
+        history.add(document())
+        XCTAssertEqual(history.items.count, 2)
+        XCTAssertEqual(HistoryStore(fileURL: historyURL).items.count, 2)
+    }
+
     func testDefaultAppleRouteNeedsNoKeyOrCloudAndKeepsHistoryOff() async throws {
         XCTAssertEqual(settings.ocrEngine, .appleVision)
         XCTAssertEqual(settings.translationEngine, .apple)

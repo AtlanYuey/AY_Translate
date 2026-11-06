@@ -1,10 +1,51 @@
 import XCTest
 import UIKit
+import SwiftUI
 import UniformTypeIdentifiers
 @testable import ScreenTranslate
 
 @MainActor
 final class ShareAndLanguageTests: XCTestCase {
+    func testFileDecodeBoundsPixelsWithoutReadingEncodedDataIntoMemory() throws {
+        let format = UIGraphicsImageRendererFormat(); format.scale = 1; format.opaque = true; format.preferredRange = .standard
+        let url = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString + ".jpg")
+        defer { try? FileManager.default.removeItem(at: url) }
+        try autoreleasepool {
+            let image = UIGraphicsImageRenderer(size: CGSize(width: 4000, height: 2400), format: format).image { context in
+                UIColor.white.setFill(); context.fill(CGRect(x: 0, y: 0, width: 4000, height: 2400))
+            }
+            try XCTUnwrap(image.jpegData(compressionQuality: 0.8)).write(to: url)
+        }
+        let image = try ScreenshotInput.decode(file: url, maximumDimension: 2560)
+        XCTAssertEqual(image.cgImage?.width, 2560)
+        XCTAssertEqual(image.cgImage?.height, 1536)
+        XCTAssertEqual(image.imageOrientation, .up)
+        XCTAssertTrue(try ScreenshotInput.bounded(image, maximumDimension: 2560) === image)
+    }
+
+    func testFinishedHostDetachesAndReleasesItsImageAcrossRepeatedInvocations() async throws {
+        let parent = UIViewController()
+        for _ in 0..<4 {
+            weak var releasedImage: UIImage?
+            var host: ResultHostingController?
+            autoreleasepool {
+                let image = UIGraphicsImageRenderer(size: CGSize(width: 200, height: 400)).image { _ in }
+                releasedImage = image
+                host = ResultHostingController(rootView: AnyView(Image(uiImage: image)))
+                parent.addChild(host!)
+                parent.view.addSubview(host!.view)
+                host!.didMove(toParent: parent)
+                host!.view.layoutIfNeeded()
+                host!.releaseResult()
+            }
+            XCTAssertTrue(parent.children.isEmpty)
+            XCTAssertNil(host?.view.superview)
+            host = nil
+            for _ in 0..<100 where releasedImage != nil { try await Task.sleep(for: .milliseconds(10)) }
+            XCTAssertNil(releasedImage, "The previous screenshot must not survive into the next share")
+        }
+    }
+
     func testTargetFallbackNeverUsesAutomaticOrLosesChineseRegionalLanguage() {
         XCTAssertEqual(AppLanguage.targetLanguage(saved: "zh-Hans", preferred: "en-US"), .chinese)
         XCTAssertEqual(AppLanguage.targetLanguage(saved: "automatic", preferred: "zh-Hant-TW"), .chinese)

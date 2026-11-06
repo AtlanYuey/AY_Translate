@@ -33,7 +33,7 @@ struct TranslationResultView: View {
             ZStack(alignment: .bottomTrailing) {
                 // Before the shared image arrives, keep the host visible. An
                 // opaque black loading canvas was the flash after screenshot.
-                if appState.hasSourceImage || appState.phase != .idle { Color.black }
+                if appState.hasSourceImage || (appState.phase != .idle && appState.phase != .loading) { Color.black }
                 else { Color.clear }
                 resultContent
                     .frame(maxWidth: .infinity, maxHeight: .infinity)
@@ -137,7 +137,7 @@ struct TranslationResultView: View {
                         Label("Translation incomplete · Original preserved", systemImage: "exclamationmark.circle")
                             .font(.footnote).padding(.horizontal, 12).padding(.vertical, 8)
                     }.buttonStyle(.plain).glassEffect(.regular.interactive(), in: Capsule()).padding(.top, 14)
-                case .reading, .translating, .preparing:
+                case .loading, .reading, .translating, .preparing:
                     HStack(spacing: 8) {
                         ProgressView().controlSize(.small)
                         Text(LocalizedStringKey(appState.phase == .reading ? "Reading screen…" : "Translating…")).font(.footnote)

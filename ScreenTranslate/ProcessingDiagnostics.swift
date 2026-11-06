@@ -17,6 +17,9 @@ final class ProcessingDiagnostics {
         var outcome: String
         var event: String
         var memoryWarnings: Int = 0
+        var footprintBytes: UInt64?
+        var peakFootprintBytes: UInt64?
+        var availableBytes: UInt64?
     }
     private let defaults: UserDefaults
     private let keys: any APIKeyStoring
@@ -37,14 +40,16 @@ final class ProcessingDiagnostics {
             }
     }
 
-    func begin(id: UUID, target: String) {
+    deinit { if let memoryObserver { NotificationCenter.default.removeObserver(memoryObserver) } }
+
+    func begin(id: UUID, target: String, stage: String = "reading") {
         if current != nil { end("replaced") }
         current = id
         let now = Date()
         entries.append(Entry(id: id, started: now, updated: now, context: context, target: target,
-            stage: "reading", outcome: "unfinished", event: "started"))
+            stage: stage, outcome: "unfinished", event: "started"))
         entries = Array(entries.suffix(8))
-        persist()
+        update { _ in }
     }
 
     func stage(_ value: String) { update { $0.stage = value } }
@@ -53,7 +58,10 @@ final class ProcessingDiagnostics {
         update { $0.outcome = outcome }
         current = nil
     }
-    func memoryWarning() { update { $0.memoryWarnings += 1; $0.event = "memory_warning" } }
+    func memoryWarning() {
+        ProcessingMemory.receivedWarning()
+        update { $0.memoryWarnings += 1; $0.event = "memory_warning" }
+    }
     func beginRendering(id: UUID) {
         guard let index = entries.firstIndex(where: { $0.id == id }), entries[index].outcome == "completed" else { return }
         current = id
@@ -62,7 +70,12 @@ final class ProcessingDiagnostics {
 
     private func update(_ change: (inout Entry) -> Void) {
         guard let current, let index = entries.firstIndex(where: { $0.id == current }) else { return }
-        change(&entries[index]); entries[index].updated = Date(); persist()
+        change(&entries[index]); entries[index].updated = Date()
+        let memory = ProcessingMemory.snapshot()
+        entries[index].footprintBytes = memory.footprint
+        entries[index].peakFootprintBytes = max(entries[index].peakFootprintBytes ?? 0, memory.footprint ?? 0)
+        entries[index].availableBytes = memory.available
+        persist()
     }
     private func persist() {
         guard let data = try? JSONEncoder().encode(entries) else { return }

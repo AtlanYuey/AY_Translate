@@ -9,6 +9,11 @@ import UIKit
 final class ShareViewController: UIViewController {
     private var state: AppState?
     private var loading: Task<Void, Never>?
+    private var starting: Task<Void, Never>?
+    private var host: ResultHostingController?
+    private var pendingImage: UIImage?
+    private var didStartLoading = false
+    private var presentationReady = false
     private var completed = false
 
     override init(nibName nibNameOrNil: String?, bundle nibBundleOrNil: Bundle?) {
@@ -35,9 +40,11 @@ final class ShareViewController: UIViewController {
         settings.refreshSharedPreferences()
         let state = AppState(settings: settings, history: .shared)
         self.state = state
-        let host = UIHostingController(rootView: TranslationResultView(onClose: { [weak self] in self?.finish() })
+        state.beginImport()
+        let host = ResultHostingController(rootView: AnyView(TranslationResultView(onClose: { [weak self] in self?.finish() })
             .environmentObject(state).environmentObject(settings).environmentObject(state.history)
-            .environment(\.locale, settings.interfaceLocale).environment(\.layoutDirection, settings.interfaceLayoutDirection))
+            .environment(\.locale, settings.interfaceLocale).environment(\.layoutDirection, settings.interfaceLayoutDirection)))
+        self.host = host
         host.view.backgroundColor = .clear
         host.view.isOpaque = false
         addChild(host)
@@ -54,8 +61,10 @@ final class ShareViewController: UIViewController {
 
     override func viewDidAppear(_ animated: Bool) {
         super.viewDidAppear(animated)
+        presentationReady = true
         loadSharedImageIfAvailable()
-        if loading == nil { state?.failImport(SharedImageError.noImage) }
+        if !didStartLoading { state?.failImport(SharedImageError.noImage) }
+        startWhenPresented()
     }
 
     override func viewDidDisappear(_ animated: Bool) {
@@ -64,27 +73,55 @@ final class ShareViewController: UIViewController {
     }
 
     private func loadSharedImageIfAvailable() {
-        guard loading == nil, !completed else { return }
+        guard !didStartLoading, !completed else { return }
         let items = extensionContext?.inputItems.compactMap { $0 as? NSExtensionItem } ?? []
         // Usually available in viewDidLoad: decode during presentation rather
         // than waiting for its animation to finish. Retry when the host appears.
         guard !items.isEmpty else { return }
+        didStartLoading = true
         let state = self.state
         loading = Task { [weak self, weak state] in
             do {
                 let image = try await SharedImageLoader.load(from: items)
                 try Task.checkCancellation()
-                state?.process(image)
+                guard let self, !completed else { return }
+                pendingImage = image
+                state?.displayImportedImage(image)
+                startWhenPresented()
             } catch is CancellationError { return }
             catch { if self?.completed == false { state?.failImport(error) } }
         }
     }
 
+    private func startWhenPresented() {
+        guard presentationReady, pendingImage != nil, starting == nil, !completed else { return }
+        starting = Task { [weak self] in
+            // Give the transparent loading view one display turn before Vision
+            // allocates its model buffers. This is not a processing timeout.
+            do { try await Task.sleep(for: .milliseconds(16)) } catch { return }
+            guard let self, !completed, let image = pendingImage else { return }
+            pendingImage = nil
+            state?.process(image)
+        }
+    }
+
+    override func didReceiveMemoryWarning() {
+        super.didReceiveMemoryWarning()
+        ProcessingMemory.receivedWarning()
+        state?.releaseOptionalResources()
+    }
+
+    deinit { loading?.cancel(); starting?.cancel() }
+
     private func finish() {
         guard !completed else { return }
         completed = true
         loading?.cancel()
+        starting?.cancel()
+        loading = nil; starting = nil; pendingImage = nil
         state?.closeResult()
+        host?.releaseResult()
+        host = nil; state = nil
         extensionContext?.completeRequest(returningItems: nil)
     }
 }
