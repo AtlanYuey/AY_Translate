@@ -14,56 +14,57 @@ final class ScreenTranslateUITests: XCTestCase {
             return frame.height > frame.width
         }, object: nil)
         XCTAssertEqual(XCTWaiter.wait(for: [portrait], timeout: 20), .completed)
-        let source = app.buttons["share.test.present"]
-        XCTAssertTrue(source.waitForExistence(timeout: 20))
-        openExtension(app, source: source)
-        let original = app.buttons["result.original"]
-        // Cold hosted Intel simulators may initialize Vision for over a minute.
-        // Readiness still requires the real OCR result, not just a loading view.
-        guard original.waitForExistence(timeout: 120) else {
-            let failure = XCTAttachment(screenshot: app.screenshot())
-            failure.name = "系统扩展未生成识别结果"; failure.lifetime = .keepAlways; add(failure)
-            XCTFail(app.debugDescription)
-            return
+        XCTAssertTrue(app.buttons["share.test.present"].waitForExistence(timeout: 20))
+        var canvasFrame = CGRect.zero
+        let screenFrame = app.frame
+        var completedInvocations = 0
+        for attempt in 1...4 {
+            guard openExtension(app, source: app.buttons["share.test.present"]) else { return }
+            // Every presentation is a new remote accessibility tree. Reusing a
+            // resolved element from a dismissed extension can retain the old
+            // infinite frame and label even when the current result is visible.
+            let original = app.buttons.matching(identifier: "result.original").firstMatch
+            let canvas = app.otherElements.matching(identifier: "result.canvas").firstMatch
+            // Cold hosted Intel simulators may initialize Vision for over a minute.
+            // Readiness requires the real OCR result and completed rendering.
+            guard original.waitForExistence(timeout: 120), canvas.waitForExistence(timeout: 10),
+                  waitUntilReady(canvas) else {
+                failWithScreenshot(app, name: "连续第\(attempt)次分享未完成")
+                return
+            }
+            XCTAssertEqual(original.label, "Show Original", "A new result must not retain the previous presentation's mode")
+            if attempt == 1 {
+                canvasFrame = canvas.frame
+                let dimensions = XCTAttachment(string: "Share canvas: \(canvasFrame); source screen: \(screenFrame)")
+                dimensions.name = "系统Share容器尺寸"; dimensions.lifetime = .keepAlways; add(dimensions)
+                XCTAssertGreaterThanOrEqual(canvasFrame.width, screenFrame.width * 0.97)
+                XCTAssertFalse(app.buttons["share.test.present"].isHittable)
+                canvas.pinch(withScale: 2.0, velocity: 1.0)
+                XCTAssertFalse(app.navigationBars["Full Translation"].exists)
+                let zoomed = XCTAttachment(screenshot: app.screenshot())
+                zoomed.name = "原生双指缩放-关闭点字弹窗"; zoomed.lifetime = .keepAlways; add(zoomed)
+                original.tap()
+                let changed = XCTNSPredicateExpectation(predicate: NSPredicate(format: "label == %@", "Show Translation"), object: original)
+                guard XCTWaiter.wait(for: [changed], timeout: 15) == .completed else {
+                    failWithScreenshot(app, name: "原图切换未响应")
+                    return
+                }
+                let attachment = XCTAttachment(screenshot: app.screenshot())
+                attachment.name = "真实系统Share扩展-原图切换"; attachment.lifetime = .keepAlways; add(attachment)
+            }
+            if attempt == 2 {
+                canvas.coordinate(withNormalizedOffset: CGVector(dx: 0.12, dy: 0.94))
+                    .press(forDuration: 0.05, thenDragTo: canvas.coordinate(withNormalizedOffset: CGVector(dx: 0.12, dy: 0.60)))
+            } else {
+                app.buttons.matching(identifier: "result.close").firstMatch.tap()
+            }
+            guard waitUntilHittable(app.buttons["share.test.present"]) else {
+                failWithScreenshot(app, name: "连续第\(attempt)次分享未返回")
+                return
+            }
+            completedInvocations += 1
         }
-        let canvas = app.otherElements["result.canvas"]
-        XCTAssertTrue(canvas.waitForExistence(timeout: 10))
-        guard waitUntilReady(canvas) else { failWithScreenshot(app, name: "首张译图未准备完成"); return }
-        let canvasFrame = canvas.frame, screenFrame = app.frame
-        let dimensions = XCTAttachment(string: "Share canvas: \(canvasFrame); source screen: \(screenFrame)")
-        dimensions.name = "系统Share容器尺寸"; dimensions.lifetime = .keepAlways; add(dimensions)
-        XCTAssertGreaterThanOrEqual(canvasFrame.width, screenFrame.width * 0.97)
-        XCTAssertFalse(source.isHittable)
-        canvas.pinch(withScale: 2.0, velocity: 1.0)
-        XCTAssertFalse(app.navigationBars["Full Translation"].exists)
-        let zoomed = XCTAttachment(screenshot: app.screenshot())
-        zoomed.name = "原生双指缩放-关闭点字弹窗"; zoomed.lifetime = .keepAlways; add(zoomed)
-        original.tap()
-        let changed = XCTNSPredicateExpectation(predicate: NSPredicate(format: "label == %@", "Show Translation"), object: original)
-        guard XCTWaiter.wait(for: [changed], timeout: 15) == .completed else {
-            failWithScreenshot(app, name: "原图切换未响应")
-            return
-        }
-        let attachment = XCTAttachment(screenshot: app.screenshot())
-        attachment.name = "真实系统Share扩展-原图切换"; attachment.lifetime = .keepAlways; add(attachment)
-        app.buttons["result.close"].tap()
-        guard waitUntilHittable(source) else { failWithScreenshot(app, name: "叉号关闭后返回失败"); return }
-        openExtension(app, source: source)
-        XCTAssertTrue(original.waitForExistence(timeout: 120))
-        guard waitUntilReady(canvas) else { failWithScreenshot(app, name: "第二张译图未准备完成"); return }
-        canvas.coordinate(withNormalizedOffset: CGVector(dx: 0.12, dy: 0.94))
-            .press(forDuration: 0.05, thenDragTo: canvas.coordinate(withNormalizedOffset: CGVector(dx: 0.12, dy: 0.60)))
-        guard waitUntilHittable(source) else { failWithScreenshot(app, name: "上滑后返回失败"); return }
-        // Reinvoke in the same host to catch controllers or images retained
-        // after completeRequest. The existing two paths test both close gestures.
-        for attempt in 3...4 {
-            openExtension(app, source: source)
-            XCTAssertTrue(original.waitForExistence(timeout: 120))
-            guard waitUntilReady(canvas) else { failWithScreenshot(app, name: "连续第\(attempt)次分享未完成"); return }
-            app.buttons["result.close"].tap()
-            guard waitUntilHittable(source) else { failWithScreenshot(app, name: "连续第\(attempt)次分享未返回"); return }
-        }
-        let proof = XCTAttachment(string: "{\"recognized\":true,\"originalToggled\":true,\"closeReturnedToSource\":true,\"swipeReturnedToSource\":true}")
+        let proof = XCTAttachment(string: "{\"recognized\":true,\"originalToggled\":true,\"closeReturnedToSource\":true,\"swipeReturnedToSource\":true,\"completedInvocations\":\(completedInvocations)}")
         proof.name = "ShareInteractionCompleted"; proof.lifetime = .keepAlways; add(proof)
         // continueAfterFailure=false can end a test even at an expected failure.
         // Keep this last, after every interaction and its exported completion
@@ -143,7 +144,7 @@ final class ScreenTranslateUITests: XCTestCase {
         }
     }
 
-    private func openExtension(_ app: XCUIApplication, source: XCUIElement) {
+    private func openExtension(_ app: XCUIApplication, source: XCUIElement) -> Bool {
         source.tap()
         // Share extensions appear in the app row, not the Action list below it.
         // iOS 26 gives title labels the identifier "cellTitleLabel". Match the
@@ -159,15 +160,16 @@ final class ScreenTranslateUITests: XCTestCase {
         }, object: nil)
         guard XCTWaiter.wait(for: [ready], timeout: 120) == .completed else {
             failWithScreenshot(app, name: "系统分享面板未加载应用列表")
-            return
+            return false
         }
         for _ in 0..<5 {
-            if shareCell.waitForExistence(timeout: 2), shareCell.isHittable { shareCell.tap(); return }
+            if shareCell.waitForExistence(timeout: 2), shareCell.isHittable { shareCell.tap(); return true }
             let appRow = app.scrollViews.containing(.cell, identifier: "shareCell").firstMatch
             if appRow.exists { appRow.swipeLeft() }
             else { app.swipeUp() }
         }
         XCTFail("Share extension was not discoverable in the system app row.\n" + app.debugDescription)
+        return false
     }
 
     private func waitUntilHittable(_ element: XCUIElement) -> Bool {

@@ -11,7 +11,8 @@ from pathlib import Path
 folder = Path(sys.argv[1])
 manifest = json.loads((folder / "manifest.json").read_text())
 expected = {"recognized": True, "originalToggled": True,
-            "closeReturnedToSource": True, "swipeReturnedToSource": True}
+            "closeReturnedToSource": True, "swipeReturnedToSource": True,
+            "completedInvocations": 4}
 proofs = []
 for test in manifest:
     if "testRealShareExtensionRecognizesTogglesAndReturnsToInvokingApp" not in test["testIdentifier"]:
