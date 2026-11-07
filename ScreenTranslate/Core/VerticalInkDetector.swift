@@ -22,11 +22,11 @@ nonisolated enum VerticalInkDetector {
         var components: [Component] = []
         let largest = max(24, min(width, height) / 10)
         for start in grayscale.indices where !visited[start] && ink(start) {
-            var queue = [start], head = 0
+            var queue = [start], head = 0, area = 0
             visited[start] = true
             var left = start % width, right = left, top = start / width, bottom = top
             while head < queue.count {
-                let index = queue[head]; head += 1
+                let index = queue[head]; head += 1; area += 1
                 let x = index % width, y = index / width
                 left = min(left, x); right = max(right, x); top = min(top, y); bottom = max(bottom, y)
                 for dy in -1...1 {
@@ -37,11 +37,16 @@ nonisolated enum VerticalInkDetector {
                         if !visited[next] && ink(next) { visited[next] = true; queue.append(next) }
                     }
                 }
+                // A screenshot's black margins can be one enormous component.
+                // Retain the BFS frontier, not every pixel already visited.
+                if head >= 4096 && head * 2 >= queue.count {
+                    queue.removeFirst(head); head = 0
+                }
             }
             let w = right - left + 1, h = bottom - top + 1
             // Small kana voicing marks belong to the glyph too; keep them for
             // assignment after the larger components establish the text grid.
-            guard queue.count >= 3, w <= largest, h <= largest, max(w, h) >= 2 else { continue }
+            guard area >= 3, w <= largest, h <= largest, max(w, h) >= 2 else { continue }
             // Reject picture texture without a light/dark, mostly uniform ring.
             var count = 0, matching = 0
             for y in max(0, top - 2)...min(height - 1, bottom + 2) {

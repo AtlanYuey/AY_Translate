@@ -7,7 +7,10 @@ import UIKit
 @MainActor
 enum ScreenshotInput {
     static let maximumDimension: CGFloat = 3072
-    static var importDimension: CGFloat { ProcessingMemory.isExtension ? 2560 : maximumDimension }
+    static var importDimension: CGFloat {
+        guard ProcessingMemory.isExtension else { return maximumDimension }
+        return ProcessingMemory.isConstrained ? 2048 : 2560
+    }
 
     static func decode(_ data: Data, maximumDimension: CGFloat = maximumDimension) throws -> UIImage {
         guard data.count <= 32 * 1_024 * 1_024 else { throw SharedImageError.tooLarge }

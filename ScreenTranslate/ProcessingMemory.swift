@@ -28,7 +28,14 @@ enum ProcessingMemory {
     }
 
     static var isConstrained: Bool {
-        (lastWarning.map { Date().timeIntervalSince($0) < 60 } ?? false) || snapshot().available < 40 * 1_024 * 1_024
+        ocrPolicy.constrained
+    }
+
+    static var ocrPolicy: OCRResourcePolicy {
+        let memory = snapshot()
+        return OCRResourcePolicy(memoryLimited: isExtension,
+            recentWarning: lastWarning.map { Date().timeIntervalSince($0) < 120 } ?? false,
+            availableBytes: memory.available, footprintBytes: memory.footprint ?? 0)
     }
 
     static func receivedWarning() { lastWarning = Date() }

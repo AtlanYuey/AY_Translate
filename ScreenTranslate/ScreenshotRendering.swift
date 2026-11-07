@@ -1,4 +1,3 @@
-import CoreImage
 import CoreText
 import SwiftUI
 import UIKit
@@ -136,14 +135,16 @@ enum ScreenshotRendering {
     private nonisolated static func sampledPalette(image: CGImage, blocks: [RecognizedBlock]) -> [UUID: SampledColor] {
         // The bitmap is at most 640px on its longest edge. CPU rendering avoids
         // compiling a Metal pipeline on the extension's UI thread for this copy.
-        let context = CIContext(options: [.cacheIntermediates: false, .useSoftwareRenderer: true])
         let width = image.width, height = image.height
         var bytes = [UInt8](repeating: 0, count: width * height * 4)
-        bytes.withUnsafeMutableBytes { buffer in
-            context.render(CIImage(cgImage: image), toBitmap: buffer.baseAddress!, rowBytes: width * 4,
-                           bounds: CGRect(x: 0, y: 0, width: width, height: height), format: .RGBA8,
-                           colorSpace: CGColorSpaceCreateDeviceRGB())
+        let rendered = bytes.withUnsafeMutableBytes { buffer -> Bool in
+            guard let context = CGContext(data: buffer.baseAddress, width: width, height: height, bitsPerComponent: 8,
+                bytesPerRow: width * 4, space: CGColorSpaceCreateDeviceRGB(),
+                bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue) else { return false }
+            context.draw(image, in: CGRect(x: 0, y: 0, width: width, height: height))
+            return true
         }
+        guard rendered else { return [:] }
         return Dictionary(uniqueKeysWithValues: blocks.filter { $0.placement == .overlay }.map {
             ($0.id, BackgroundSampling.sample(pixels: bytes, width: width, height: height, region: $0.boundingBox))
         })

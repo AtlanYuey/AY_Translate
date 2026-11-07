@@ -6,6 +6,16 @@ import CoreGraphics
 @testable import ScreenTranslationCore
 
 final class VerticalInkDetectorTests: XCTestCase {
+    func testLargeConnectedBlackMarginsDoNotBreakTheRemainingGlyphScan() {
+        let width = 800, height = 1600
+        var pixels = [UInt8](repeating: 0, count: width * height)
+        for y in 500..<1100 { for x in 0..<width { pixels[y * width + x] = 255 } }
+        for top in [650, 684, 718, 752] {
+            for y in top..<(top + 24) { for x in 390..<414 { pixels[y * width + x] = 0 } }
+        }
+        let columns = VerticalInkDetector.columns(grayscale: pixels, width: width, height: height)
+        XCTAssertTrue(columns.contains { $0.count == 4 })
+    }
     func testDisconnectedKanaPartsAndVoicingMarksStayInTheirOriginalCells() {
         let width = 120, height = 180
         var pixels = [UInt8](repeating: 255, count: width * height)

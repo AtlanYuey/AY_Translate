@@ -67,7 +67,7 @@ final class VisionCoreTests: XCTestCase {
         let text = native.map(\.original).joined().filter { !$0.isWhitespace }
         for expected in ["これは何ですか", "一口だけ食べて", "とても甘いです"] { XCTAssertTrue(text.contains(expected), text) }
         let warmStart = ContinuousClock.now
-        let warm = try await VisionTextRecognizer.readDocument(image, language: "ja")
+        let warm = try await VisionTextRecognizer.readDocument(image, language: "ja", preferCPU: true)
         let warmTime = warmStart.duration(to: .now)
         XCTAssertEqual(warm.map(\.original), native.map(\.original))
         XCTAssertTrue(native.contains { $0.flow == .vertical })
@@ -138,6 +138,41 @@ final class VisionCoreTests: XCTestCase {
             for expected in ["これは何ですか", "一口だけ食べて", "とても甘いです"] { XCTAssertTrue(text.contains(expected), text) }
             XCTAssertTrue(text.lowercased().contains("smalltextsurvives"), text)
             try record(image, blocks: blocks, name: pressure ? "extension-pressure" : "extension-normal")
+        }
+    }
+
+    func testDenseVerticalBubblesWithRubyAreReadAcrossAllTiles() async throws {
+        guard #available(macOS 26.0, iOS 26.0, *) else { throw XCTSkip("Native document tiles require version 26") }
+        let context = try canvas()
+        for group in 0..<3 {
+            for column in 0..<5 {
+                for (row, glyph) in "これは何ですか".enumerated() {
+                    draw(String(glyph), x: CGFloat(75 + column * 165), y: CGFloat(120 + group * 450 + row * 34),
+                         font: "HiraginoSans-W6", size: 28, context: context)
+                }
+                // Ruby is smaller than the primary column and must not cause
+                // its whole bubble, or a later bubble, to be omitted.
+                draw("な", x: CGFloat(101 + column * 165), y: CGFloat(220 + group * 450), font: "HiraginoSans-W3", size: 9, context: context)
+                draw("に", x: CGFloat(101 + column * 165), y: CGFloat(230 + group * 450), font: "HiraginoSans-W3", size: 9, context: context)
+            }
+        }
+        let source = try XCTUnwrap(context.makeImage())
+        let large = try XCTUnwrap(CGContext(data: nil, width: 1800, height: 3200, bitsPerComponent: 8, bytesPerRow: 0,
+            space: CGColorSpaceCreateDeviceRGB(), bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue))
+        large.draw(source, in: CGRect(x: 0, y: 0, width: 1800, height: 3200))
+        let image = try XCTUnwrap(large.makeImage())
+        for pressure in [false, true] {
+            let blocks = try await VisionTextRecognizer.recognize(image, language: "ja", memoryLimited: true, underPressure: pressure)
+            try record(image, blocks: blocks, name: pressure ? "dense-ruby-pressure" : "dense-ruby-normal")
+            for group in 0..<3 {
+                for column in 0..<5 {
+                    let x = CGFloat(89 + column * 165) / 900
+                    let y = 1 - CGFloat(236 + group * 450) / 1600
+                    let matches = blocks.filter { abs($0.boundingBox.midX - x) < 0.035 && abs($0.boundingBox.midY - y) < 0.10 }
+                    let text = matches.map(\.original).joined().filter { !$0.isWhitespace }
+                    XCTAssertTrue(text.contains("これは何ですか"), "Bubble \(group),\(column): \(text)")
+                }
+            }
         }
     }
 

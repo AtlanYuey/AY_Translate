@@ -1,7 +1,7 @@
 #if canImport(Vision) && canImport(CoreGraphics)
 import Foundation
 import CoreGraphics
-import os
+import CoreML
 @preconcurrency import Vision
 
 /// The same local recognizer runs in the app, Share extension and native macOS
@@ -9,33 +9,80 @@ import os
 nonisolated enum VisionTextRecognizer {
     private static let workGate = SerialWorkGate()
 
-    static func recognize(_ cgImage: CGImage, language: String?, memoryLimited: Bool = false, underPressure: Bool = false) async throws -> [RecognizedBlock] {
+    static func recognize(_ cgImage: CGImage, language: String?, memoryLimited: Bool = false, underPressure: Bool = false,
+                          resourcePolicy: (@Sendable () async -> OCRResourcePolicy)? = nil,
+                          checkpoint: (@Sendable (String) async -> Void)? = nil) async throws -> [RecognizedBlock] {
         try await workGate.run {
-            try await recognizeSerial(cgImage, language: language, memoryLimited: memoryLimited, underPressure: underPressure)
+            // Recheck after queued work drains; a snapshot taken before waiting
+            // would miss pressure left by the preceding screenshot.
+            let policy = await resourcePolicy?() ?? OCRResourcePolicy(memoryLimited: memoryLimited, recentWarning: underPressure)
+            return try await recognizeSerial(cgImage, language: language, policy: policy, checkpoint: checkpoint)
         }
     }
 
-    private static func recognizeSerial(_ cgImage: CGImage, language: String?, memoryLimited: Bool, underPressure: Bool) async throws -> [RecognizedBlock] {
+    private static func recognizeSerial(_ image: CGImage, language: String?, policy: OCRResourcePolicy,
+                                        checkpoint: (@Sendable (String) async -> Void)?) async throws -> [RecognizedBlock] {
         try Task.checkCancellation()
-        // Keep the source for full-resolution glyph crops. The heavy document
-        // model needs a smaller working surface inside a Share process.
-        let workingImage = memoryLimited ? (boundedWorkingImage(cgImage, maximum: underPressure ? 1600 : 2048) ?? cgImage) : cgImage
-        // The document recognizer understands native vertical writing. Avoid a
-        // full-image pass, four tiles and a separate request for every column.
         if #available(iOS 26.0, macOS 26.0, *) {
-            do {
-                let start = ContinuousClock.now
-                let blocks = try await readDocument(workingImage, language: language)
-                Logger(subsystem: "AYTranslate", category: "Performance").info("Native OCR seconds: \(String(describing: start.duration(to: .now)), privacy: .public); regions: \(blocks.count)")
-                if !blocks.isEmpty {
-                    return try await supplementVerticalGaps(cgImage, blocks: blocks, language: language, detectionImage: workingImage)
-                }
-            } catch {
+            var blocks: [RecognizedBlock] = []
+            let regions = policy.regions(for: CGSize(width: image.width, height: image.height))
+            for (index, region) in regions.enumerated() {
                 try Task.checkCancellation()
-                // Older hardware/runtime failures retain the tested local route.
+                await checkpoint?(policy.prefersCPU ? "document_cpu_\(index + 1)_begin" : "document_begin")
+                do {
+                    // The scoped helper releases each crop and all document
+                    // observations before the next tile is allocated.
+                    let additions = try await readDocumentRegion(image, region: region, language: language, preferCPU: policy.prefersCPU)
+                    mergeDocument(additions, into: &blocks)
+                } catch { try Task.checkCancellation() }
+                await checkpoint?("document_\(index + 1)_end")
+            }
+            if !blocks.isEmpty {
+                await checkpoint?("coverage_begin")
+                let result = try await supplementVerticalGaps(image, blocks: blocks, language: language,
+                    detectionImage: boundedWorkingImage(image, maximum: 1600), cpuOnly: policy.prefersCPU)
+                await checkpoint?("coverage_end")
+                return result
             }
         }
-        return try await recognizeLegacy(workingImage, language: language)
+        await checkpoint?("legacy_begin")
+        let working = policy.memoryLimited ? (boundedWorkingImage(image, maximum: policy.tileDimension) ?? image) : image
+        let result = try await recognizeLegacy(working, language: language, cpuOnly: policy.prefersCPU)
+        await checkpoint?("legacy_end")
+        return result
+    }
+
+    @available(iOS 26.0, macOS 26.0, *)
+    private static func readDocumentRegion(_ image: CGImage, region: CGRect, language: String?, preferCPU: Bool) async throws -> [RecognizedBlock] {
+        let pixel = CGRect(x: region.minX * CGFloat(image.width), y: (1 - region.maxY) * CGFloat(image.height),
+                           width: region.width * CGFloat(image.width), height: region.height * CGFloat(image.height))
+            .integral.intersection(CGRect(x: 0, y: 0, width: image.width, height: image.height))
+        guard let crop = image.cropping(to: pixel) else { return [] }
+        let actual = CGRect(x: pixel.minX / CGFloat(image.width), y: 1 - pixel.maxY / CGFloat(image.height),
+                            width: pixel.width / CGFloat(image.width), height: pixel.height / CGFloat(image.height))
+        return try await readDocument(crop, language: language, preferCPU: preferCPU).map { block in
+            func box(_ local: CGRect) -> CGRect {
+                CGRect(x: actual.minX + local.minX * actual.width, y: actual.minY + local.minY * actual.height,
+                       width: local.width * actual.width, height: local.height * actual.height)
+            }
+            return RecognizedBlock(id: block.id, original: block.original, translation: block.translation,
+                boundingBox: box(block.boundingBox), confidence: block.confidence, placement: block.placement,
+                sourceLineHeight: block.originalLineHeight * actual.height, flow: block.flow,
+                sourceColumnWidth: block.sourceColumnWidth.map { $0 * actual.width }, sourceGlyphBoxes: block.sourceGlyphBoxes?.map(box))
+        }
+    }
+
+    private static func mergeDocument(_ additions: [RecognizedBlock], into blocks: inout [RecognizedBlock]) {
+        for addition in additions {
+            if let index = blocks.firstIndex(where: {
+                $0.flow == addition.flow && overlap($0.boundingBox, addition.boundingBox) >= 0.7
+                    && ($0.flow != .vertical || abs($0.boundingBox.midX - addition.boundingBox.midX) < max($0.boundingBox.width, addition.boundingBox.width) * 0.5)
+            }) {
+                let old = blocks[index]
+                if addition.original.count > old.original.count && addition.confidence >= old.confidence * 0.8
+                    || addition.original.count == old.original.count && addition.confidence > old.confidence { blocks[index] = addition }
+            } else { blocks.append(addition) }
+        }
     }
 
     private static func boundedWorkingImage(_ image: CGImage, maximum: Int) -> CGImage? {
@@ -53,8 +100,8 @@ nonisolated enum VisionTextRecognizer {
 
     /// Check only uncovered vertical runs, not every recognized column. Never
     /// upload additional images or discard successful native OCR on a failure.
-    static func supplementVerticalGaps(_ image: CGImage, blocks: [RecognizedBlock], language: String?, detectionImage: CGImage? = nil) async throws -> [RecognizedBlock] {
-        guard language == "ja" || language?.hasPrefix("zh") == true || blocks.contains(where: {
+    static func supplementVerticalGaps(_ image: CGImage, blocks: [RecognizedBlock], language: String?, detectionImage: CGImage? = nil, cpuOnly: Bool = false) async throws -> [RecognizedBlock] {
+        guard language == nil || language == "ja" || language?.hasPrefix("zh") == true || blocks.contains(where: {
             $0.flow == .vertical || $0.original.unicodeScalars.contains { (0x3041...0x30FF).contains($0.value) }
         }) else { return blocks }
         let task = Task.detached(priority: .userInitiated) {
@@ -68,6 +115,7 @@ nonisolated enum VisionTextRecognizer {
             let detection = VNDetectTextRectanglesRequest()
             detection.reportCharacterBoxes = true
             detection.preferBackgroundProcessing = true
+            detection.usesCPUOnly = cpuOnly
             #if targetEnvironment(simulator) || os(macOS)
             detection.usesCPUOnly = true
             #endif
@@ -77,14 +125,14 @@ nonisolated enum VisionTextRecognizer {
             let columns = VerticalOCRGeometry.mergingColumns(detected, supplemental: inkColumns)
             let missing = OCRCoverage.uncoveredColumns(columns, blocks: blocks, imageSize: size)
             var result = blocks
-            let pending = Array(missing.prefix(12))
+            let pending = Array(missing.prefix(32))
             // Four upright columns become four horizontal rows in one small
             // OCR request. This covers short bubbles beyond the old six-column
             // limit without starting a separate Vision request for every column.
             for start in stride(from: 0, to: pending.count, by: 4) {
                 try Task.checkCancellation()
                 let batch = Array(pending[start..<min(start + 4, pending.count)])
-                guard let rows = try? autoreleasepool(invoking: { try readColumns(image, columns: batch, language: language ?? "ja") }) else { continue }
+                guard let rows = try? autoreleasepool(invoking: { try readColumns(image, columns: batch, language: language ?? "ja", cpuOnly: cpuOnly) }) else { continue }
                 for (column, recognized) in zip(batch, rows) {
                     guard !OCRCoverage.uncoveredColumns([column], blocks: result, imageSize: size).isEmpty else { continue }
                     let text = recognized.sorted { $0.boundingBox.minX < $1.boundingBox.minX }.map(\.original).joined()
@@ -114,11 +162,11 @@ nonisolated enum VisionTextRecognizer {
         return try await withTaskCancellationHandler(operation: { try await task.value }, onCancel: { task.cancel() })
     }
 
-    static func recognizeLegacy(_ cgImage: CGImage, language: String?) async throws -> [RecognizedBlock] {
+    static func recognizeLegacy(_ cgImage: CGImage, language: String?, cpuOnly: Bool = false) async throws -> [RecognizedBlock] {
         let size = CGSize(width: cgImage.width, height: cgImage.height)
         let task = Task.detached(priority: .userInitiated) {
             return try autoreleasepool {
-            var blocks = try read(cgImage, language: language)
+            var blocks = try read(cgImage, language: language, cpuOnly: cpuOnly)
             try Task.checkCancellation()
             // Small print gains resolution in overlapping tiles. Bound the work
             // and keep all boxes in the original upright image coordinate system.
@@ -129,7 +177,7 @@ nonisolated enum VisionTextRecognizer {
                         let region = CGRect(x: x, y: y, width: 0.56, height: 0.56)
                         let pixel = CGRect(x: x * Double(cgImage.width), y: (1 - region.maxY) * Double(cgImage.height), width: 0.56 * Double(cgImage.width), height: 0.56 * Double(cgImage.height))
                         guard let crop = cgImage.cropping(to: pixel) else { continue }
-                        let additions = try read(crop, language: language, region: region, originalSize: size)
+                        let additions = try read(crop, language: language, region: region, originalSize: size, cpuOnly: cpuOnly)
                         merge(additions, into: &blocks)
                     }
                 }
@@ -138,6 +186,7 @@ nonisolated enum VisionTextRecognizer {
                 let detection = VNDetectTextRectanglesRequest()
                 detection.reportCharacterBoxes = true
                 detection.preferBackgroundProcessing = true
+                detection.usesCPUOnly = cpuOnly
                 #if targetEnvironment(simulator) || os(macOS)
                 detection.usesCPUOnly = true
                 #endif
@@ -161,7 +210,7 @@ nonisolated enum VisionTextRecognizer {
                     guard attempts < 32 else { break }
                     attempts += 1
                     guard let strip = stripImage(cgImage, glyphs: column) else { continue }
-                    let recognized = try read(strip, language: language ?? "ja")
+                    let recognized = try read(strip, language: language ?? "ja", cpuOnly: cpuOnly)
                     let text = recognized.sorted { $0.boundingBox.minX < $1.boundingBox.minX }.map(\.original).joined()
                     guard text.count >= 2, VerticalTextLayout.supports(text),
                           (recognized.map(\.confidence).min() ?? 0) >= 0.4,
@@ -183,8 +232,15 @@ nonisolated enum VisionTextRecognizer {
     }
 
     @available(iOS 26.0, macOS 26.0, *)
-    static func readDocument(_ image: CGImage, language: String?) async throws -> [RecognizedBlock] {
+    static func readDocument(_ image: CGImage, language: String?, preferCPU: Bool = false) async throws -> [RecognizedBlock] {
         var request = RecognizeDocumentsRequest()
+        if preferCPU {
+            for (stage, devices) in request.supportedComputeStageDevices {
+                if let cpu = devices.first(where: { if case .cpu = $0 { return true }; return false }) {
+                    request.setComputeDevice(cpu, for: stage)
+                }
+            }
+        }
         request.barcodeDetectionOptions.enabled = false
         request.textRecognitionOptions.maximumCandidateCount = 1
         request.textRecognitionOptions.minimumTextHeightFraction = 0.0025
@@ -228,10 +284,11 @@ nonisolated enum VisionTextRecognizer {
         }
     }
 
-    private nonisolated static func read(_ image: CGImage, language: String?, region: CGRect = CGRect(x: 0, y: 0, width: 1, height: 1), originalSize: CGSize? = nil) throws -> [RecognizedBlock] {
+    private nonisolated static func read(_ image: CGImage, language: String?, region: CGRect = CGRect(x: 0, y: 0, width: 1, height: 1), originalSize: CGSize? = nil, cpuOnly: Bool = false) throws -> [RecognizedBlock] {
         return try autoreleasepool {
         let request = VNRecognizeTextRequest()
         request.preferBackgroundProcessing = true
+        request.usesCPUOnly = cpuOnly
         request.recognitionLevel = .accurate
         request.minimumTextHeight = 0.0025 // Vision's 1/32 default drops small print.
         request.usesLanguageCorrection = true
@@ -274,7 +331,7 @@ nonisolated enum VisionTextRecognizer {
         }
     }
 
-    private static func readColumns(_ image: CGImage, columns: [[CGRect]], language: String) throws -> [[RecognizedBlock]] {
+    private static func readColumns(_ image: CGImage, columns: [[CGRect]], language: String, cpuOnly: Bool = false) throws -> [[RecognizedBlock]] {
         let width = max(48, (columns.map(\.count).max() ?? 1) * 48)
         let height = columns.count * 96
         guard columns.count <= 4, width <= 3840, height > 0,
@@ -289,7 +346,7 @@ nonisolated enum VisionTextRecognizer {
             }
         }
         guard let composite = context.makeImage() else { return [] }
-        let recognized = try read(composite, language: language)
+        let recognized = try read(composite, language: language, cpuOnly: cpuOnly)
         var rows = [[RecognizedBlock]](repeating: [], count: columns.count)
         for block in recognized {
             let row = Int((1 - block.boundingBox.midY) * CGFloat(height) / 96)

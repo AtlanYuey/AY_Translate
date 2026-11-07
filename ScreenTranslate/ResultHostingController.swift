@@ -6,6 +6,11 @@ import UIKit
 @MainActor
 final class ResultHostingController: UIHostingController<AnyView> {
     func releaseResult() {
+        func releaseChildren(_ controller: UIViewController) {
+            for child in controller.children { releaseChildren(child) }
+            (controller as? any ImageResourceReleasing)?.releaseImageResources()
+        }
+        releaseChildren(self)
         rootView = AnyView(EmptyView())
         willMove(toParent: nil)
         view.removeFromSuperview()

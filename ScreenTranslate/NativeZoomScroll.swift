@@ -15,17 +15,26 @@ struct NativeZoomScroll<Content: View>: UIViewControllerRepresentable {
         ZoomScrollController(root: content())
     }
     func updateUIViewController(_ controller: ZoomScrollController<Content>, context: Context) {
-        controller.host.rootView = content()
+        controller.host.rootView = AnyView(content())
         controller.onZoom = zoomChanged
         controller.onDismiss = dismissAction
         controller.allowsDismiss = allowsDismiss
         controller.update(size: size, resetID: resetID)
     }
+
+    static func dismantleUIViewController(_ controller: ZoomScrollController<Content>, coordinator: ()) {
+        controller.releaseImageResources()
+    }
 }
 
-final class ZoomScrollController<Content: View>: UIViewController, UIScrollViewDelegate, UIGestureRecognizerDelegate {
+@MainActor
+protocol ImageResourceReleasing: AnyObject {
+    func releaseImageResources()
+}
+
+final class ZoomScrollController<Content: View>: UIViewController, UIScrollViewDelegate, UIGestureRecognizerDelegate, ImageResourceReleasing {
     let scroll = UIScrollView()
-    let host: UIHostingController<Content>
+    let host: UIHostingController<AnyView>
     var onZoom: (CGFloat) -> Void = { _ in }
     var onDismiss: () -> Void = {}
     var allowsDismiss = true
@@ -34,8 +43,20 @@ final class ZoomScrollController<Content: View>: UIViewController, UIScrollViewD
     private var reportedZoomed = false
     private var edgeSwipe: UIPanGestureRecognizer!
 
-    init(root: Content) { host = UIHostingController(rootView: root); super.init(nibName: nil, bundle: nil) }
+    init(root: Content) { host = UIHostingController(rootView: AnyView(root)); super.init(nibName: nil, bundle: nil) }
     required init?(coder: NSCoder) { fatalError("init(coder:) is unavailable") }
+
+    func releaseImageResources() {
+        scroll.delegate = nil
+        onZoom = { _ in }; onDismiss = {}; allowsDismiss = false
+        scroll.layer.removeAllAnimations()
+        host.rootView = AnyView(EmptyView())
+        if host.parent != nil {
+            host.willMove(toParent: nil)
+            host.view.removeFromSuperview()
+            host.removeFromParent()
+        }
+    }
 
     override func viewDidLoad() {
         super.viewDidLoad()

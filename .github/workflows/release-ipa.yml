@@ -10,7 +10,7 @@ on:
       runner:
         description: "Hosted runner (use Intel if ARM capacity is unavailable)"
         type: choice
-        default: macos-26-intel
+        default: macos-26
         options: [macos-26-intel, macos-26]
       inspect_run_id:
         description: "Optional: export diagnostics from an existing validation artifact instead of rebuilding"
@@ -35,7 +35,7 @@ jobs:
   inspect:
     if: inputs.inspect_run_id != ''
     name: Inspect existing iOS test diagnostics
-    runs-on: ${{ inputs.runner || 'macos-26-intel' }}
+    runs-on: ${{ inputs.runner || 'macos-26' }}
     timeout-minutes: 10
     permissions:
       contents: read
@@ -83,7 +83,7 @@ jobs:
   build:
     if: inputs.inspect_run_id == ''
     name: Test and build unsigned IPA
-    runs-on: ${{ inputs.runner || 'macos-26-intel' }}
+    runs-on: ${{ inputs.runner || 'macos-26' }}
     timeout-minutes: 60
     outputs:
       version: ${{ steps.metadata.outputs.version }}
@@ -416,7 +416,7 @@ jobs:
   ipad:
     if: inputs.inspect_run_id == ''
     name: Check iPad portrait and landscape
-    runs-on: ${{ inputs.runner || 'macos-26-intel' }}
+    runs-on: ${{ inputs.runner || 'macos-26' }}
     timeout-minutes: 35
     steps:
       - uses: actions/checkout@v4

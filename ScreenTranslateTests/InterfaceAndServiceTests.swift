@@ -162,11 +162,33 @@ final class InterfaceAndServiceTests: XCTestCase {
         XCTAssertEqual(center.x, 250, accuracy: 1)
         XCTAssertEqual(center.y, 310, accuracy: 1)
         let offset = controller.scroll.contentOffset
-        controller.host.rootView = Color.black
+        controller.host.rootView = AnyView(Color.black)
         controller.update(size: CGSize(width: 400, height: 600), resetID: reset)
         XCTAssertEqual(controller.scroll.zoomScale, 2.5, accuracy: 0.02)
         XCTAssertEqual(controller.scroll.contentOffset, offset)
         window.isHidden = true
+    }
+
+    func testDismantledZoomControllerReleasesItsCapturedImageEvenIfHostRetainsController() async throws {
+        weak var captured: UIImage?
+        var controller: ZoomScrollController<Image>?
+        autoreleasepool {
+            let image = UIGraphicsImageRenderer(size: CGSize(width: 1200, height: 2600)).image { context in
+                UIColor.white.setFill(); context.fill(CGRect(x: 0, y: 0, width: 1200, height: 2600))
+            }
+            captured = image
+            controller = ZoomScrollController(root: Image(uiImage: image))
+            controller?.loadViewIfNeeded()
+            controller?.onDismiss = { _ = image.size }
+        }
+        XCTAssertNotNil(captured)
+        controller?.releaseImageResources()
+        // Let UIKit drain its autoreleased drawing/view work.
+        for _ in 0..<30 where captured != nil { try await Task.sleep(for: .milliseconds(10)) }
+        XCTAssertNotNil(controller, "The system may retain a dismissed controller")
+        XCTAssertNil(captured, "Its image and callbacks must not survive until the next invocation")
+        XCTAssertTrue(controller?.children.isEmpty == true)
+        XCTAssertNil(controller?.scroll.delegate)
     }
 
     func testBottomDismissUsesTouchOriginAndIsDisabledDuringProcessingOrZoom() {

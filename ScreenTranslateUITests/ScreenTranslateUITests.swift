@@ -18,7 +18,7 @@ final class ScreenTranslateUITests: XCTestCase {
         var canvasFrame = CGRect.zero
         let screenFrame = app.frame
         var completedInvocations = 0
-        for attempt in 1...4 {
+        for attempt in 1...6 {
             guard openExtension(app, source: app.buttons["share.test.present"]) else { return }
             // Every presentation is a new remote accessibility tree. Reusing a
             // resolved element from a dismissed extension can retain the old

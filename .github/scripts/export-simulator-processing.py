@@ -1,5 +1,6 @@
 """Export only AY Translate's bounded, content-free processing journal."""
 import json
+import re
 import plistlib
 import sys
 from pathlib import Path
@@ -18,6 +19,14 @@ for path in root.rglob("*.plist"):
                 continue
             for record in json.loads(data)[-8:]:
                 clean = {key: value for key, value in record.items() if key in fields}
+                checkpoints = record.get("checkpoints", [])
+                if isinstance(checkpoints, list):
+                    clean["checkpoints"] = [
+                        {"point": sample["point"], **{key: sample[key] for key in ["footprintBytes", "availableBytes"]
+                          if isinstance(sample.get(key), int) and sample[key] >= 0}}
+                        for sample in checkpoints[:20] if isinstance(sample, dict)
+                        and isinstance(sample.get("point"), str) and re.fullmatch(r"[a-z0-9_]{1,64}", sample["point"])
+                    ]
                 identifier = clean.get("id")
                 if isinstance(identifier, str) and (identifier not in records or clean.get("updated", 0) > records[identifier].get("updated", 0)):
                     records[identifier] = clean

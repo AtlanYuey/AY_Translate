@@ -7,6 +7,11 @@ import UIKit
 @MainActor
 final class ProcessingDiagnostics {
     static let shared = ProcessingDiagnostics()
+    struct MemoryCheckpoint: Codable {
+        var point: String
+        var footprintBytes: UInt64?
+        var availableBytes: UInt64
+    }
     struct Entry: Codable, Identifiable {
         var id: UUID
         var started: Date
@@ -20,6 +25,7 @@ final class ProcessingDiagnostics {
         var footprintBytes: UInt64?
         var peakFootprintBytes: UInt64?
         var availableBytes: UInt64?
+        var checkpoints: [MemoryCheckpoint]?
     }
     private let defaults: UserDefaults
     private let keys: any APIKeyStoring
@@ -27,6 +33,7 @@ final class ProcessingDiagnostics {
     private var entries: [Entry]
     private var current: UUID?
     private var memoryObserver: NSObjectProtocol?
+    var currentID: UUID? { current }
 
     init(defaults: UserDefaults? = nil, keys: (any APIKeyStoring)? = nil, context: String? = nil) {
         self.defaults = defaults ?? SharedAppContainer.preferences
@@ -52,8 +59,13 @@ final class ProcessingDiagnostics {
         update { _ in }
     }
 
-    func stage(_ value: String) { update { $0.stage = value } }
+    func stage(_ value: String) { update { $0.stage = value; $0.event = value } }
     func event(_ value: String) { update { $0.event = value } }
+    func checkpoint(_ point: String, id: UUID?) {
+        // A cancelled, late framework return must not annotate the next image.
+        guard let id, id == current else { return }
+        update { $0.event = point }
+    }
     func end(_ outcome: String) {
         update { $0.outcome = outcome }
         current = nil
@@ -75,6 +87,12 @@ final class ProcessingDiagnostics {
         entries[index].footprintBytes = memory.footprint
         entries[index].peakFootprintBytes = max(entries[index].peakFootprintBytes ?? 0, memory.footprint ?? 0)
         entries[index].availableBytes = memory.available
+        var samples = entries[index].checkpoints ?? []
+        samples.append(MemoryCheckpoint(point: entries[index].event == "started" ? entries[index].stage : entries[index].event,
+            footprintBytes: memory.footprint, availableBytes: memory.available))
+        // Keep import/start evidence as well as the last framework checkpoints.
+        if samples.count > 20 { samples = Array(samples.prefix(4)) + Array(samples.suffix(16)) }
+        entries[index].checkpoints = samples
         persist()
     }
     private func persist() {

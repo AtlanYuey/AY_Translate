@@ -85,6 +85,19 @@ final class WorkflowTests: XCTestCase {
         XCTAssertEqual(current.outcome, "unfinished", "A warning is not proof of a process kill")
     }
 
+    func testMemoryCheckpointsRemainBoundedAndIgnoreLatePreviousRequests() throws {
+        let journal = ProcessingDiagnostics(defaults: defaults, keys: keys, context: "share")
+        let first = UUID(), second = UUID()
+        journal.begin(id: first, target: "zh-Hans", stage: "importing")
+        for _ in 0..<30 { journal.checkpoint("document_cpu_begin", id: first) }
+        let report = try XCTUnwrap(journal.reports().first)
+        XCTAssertEqual(report.checkpoints?.count, 20)
+        XCTAssertEqual(report.checkpoints?.first?.point, "importing")
+        journal.begin(id: second, target: "zh-Hans")
+        journal.checkpoint("late_old_request", id: first)
+        XCTAssertFalse(journal.reports().first?.checkpoints?.contains { $0.point == "late_old_request" } ?? true)
+    }
+
     func testReleasingHistoryCacheDoesNotLoseSavedItemsOnNextWrite() throws {
         let history = HistoryStore(fileURL: historyURL)
         func document() -> TranslationDocument { TranslationDocument(id: UUID(), image: image(), blocks: [block()], source: .english, target: .chinese, createdAt: Date()) }
