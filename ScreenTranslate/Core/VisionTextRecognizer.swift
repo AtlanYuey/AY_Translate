@@ -141,12 +141,16 @@ nonisolated enum VisionTextRecognizer {
                           (recognized.map(\.confidence).min() ?? 0) >= 0.45 else { continue }
                     let box = column.reduce(CGRect.null) { $0.union($1) }
                     let conflicts = VerticalOCRGeometry.horizontalConflicts(column: column, blocks: result, imageSize: size)
-                    guard !conflicts.protected, !result.contains(where: { $0.flow == .vertical && overlap(box, $0.boundingBox) > 0.7 && $0.original.count >= text.count }) else { continue }
+                    guard !conflicts.protected, !result.contains(where: {
+                        $0.flow == .vertical && overlap(box, $0.boundingBox) > 0.7 && $0.original.count >= text.count
+                            && OCRCoverage.uncoveredColumns([column], blocks: [$0], imageSize: size).isEmpty
+                    }) else { continue }
                     // Replace a partial fragment only once the complete local run
                     // was successfully read; independent bubbles stay independent.
                     result.removeAll { block in
                         if conflicts.fragmentedRows.contains(block.id) { return true }
-                        return block.flow == .vertical && text.count > block.original.count
+                        return block.flow == .vertical && text.count >= block.original.count
+                            && !OCRCoverage.uncoveredColumns([column], blocks: [block], imageSize: size).isEmpty
                             && box.contains(CGPoint(x: block.boundingBox.midX, y: block.boundingBox.midY))
                             && overlap(box, block.boundingBox) > 0.7
                     }

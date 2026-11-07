@@ -35,6 +35,10 @@ final class ParametersAndCoverageTests: XCTestCase {
             confidence: 1, flow: .vertical, sourceGlyphBoxes: Array(column.prefix(2)))
         XCTAssertEqual(OCRCoverage.uncoveredColumns([column], blocks: [misleadingBox], imageSize: CGSize(width: 1000, height: 1000)).count, 1,
                        "A large line box must not hide glyphs that were never transcribed")
+        var clippedLastGlyph = complete
+        clippedLastGlyph.sourceGlyphBoxes = Array(column.dropLast())
+        XCTAssertEqual(OCRCoverage.uncoveredColumns([column], blocks: [clippedLastGlyph], imageSize: CGSize(width: 1000, height: 1000)).count, 1,
+                       "Even one trailing glyph cut by a tile boundary needs a full-column recheck")
     }
     func testTranslationCoverageDoesNotRetryNumbersChineseOrNames() {
         XCTAssertTrue(TranslationCoverage.needsRetry(original: "一口だけです", translation: "一口だけです", target: "Chinese"))

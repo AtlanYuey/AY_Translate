@@ -200,7 +200,8 @@ final class VisionCoreTests: XCTestCase {
         CGImageDestinationAddImage(destination, image, nil)
         XCTAssertTrue(CGImageDestinationFinalize(destination))
         let regions: [[String: Any]] = blocks.map {
-            ["text": $0.original, "box": OCRAlignment.topLeftBox($0.boundingBox), "flow": $0.flow == .vertical ? "vertical" : "horizontal", "confidence": $0.confidence]
+            ["text": $0.original, "box": OCRAlignment.topLeftBox($0.boundingBox), "flow": $0.flow == .vertical ? "vertical" : "horizontal", "confidence": $0.confidence,
+             "glyphs": ($0.sourceGlyphBoxes ?? []).map(OCRAlignment.topLeftBox)]
         }
         try JSONSerialization.data(withJSONObject: regions, options: [.prettyPrinted, .sortedKeys]).write(to: folder.appendingPathComponent(name + ".json"))
     }

@@ -22,7 +22,9 @@ nonisolated enum OCRCoverage {
                     }
                 }
             }.count
-            return uncovered >= 2 && Double(uncovered) / Double(column.count) >= 0.25
+            // A single final glyph can cross a document tile boundary. Requiring
+            // two missing glyphs left that truncated syllable unexamined.
+            return uncovered >= 1
         }.sorted { $0.count > $1.count }
     }
 }
