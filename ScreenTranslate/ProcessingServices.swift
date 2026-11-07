@@ -26,6 +26,7 @@ struct ProcessingServices {
     }
 
     private static func screenshotJPEG(_ image: UIImage) throws -> Data {
+        try autoreleasepool {
         let maxDimension: CGFloat = 2_048
         guard image.size.width > 0, image.size.height > 0 else { throw ScreenReadingError.invalidImage }
         let factor = min(1, maxDimension / max(image.size.width, image.size.height))
@@ -41,5 +42,6 @@ struct ProcessingServices {
         }
         guard let data = normalized.jpegData(compressionQuality: 0.88) else { throw ScreenReadingError.invalidImage }
         return data
+        }
     }
 }

@@ -2,10 +2,42 @@ import XCTest
 import UIKit
 import SwiftUI
 import UniformTypeIdentifiers
+import ImageIO
 @testable import ScreenTranslate
 
 @MainActor
 final class ShareAndLanguageTests: XCTestCase {
+    func testConsumingShareInputReleasesProviderFromRetainedExtensionItem() async throws {
+        let image = UIGraphicsImageRenderer(size: CGSize(width: 40, height: 80)).image { _ in }
+        let item = NSExtensionItem()
+        var provider: NSItemProvider? = NSItemProvider(item: try XCTUnwrap(image.pngData()) as NSData, typeIdentifier: UTType.png.identifier)
+        weak var retainedProvider = provider
+        item.attachments = [provider!]; provider = nil
+        let loaded = try await SharedImageLoader.load(from: [item], consumesInput: true)
+        XCTAssertNotNil(loaded.cgImage)
+        XCTAssertNil(item.attachments, "A retained extension context must not retain the provider's original bitmap")
+        for _ in 0..<100 where retainedProvider != nil { try await Task.sleep(for: .milliseconds(10)) }
+        XCTAssertNil(retainedProvider)
+    }
+
+    func testHighBitDepthFileIsConvertedBeforePublishingImportedImage() throws {
+        let width = 32, height = 64
+        let provider = try XCTUnwrap(CGDataProvider(data: Data(repeating: 255, count: width * height * 8) as CFData))
+        let source = try XCTUnwrap(CGImage(width: width, height: height, bitsPerComponent: 16, bitsPerPixel: 64,
+            bytesPerRow: width * 8, space: CGColorSpaceCreateDeviceRGB(),
+            bitmapInfo: CGBitmapInfo(rawValue: CGImageAlphaInfo.last.rawValue).union(.byteOrder16Big),
+            provider: provider, decode: nil, shouldInterpolate: false, intent: .defaultIntent))
+        let url = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString + ".png")
+        defer { try? FileManager.default.removeItem(at: url) }
+        let destination = try XCTUnwrap(CGImageDestinationCreateWithURL(url as CFURL, UTType.png.identifier as CFString, 1, nil))
+        CGImageDestinationAddImage(destination, source, nil)
+        XCTAssertTrue(CGImageDestinationFinalize(destination))
+        let imported = try ScreenshotInput.decode(file: url)
+        XCTAssertLessThanOrEqual(try XCTUnwrap(imported.cgImage).bitsPerComponent, 8)
+        XCTAssertFalse(try XCTUnwrap(imported.cgImage).bitmapInfo.contains(.floatComponents))
+        XCTAssertEqual(imported.size, CGSize(width: width, height: height))
+    }
+
     func testFileDecodeBoundsPixelsWithoutReadingEncodedDataIntoMemory() throws {
         let format = UIGraphicsImageRendererFormat(); format.scale = 1; format.opaque = true; format.preferredRange = .standard
         let url = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString + ".jpg")

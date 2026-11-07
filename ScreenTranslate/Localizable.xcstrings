@@ -21013,6 +21013,167 @@
           }
         }
       }
+    },
+    "AI OCR failed; this result uses local Apple Vision.": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "AI OCR failed; this result uses local Apple Vision."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "AI 识别失败；本次结果使用本机 Apple Vision。"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "AI 識別失敗；本次結果使用本機 Apple Vision。"
+          }
+        }
+      }
+    },
+    "The AI response reached its output limit. Increase the output token limit or reduce the thinking budget in Request Parameters.": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "The AI response reached its output limit. Increase the output token limit or reduce the thinking budget in Request Parameters."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "AI 响应达到输出上限。请在“请求参数”中提高输出 Token 上限或降低思考预算。"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "AI 回應達到輸出上限。請在「請求參數」中提高輸出 Token 上限或降低思考預算。"
+          }
+        }
+      }
+    },
+    "The AI provider declined this image or text. Its content restrictions cannot be changed by this app. Local recognition remains available.": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "The AI provider declined this image or text. Its content restrictions cannot be changed by this app. Local recognition remains available."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "AI 服务商拒绝处理此图片或文字。本应用无法更改其内容限制，仍可使用本机识别。"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "AI 服務商拒絕處理此圖片或文字。本應用無法更改其內容限制，仍可使用本機識別。"
+          }
+        }
+      }
+    },
+    "The AI service returned no text. Check that the selected model supports image input and the compatible API.": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "The AI service returned no text. Check that the selected model supports image input and the compatible API."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "AI 服务没有返回文字。请确认所选模型支持图片输入和兼容接口。"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "AI 服務沒有傳回文字。請確認所選模型支援圖片輸入和相容介面。"
+          }
+        }
+      }
+    },
+    "The AI service rejected the model or request format. Check the model ID, image support and Request Parameters.": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "The AI service rejected the model or request format. Check the model ID, image support and Request Parameters."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "AI 服务拒绝了模型或请求格式。请检查模型 ID、图片输入支持和“请求参数”。"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "AI 服務拒絕了模型或請求格式。請檢查模型 ID、圖片輸入支援和「請求參數」。"
+          }
+        }
+      }
+    },
+    "Test Image Recognition": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Test Image Recognition"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "测试图片识别"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "測試圖片識別"
+          }
+        }
+      }
+    },
+    "Sends only a built-in sample image to this service. Shows the AI transcription or the specific error, without falling back to Apple Vision. Provider fees may apply.": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Sends only a built-in sample image to this service. Shows the AI transcription or the specific error, without falling back to Apple Vision. Provider fees may apply."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "仅将内置样图发送到此服务，显示 AI 识别文字或具体错误，不会回退到 Apple Vision。服务商可能收费。"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "僅將內建範例圖片傳送到此服務，顯示 AI 識別文字或具體錯誤，不會退回 Apple Vision。服務商可能收費。"
+          }
+        }
+      }
     }
   },
   "version": "1.0"

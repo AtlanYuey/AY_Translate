@@ -16,26 +16,43 @@ nonisolated enum VisionTextRecognizer {
             // Recheck after queued work drains; a snapshot taken before waiting
             // would miss pressure left by the preceding screenshot.
             let policy = await resourcePolicy?() ?? OCRResourcePolicy(memoryLimited: memoryLimited, recentWarning: underPressure)
-            return try await recognizeSerial(cgImage, language: language, policy: policy, checkpoint: checkpoint)
+            return try await recognizeSerial(cgImage, language: language, policy: policy, resourcePolicy: resourcePolicy, checkpoint: checkpoint)
         }
     }
 
     private static func recognizeSerial(_ image: CGImage, language: String?, policy: OCRResourcePolicy,
+                                        resourcePolicy: (@Sendable () async -> OCRResourcePolicy)?,
                                         checkpoint: (@Sendable (String) async -> Void)?) async throws -> [RecognizedBlock] {
         try Task.checkCancellation()
         if #available(iOS 26.0, macOS 26.0, *) {
             var blocks: [RecognizedBlock] = []
-            let regions = policy.regions(for: CGSize(width: image.width, height: image.height))
-            for (index, region) in regions.enumerated() {
+            let size = CGSize(width: image.width, height: image.height)
+            var regions = policy.regions(for: size)
+            var completed: [CGRect] = []
+            var dimension = policy.tileDimension
+            var index = 0
+            while !regions.isEmpty {
                 try Task.checkCancellation()
+                // Pressure can arrive during the first request. Do not keep
+                // scheduling all subsequent requests at the earlier, larger size.
+                let current = await resourcePolicy?() ?? policy
+                if current.memoryLimited && current.tileDimension < dimension {
+                    regions = current.regions(for: size).filter { candidate in !completed.contains { $0.contains(candidate) } }
+                    dimension = current.tileDimension
+                    await checkpoint?("document_windows_reduced")
+                }
+                guard !regions.isEmpty else { break }
+                let region = regions.removeFirst()
                 await checkpoint?(policy.prefersCPU ? "document_cpu_\(index + 1)_begin" : "document_begin")
                 do {
                     // The scoped helper releases each crop and all document
                     // observations before the next tile is allocated.
                     let additions = try await readDocumentRegion(image, region: region, language: language, preferCPU: policy.prefersCPU)
                     mergeDocument(additions, into: &blocks)
+                    completed.append(region)
                 } catch { try Task.checkCancellation() }
                 await checkpoint?("document_\(index + 1)_end")
+                index += 1
             }
             if !blocks.isEmpty {
                 await checkpoint?("coverage_begin")
@@ -262,7 +279,9 @@ nonisolated enum VisionTextRecognizer {
         if !languages.isEmpty { request.textRecognitionOptions.recognitionLanguages = languages }
         let observations = try await request.perform(on: image)
         try Task.checkCancellation()
-        return observations.flatMap { observation in
+        // Bounding-box bridging creates temporary framework objects per glyph.
+        // Drain them for each tile instead of retaining them across the page.
+        return autoreleasepool { observations.flatMap { observation in
             observation.document.text.lines.compactMap { line -> RecognizedBlock? in
                 guard let candidate = line.topCandidates(1).first,
                       !candidate.string.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else { return nil }
@@ -285,7 +304,7 @@ nonisolated enum VisionTextRecognizer {
                     flow: vertical ? .vertical : .horizontal, sourceColumnWidth: vertical ? width : nil,
                     sourceGlyphBoxes: glyphs.isEmpty ? nil : glyphs)
             }
-        }
+        } }
     }
 
     private nonisolated static func read(_ image: CGImage, language: String?, region: CGRect = CGRect(x: 0, y: 0, width: 1, height: 1), originalSize: CGSize? = nil, cpuOnly: Bool = false) throws -> [RecognizedBlock] {

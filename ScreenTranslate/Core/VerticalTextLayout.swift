@@ -123,16 +123,16 @@ nonisolated enum VerticalOCRGeometry {
             var run: [CGRect] = []
             for box in column.sorted(by: { $0.maxY > $1.maxY }) {
                 if let last = run.last, last.minY - box.maxY > max(last.height, box.height) * 1.8 {
-                    if run.count >= 3 { result.append(run) }
+                    if run.count >= 2 { result.append(run) }
                     run = []
                 }
                 run.append(box)
             }
-            if run.count >= 3 { result.append(run) }
+            if run.count >= 2 { result.append(run) }
         }
         return result.filter { boxes in
             let union = boxes.reduce(CGRect.null) { $0.union($1) }
-            return union.height * imageSize.height > union.width * imageSize.width * 2.2
+            return union.height * imageSize.height > union.width * imageSize.width * (boxes.count == 2 ? 1.65 : 2.2)
         }
     }
 }

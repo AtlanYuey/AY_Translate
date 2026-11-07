@@ -20,9 +20,10 @@ enum ScreenshotInput {
                     kCGImageSourceCreateThumbnailFromImageAlways: true,
                     kCGImageSourceCreateThumbnailWithTransform: true,
                     kCGImageSourceThumbnailMaxPixelSize: Int(maximumDimension),
+                    kCGImageSourceShouldAllowFloat: false,
                     kCGImageSourceShouldCacheImmediately: true
                   ] as CFDictionary) else { throw SharedImageError.noImage }
-            return try bounded(UIImage(cgImage: image), maximumDimension: maximumDimension)
+            return UIImage(cgImage: try standardPixels(image))
         }
     }
 
@@ -36,10 +37,24 @@ enum ScreenshotInput {
                     kCGImageSourceCreateThumbnailFromImageAlways: true,
                     kCGImageSourceCreateThumbnailWithTransform: true,
                     kCGImageSourceThumbnailMaxPixelSize: Int(maximumDimension),
+                    kCGImageSourceShouldAllowFloat: false,
                     kCGImageSourceShouldCacheImmediately: true
                   ] as CFDictionary) else { throw SharedImageError.noImage }
-            return UIImage(cgImage: image)
+            return UIImage(cgImage: try standardPixels(image))
         }
+    }
+
+    /// Normalize high-bit-depth/HDR imports inside the decoder's pool, before
+    /// publishing to SwiftUI. Otherwise validation and screen display can hold
+    /// the wide source, converted source and GPU texture at the same time.
+    nonisolated private static func standardPixels(_ image: CGImage) throws -> CGImage {
+        guard image.bitsPerComponent > 8 || image.bitmapInfo.contains(.floatComponents) else { return image }
+        guard let context = CGContext(data: nil, width: image.width, height: image.height,
+            bitsPerComponent: 8, bytesPerRow: 0, space: CGColorSpace(name: CGColorSpace.sRGB)!,
+            bitmapInfo: CGImageAlphaInfo.noneSkipLast.rawValue) else { throw SharedImageError.noImage }
+        context.draw(image, in: CGRect(x: 0, y: 0, width: image.width, height: image.height))
+        guard let result = context.makeImage() else { throw SharedImageError.noImage }
+        return result
     }
 
     static func bounded(_ image: UIImage, maximumDimension: CGFloat = maximumDimension) throws -> UIImage {

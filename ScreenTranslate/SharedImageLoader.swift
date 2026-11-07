@@ -20,7 +20,15 @@ enum SharedImageLoader {
         case image(UIImage), data(Data), file(URL)
     }
 
-    static func load(from items: [NSExtensionItem]) async throws -> UIImage {
+    static func load(from items: [NSExtensionItem], consumesInput: Bool = false) async throws -> UIImage {
+        // The extension context may outlive its presentation. Once decoded, it
+        // must not keep NSItemProvider's cached original image/data alive too.
+        defer {
+            if consumesInput {
+                for item in items { item.attachments = nil }
+                ProcessingDiagnostics.shared.event("input_released")
+            }
+        }
         let providers = items.flatMap { $0.attachments ?? [] }
         for provider in providers {
             try Task.checkCancellation()
@@ -28,11 +36,14 @@ enum SharedImageLoader {
             for type in types {
                 // Prefer the provider's file. Decode in its callback, before
                 // temporary access expires, without retaining encoded bytes.
+                if consumesInput { ProcessingDiagnostics.shared.event("load_file_begin") }
                 if let image = try? await fileImage(from: provider, type: type) {
+                    if consumesInput { ProcessingDiagnostics.shared.event("load_file_end") }
                     try Task.checkCancellation()
                     return try validate(image)
                 }
                 if let data = try? await encodedData(from: provider, type: type) {
+                    if consumesInput { ProcessingDiagnostics.shared.event("load_data_end") }
                     try Task.checkCancellation()
                     if let image = try decoded(data) { return image }
                 }

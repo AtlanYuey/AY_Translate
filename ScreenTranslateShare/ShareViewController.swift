@@ -7,6 +7,7 @@ import UIKit
 /// the extension request returns to that host; it never foregrounds our app.
 @MainActor
 final class ShareViewController: UIViewController {
+    private static weak var activeController: ShareViewController?
     private var state: AppState?
     private var loading: Task<Void, Never>?
     private var starting: Task<Void, Never>?
@@ -32,6 +33,11 @@ final class ShareViewController: UIViewController {
 
     override func viewDidLoad() {
         super.viewDidLoad()
+        // Shortcuts can end its presentation without invoking our Close button.
+        // A new request is definitive replacement evidence: release any old
+        // retained SwiftUI host/session before allocating the next screenshot.
+        Self.activeController?.releaseResources(outcome: "replaced")
+        Self.activeController = self
         // Configure presentation in init, before the system presents the
         // principal controller. viewDidLoad can run after adaptation to a sheet.
         view.backgroundColor = .clear
@@ -57,6 +63,7 @@ final class ShareViewController: UIViewController {
         ])
         host.didMove(toParent: self)
         host.isModalInPresentation = true
+        ProcessingDiagnostics.shared.event("view_ready")
         loadSharedImageIfAvailable()
     }
 
@@ -101,7 +108,7 @@ final class ShareViewController: UIViewController {
         let state = self.state
         loading = Task { [weak self, weak state] in
             do {
-                let image = try await SharedImageLoader.load(from: items)
+                let image = try await SharedImageLoader.load(from: items, consumesInput: true)
                 try Task.checkCancellation()
                 guard let self, !completed else { return }
                 pendingImage = image
@@ -134,13 +141,19 @@ final class ShareViewController: UIViewController {
 
     private func finish() {
         guard !completed else { return }
+        releaseResources(outcome: "closed")
+        extensionContext?.completeRequest(returningItems: nil)
+    }
+
+    private func releaseResources(outcome: String) {
+        guard !completed else { return }
         completed = true
         loading?.cancel()
         starting?.cancel()
         loading = nil; starting = nil; pendingImage = nil
-        state?.closeResult()
+        state?.closeResult(outcome: outcome)
         host?.releaseResult()
         host = nil; state = nil
-        extensionContext?.completeRequest(returningItems: nil)
+        if Self.activeController === self { Self.activeController = nil }
     }
 }

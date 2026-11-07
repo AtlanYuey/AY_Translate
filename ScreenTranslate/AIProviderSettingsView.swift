@@ -110,6 +110,9 @@ struct AIServiceEditor: View {
     @State private var probeResult: String?
     @State private var testing = false
     @State private var testTask: Task<Void, Never>?
+    @State private var imageProbeResult: String?
+    @State private var testingImage = false
+    @State private var imageTestTask: Task<Void, Never>?
     @State private var error: String?
 
     private var discoveryIdentity: String { service.configuration.baseURL + "\n" + key + "\n" + String(discoveryRevision) }
@@ -171,6 +174,18 @@ struct AIServiceEditor: View {
             } header: { Text("Test Translation") } footer: {
                 Text("Test sends only the selected sample to this endpoint with the current key and model. Provider fees may apply. Saving alone sends no translation request.")
             }
+            if service.supportsVision {
+                Section {
+                    Text(verbatim: "Hello, world!\nこんにちは\n你好")
+                        .font(.title3.weight(.semibold))
+                    if let imageProbeResult { Text(verbatim: imageProbeResult).textSelection(.enabled).accessibilityIdentifier("service.image-test-result") }
+                    Button(action: testImageRecognition) {
+                        HStack { Label("Test Image Recognition", systemImage: "text.viewfinder"); Spacer(); if testingImage { ProgressView() } }
+                    }.disabled(testingImage).accessibilityIdentifier("service.image-test")
+                } header: { Text("Test Image Recognition") } footer: {
+                    Text("Sends only a built-in sample image to this service. Shows the AI transcription or the specific error, without falling back to Apple Vision. Provider fees may apply.")
+                }
+            }
             Section {
                 Text("The key stays visible for checking pasted text. It is saved only in this device’s Keychain, separately for each service.")
                 Text("Changing the endpoint clears a previously saved key. Paste a replacement for the new destination.")
@@ -202,6 +217,7 @@ struct AIServiceEditor: View {
                 let available = try await OpenAIClient().models(configuration: service.configuration, apiKey: key)
                 guard !Task.isCancelled, identity == discoveryIdentity else { return }
                 models = available
+                service.configuration.model = service.configuration.requestModelID
                 if service.configuration.model.isEmpty, let first = available.first { service.configuration.model = first }
                 modelSelection = available.contains(service.configuration.model) ? service.configuration.model : "__other__"
             } catch is CancellationError { }
@@ -230,7 +246,28 @@ struct AIServiceEditor: View {
         } message: { Text(settings.text(error ?? "")) }
     }
 
-    private func cancelTest() { testTask?.cancel(); testTask = nil; testing = false; probeResult = nil }
+    private func cancelTest() {
+        testTask?.cancel(); testTask = nil; testing = false; probeResult = nil
+        imageTestTask?.cancel(); imageTestTask = nil; testingImage = false; imageProbeResult = nil
+    }
+
+    private func testImageRecognition() {
+        cancelTest()
+        let configuration = service.configuration, apiKey = key
+        testingImage = true
+        imageTestTask = Task {
+            do {
+                let data = try ImageRecognitionProbe.jpeg()
+                let result = try await OpenAIClient().recognize(imageData: data, anchors: [], configuration: configuration, apiKey: apiKey)
+                guard !Task.isCancelled else { return }
+                imageProbeResult = result.blocks.map(\.original).joined(separator: "\n")
+            } catch {
+                guard !Task.isCancelled else { return }
+                imageProbeResult = settings.text(error.localizedDescription)
+            }
+            testingImage = false
+        }
+    }
 
     private func testTranslation() {
         cancelTest()

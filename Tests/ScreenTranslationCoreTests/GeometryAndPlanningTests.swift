@@ -5,6 +5,17 @@ import CoreGraphics
 @testable import ScreenTranslationCore
 
 final class GeometryAndPlanningTests: XCTestCase {
+    func testTwoCharacterVerticalRepliesAreCheckedWithoutJoiningOtherBubbles() {
+        let pair = [CGRect(x: 0.6, y: 0.8, width: 0.02, height: 0.02), CGRect(x: 0.6, y: 0.775, width: 0.02, height: 0.02)]
+        let far = CGRect(x: 0.6, y: 0.2, width: 0.02, height: 0.02)
+        let size = CGSize(width: 1000, height: 1000)
+        let columns = VerticalOCRGeometry.columns(pair + [far], imageSize: size)
+        XCTAssertEqual(columns, [pair])
+        XCTAssertEqual(OCRCoverage.uncoveredColumns(columns, blocks: [], imageSize: size), [pair])
+        let horizontal = block("はい", x: 0.6, y: 0.8, width: 0.04, height: 0.02)
+        XCTAssertTrue(OCRCoverage.uncoveredColumns(columns, blocks: [horizontal], imageSize: size).isEmpty)
+    }
+
     private func block(_ text: String, x: Double = 0.1, y: Double = 0.8, width: Double = 0.7, height: Double = 0.04) -> RecognizedBlock {
         RecognizedBlock(id: UUID(), original: text, translation: text, boundingBox: CGRect(x: x, y: y, width: width, height: height), confidence: 0.9)
     }

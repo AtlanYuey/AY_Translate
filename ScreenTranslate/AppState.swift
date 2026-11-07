@@ -170,11 +170,18 @@ final class AppState: ObservableObject {
                     catch { try Task.checkCancellation() }
                     try Task.checkCancellation()
                     do {
+                        diagnostics?.event("ai_ocr_begin")
                         result = try await services.aiOCR(image, anchors, ocrConfiguration, ocrKey)
+                        diagnostics?.event("ai_ocr_completed")
                     } catch {
                         try Task.checkCancellation()
+                        let failure = error as? AIServiceError ?? .invalidResponse
+                        diagnostics?.recordOCRFallback(failure.diagnosticCode)
                         guard !anchors.isEmpty else { throw error }
-                        result = OCRResult(blocks: anchors, notice: "AI OCR was unavailable. Apple Vision was used locally; you can retry with another engine.")
+                        let message = AppLocalization.text("AI OCR failed; this result uses local Apple Vision.")
+                            + "\n" + AppLocalization.text(failure.localizedDescription)
+                            + "\n" + failure.diagnosticCode
+                        result = OCRResult(blocks: anchors, notice: message)
                     }
                 }
                 guard isActive(processID) else { return }
@@ -356,8 +363,8 @@ final class AppState: ObservableObject {
     func beginRendering(id: UUID) { if document?.id == id { diagnostics?.beginRendering(id: id) } }
     func finishRendering(id: UUID) { if document?.id == id { diagnostics?.end("completed") } }
 
-    func closeResult() {
-        diagnostics?.end("closed")
+    func closeResult(outcome: String = "closed") {
+        diagnostics?.end(outcome)
         cancelCurrentWork()
         presentsResult = false
         document = nil

@@ -26,12 +26,17 @@ final class ProcessingDiagnostics {
         var peakFootprintBytes: UInt64?
         var availableBytes: UInt64?
         var checkpoints: [MemoryCheckpoint]?
+        var version: String?
+        var build: String?
+        var processSession: UUID?
+        var ocrFallback: String?
     }
     private let defaults: UserDefaults
     private let keys: any APIKeyStoring
     private let context: String
     private var entries: [Entry]
     private var current: UUID?
+    private static let processSession = UUID()
     private var memoryObserver: NSObjectProtocol?
     var currentID: UUID? { current }
 
@@ -54,13 +59,19 @@ final class ProcessingDiagnostics {
         current = id
         let now = Date()
         entries.append(Entry(id: id, started: now, updated: now, context: context, target: target,
-            stage: stage, outcome: "unfinished", event: "started"))
+            stage: stage, outcome: "unfinished", event: "started",
+            version: Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String,
+            build: Bundle.main.object(forInfoDictionaryKey: "CFBundleVersion") as? String,
+            processSession: Self.processSession))
         entries = Array(entries.suffix(8))
         update { _ in }
     }
 
     func stage(_ value: String) { update { $0.stage = value; $0.event = value } }
     func event(_ value: String) { update { $0.event = value } }
+    func recordOCRFallback(_ code: String) {
+        update { $0.ocrFallback = code; $0.event = "ai_ocr_fallback" }
+    }
     func checkpoint(_ point: String, id: UUID?) {
         // A cancelled, late framework return must not annotate the next image.
         guard let id, id == current else { return }
@@ -88,10 +99,12 @@ final class ProcessingDiagnostics {
         entries[index].peakFootprintBytes = max(entries[index].peakFootprintBytes ?? 0, memory.footprint ?? 0)
         entries[index].availableBytes = memory.available
         var samples = entries[index].checkpoints ?? []
-        samples.append(MemoryCheckpoint(point: entries[index].event == "started" ? entries[index].stage : entries[index].event,
-            footprintBytes: memory.footprint, availableBytes: memory.available))
+        let sample = MemoryCheckpoint(point: entries[index].event == "started" ? entries[index].stage : entries[index].event,
+            footprintBytes: memory.footprint, availableBytes: memory.available)
+        if sample.point == "memory_warning", samples.last?.point == "memory_warning" { samples[samples.count - 1] = sample }
+        else { samples.append(sample) }
         // Keep import/start evidence as well as the last framework checkpoints.
-        if samples.count > 20 { samples = Array(samples.prefix(4)) + Array(samples.suffix(16)) }
+        if samples.count > 20 { samples = Array(samples.prefix(6)) + Array(samples.suffix(14)) }
         entries[index].checkpoints = samples
         persist()
     }
@@ -137,6 +150,8 @@ struct ProcessingDiagnosticsView: View {
                     LabeledContent("Stage", value: settings.text(entry.stage == "reading" ? "Reading screen…" : ["background", "importing", "presenting"].contains(entry.stage) ? "Preparing image…" : "Translating…"))
                     LabeledContent("Target Language", value: AppLanguage(rawValue: entry.target)?.nativeName ?? entry.target)
                     LabeledContent("Memory Warnings", value: String(entry.memoryWarnings))
+                    if let version = entry.version { LabeledContent("Version", value: version + " (" + (entry.build ?? "?") + ")") }
+                    if let fallback = entry.ocrFallback { LabeledContent("AI OCR", value: fallback) }
                     Text(entry.context == "share" ? "Share Extension" : "AY Translate").font(.caption).foregroundStyle(.secondary)
                 } header: { Text(entry.started, style: .date) + Text(" · ") + Text(entry.started, style: .time) }
             }

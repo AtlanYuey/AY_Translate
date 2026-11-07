@@ -49,7 +49,7 @@ nonisolated struct OpenAIClient: Sendable {
         struct List: Decodable { var data: [Model]?; var models: [Model]? }
         guard let result = try? JSONDecoder().decode(List.self, from: data),
               let entries = result.data ?? result.models, entries.count <= 10_000 else { throw AIServiceError.invalidResponse }
-        let names = Set(entries.compactMap { $0.id ?? $0.name }.filter { !$0.isEmpty && $0.count <= 256 }).sorted()
+        let names = Set(entries.compactMap { $0.id ?? $0.name }.map(configuration.normalizedModelID).filter { !$0.isEmpty && $0.count <= 256 }).sorted()
         guard !names.isEmpty else { throw AIServiceError.invalidResponse }
         return names
     }
@@ -73,7 +73,12 @@ nonisolated struct OpenAIClient: Sendable {
         ], maxTokens: 8_192)
         let regions = try output.regions.map { region -> AIRecognizedRegion in
             guard let id = region.id else { return region }
-            guard let index = Int(id), String(index) == id, anchors.indices.contains(index) else { throw AIServiceError.invalidRegions }
+            // A model-generated ID for newly found text is not a local anchor.
+            // Keep that text for geometry matching/full-text reading instead of
+            // discarding the entire otherwise valid image transcription.
+            guard let index = Int(id), String(index) == id, anchors.indices.contains(index) else {
+                return AIRecognizedRegion(id: nil, text: region.text, box: region.box)
+            }
             return AIRecognizedRegion(id: anchors[index].id.uuidString, text: region.text, box: region.box)
         }
         return try OCRAlignment.resolve(regions, anchors: anchors)
@@ -176,7 +181,7 @@ nonisolated struct OpenAIClient: Sendable {
         request.setValue("application/json", forHTTPHeaderField: "Accept")
         let key = apiKey.trimmingCharacters(in: .whitespacesAndNewlines)
         if !key.isEmpty { request.setValue("Bearer " + key, forHTTPHeaderField: "Authorization") }
-        let encoded = try JSONEncoder().encode(ChatRequest(model: configuration.model.trimmingCharacters(in: .whitespacesAndNewlines), messages: [
+        let encoded = try JSONEncoder().encode(ChatRequest(model: configuration.requestModelID, messages: [
             Message(role: "system", content: [.text(system)]), Message(role: "user", content: content)
         ], max_tokens: maxTokens))
         var body = try JSONSerialization.jsonObject(with: encoded) as! [String: Any]
@@ -189,6 +194,11 @@ nonisolated struct OpenAIClient: Sendable {
         // Modern reasoning models use max_completion_tokens; never send both.
         if parameters["max_completion_tokens"] != nil { body.removeValue(forKey: "max_tokens") }
         body.merge(parameters) { _, custom in custom }
+        if configuration.isGoogleCompatibilityEndpoint {
+            // Google's compatible API supports JSON mode. Keep the output
+            // contract fixed even when a model normally answers with prose.
+            body["response_format"] = ["type": "json_object"]
+        }
         request.httpBody = try JSONSerialization.data(withJSONObject: body, options: [.sortedKeys])
         let data: Data
         let response: URLResponse
@@ -205,15 +215,17 @@ nonisolated struct OpenAIClient: Sendable {
         guard data.count <= 2_000_000 else { throw AIServiceError.responseTooLarge }
         do {
             let chat = try JSONDecoder().decode(ChatResponse.self, from: data)
-            if let reason = chat.choices.first?.finish_reason, reason == "length" || reason == "content_filter" {
-                throw AIServiceError.invalidResponse
-            }
-            guard let message = chat.choices.first?.message.content.text else { throw AIServiceError.invalidResponse }
+            guard let choice = chat.choices.first else { throw AIServiceError.emptyResponse }
+            if choice.finish_reason == "length" { throw AIServiceError.outputTruncated }
+            if choice.finish_reason == "content_filter" || choice.message.refusal?.isEmpty == false { throw AIServiceError.contentBlocked }
+            guard let message = choice.message.content?.text, !message.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else { throw AIServiceError.emptyResponse }
             var json = message.trimmingCharacters(in: .whitespacesAndNewlines)
             if json.hasPrefix("```"), let newline = json.firstIndex(of: "\n"), json.hasSuffix("```") {
                 json = String(json[json.index(after: newline)...].dropLast(3)).trimmingCharacters(in: .whitespacesAndNewlines)
             }
             return try JSONDecoder().decode(Output.self, from: Data(json.utf8))
+        } catch let error as AIServiceError {
+            throw error
         } catch {
             throw AIServiceError.invalidResponse
         }
@@ -265,7 +277,7 @@ private nonisolated enum ContentPart: Encodable {
 }
 
 private nonisolated struct ChatResponse: Decodable {
-    struct Choice: Decodable { struct Message: Decodable { let content: ResponseContent }; let message: Message; let finish_reason: String? }
+    struct Choice: Decodable { struct Message: Decodable { let content: ResponseContent?; let refusal: String? }; let message: Message; let finish_reason: String? }
     let choices: [Choice]
 }
 

@@ -83,7 +83,7 @@ nonisolated enum VerticalInkDetector {
             if !span.isEmpty { spans.append(span) }
         }
         var result: [[CGRect]] = []
-        for track in spans where track.count >= 3 {
+        for track in spans where track.count >= 2 {
             let scale = track.map { $0.box.height }.sorted()[track.count / 2]
             let centerX = track.map(\.centerX).reduce(0, +) / CGFloat(track.count)
             var centers: [CGFloat] = []
@@ -92,7 +92,7 @@ nonisolated enum VerticalInkDetector {
                 else { centers.append(value) }
             }
             let distances = zip(centers, centers.dropFirst()).map { $1 - $0 }.filter { $0 >= scale * 0.7 && $0 <= scale * 2.2 }.sorted()
-            guard centers.count >= 3, distances.count >= 2 else { continue }
+            guard centers.count >= 2, !distances.isEmpty else { continue }
             let pitch = distances[distances.count / 2], origin = centers[0]
             let regular = centers.filter { abs(($0 - origin) / pitch - (($0 - origin) / pitch).rounded()) < 0.23 }
             guard regular.count * 4 >= centers.count * 3 else { continue }
@@ -105,9 +105,9 @@ nonisolated enum VerticalInkDetector {
             }
             var run: [CGRect] = [], previous: Int?
             func finish() {
-                guard run.count >= 3 else { return }
+                guard run.count >= 2 else { return }
                 let union = run.reduce(CGRect.null) { $0.union($1) }
-                guard union.height > union.width * 2.2 else { return }
+                guard union.height > union.width * (run.count == 2 ? 1.65 : 2.2) else { return }
                 result.append(run.map { box in
                     CGRect(x: box.minX / CGFloat(width), y: 1 - box.maxY / CGFloat(height), width: box.width / CGFloat(width), height: box.height / CGFloat(height))
                 })

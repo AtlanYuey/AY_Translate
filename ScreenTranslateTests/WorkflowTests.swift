@@ -195,6 +195,35 @@ final class WorkflowTests: XCTestCase {
         state.closeResult()
     }
 
+    func testAIImageFailureKeepsSpecificReasonAndLocalResult() async throws {
+        try settings.saveConfiguration(.init(baseURL: "https://example.test/v1", model: "vision"), keyReplacement: nil, for: .ocr)
+        settings.ocrEngine = .ai
+        settings.grantConsent(for: .ocr)
+        let journal = ProcessingDiagnostics(defaults: defaults, keys: keys, context: "share")
+        let region = block()
+        var injected = services { _, _ in [region] }
+        injected.aiOCR = { _, _, _, _ in throw AIServiceError.http(400) }
+        let state = AppState(settings: settings, history: HistoryStore(fileURL: historyURL), services: injected, diagnostics: journal)
+        state.process(image())
+        try await waitUntil { state.phase == .translating }
+        XCTAssertEqual(state.document?.blocks.first?.original, region.original)
+        XCTAssertTrue(state.notice?.contains("http_400") == true)
+        let entry = try XCTUnwrap(journal.reports().first)
+        XCTAssertEqual(entry.ocrFallback, "http_400")
+        XCTAssertNotNil(entry.processSession)
+        XCTAssertNotNil(entry.version)
+        XCTAssertTrue(entry.checkpoints?.contains { $0.point == "ai_ocr_begin" } == true)
+        state.closeResult()
+    }
+
+    func testImageRecognitionProbeIsAnActualBoundedJPEG() throws {
+        let data = try ImageRecognitionProbe.jpeg()
+        XCTAssertEqual(Array(data.prefix(2)), [0xFF, 0xD8])
+        let image = try XCTUnwrap(UIImage(data: data))
+        XCTAssertEqual(image.size, CGSize(width: 640, height: 320))
+        XCTAssertLessThan(data.count, 200_000)
+    }
+
     func testClosingCancelsAndRejectsLateAITranslation() async throws {
         try settings.saveConfiguration(.init(baseURL: "https://example.test/v1", model: "translation"), keyReplacement: nil, for: .translation)
         settings.translationEngine = .ai

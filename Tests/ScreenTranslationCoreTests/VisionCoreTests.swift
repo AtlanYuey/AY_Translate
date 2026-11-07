@@ -8,6 +8,22 @@ import XCTest
 @testable import ScreenTranslationCore
 
 final class VisionCoreTests: XCTestCase {
+    func testShortVerticalRepliesWithNoPrimaryObservationAreRecovered() async throws {
+        let context = try canvas()
+        for (column, phrase) in ["はい", "いいえ", "どうぞ"].enumerated() {
+            for (row, glyph) in phrase.enumerated() {
+                draw(String(glyph), x: CGFloat(180 + column * 200), y: CGFloat(600 + row * 38), font: "HiraginoSans-W6", size: 30, context: context)
+            }
+        }
+        let image = try XCTUnwrap(context.makeImage())
+        let blocks = try await VisionTextRecognizer.supplementVerticalGaps(image, blocks: [], language: "ja", cpuOnly: true)
+        try record(image, blocks: blocks, name: "short-vertical-replies")
+        for (column, phrase) in ["はい", "いいえ", "どうぞ"].enumerated() {
+            let text = blocks.filter { abs($0.boundingBox.midX - CGFloat(195 + column * 200) / 900) < 0.06 }.map(\.original).joined()
+            XCTAssertTrue(text.contains(phrase), "Missing \(phrase): \(text)")
+        }
+    }
+
     func testRealVisionFindsTextBelowItsDefaultHeightThreshold() async throws {
         let context = try canvas()
         draw("Small text survives", x: 140, y: 220, font: "Helvetica", size: 22, context: context)

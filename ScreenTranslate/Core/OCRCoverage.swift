@@ -8,7 +8,7 @@ nonisolated enum OCRCoverage {
     /// make the rest of a column disappear from the supplemental check.
     static func uncoveredColumns(_ columns: [[CGRect]], blocks: [RecognizedBlock], imageSize: CGSize) -> [[CGRect]] {
         columns.filter { column in
-            guard column.count >= 3,
+            guard column.count >= 2,
                   !VerticalOCRGeometry.horizontalConflicts(column: column, blocks: blocks, imageSize: imageSize).protected else { return false }
             let uncovered = column.filter { glyph in
                 !blocks.contains { block in

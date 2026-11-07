@@ -9,6 +9,56 @@ import FoundationNetworking
 @testable import ScreenTranslationCore
 
 final class OpenAIClientTests: XCTestCase {
+    func testGeminiModelDiscoveryNormalizesResourceNamesOnlyOnGoogleEndpoint() async throws {
+        let service = client { request in
+            XCTAssertEqual(request.url?.path, "/v1beta/openai/models")
+            return (200, Data(#"{"data":[{"id":"models/gemini-3.8-flash"},{"id":"gemini-3.8-flash"}]}"#.utf8))
+        }
+        let google = AIServiceConfiguration(baseURL: AIProviderPreset.gemini.baseURL, model: "models/gemini-3.8-flash")
+        let models = try await service.models(configuration: google, apiKey: "test-key")
+        XCTAssertEqual(models, ["gemini-3.8-flash"])
+        XCTAssertEqual(google.requestModelID, "gemini-3.8-flash")
+        XCTAssertEqual(AIServiceConfiguration(baseURL: AIProviderPreset.openRouter.baseURL, model: "google/gemini-3.8-flash").requestModelID, "google/gemini-3.8-flash")
+        XCTAssertEqual(AIServiceConfiguration(baseURL: "https://example.test/v1", model: "models/custom").requestModelID, "models/custom")
+    }
+
+    func testGeminiImageRequestAcceptsNumericAnchorIDsAndKeepsAdditionalText() async throws {
+        let anchor = block("Hello")
+        let service = client { request in
+            XCTAssertEqual(request.url?.absoluteString, AIProviderPreset.gemini.baseURL + "/chat/completions")
+            let body = try XCTUnwrap(JSONSerialization.jsonObject(with: XCTUnwrap(request.httpBody)) as? [String: Any])
+            XCTAssertEqual(body["model"] as? String, "gemini-3.8-flash")
+            XCTAssertEqual((body["response_format"] as? [String: String])?["type"], "json_object")
+            let messages = try XCTUnwrap(body["messages"] as? [[String: Any]])
+            let parts = try XCTUnwrap(messages.last?["content"] as? [[String: Any]])
+            XCTAssertEqual((parts.last?["image_url"] as? [String: String])?["url"], "data:image/jpeg;base64,AQID")
+            return (200, try self.response(#"{"regions":[{"id":0,"text":"Hello!","box":[0.1,0.2,0.5,0.1]},{"id":"new-1","text":"こんにちは","box":[0.1,0.6,0.5,0.1]}]}"#))
+        }
+        let result = try await service.recognize(imageData: Data([1, 2, 3]), anchors: [anchor],
+            configuration: .init(baseURL: AIProviderPreset.gemini.baseURL, model: "models/gemini-3.8-flash"), apiKey: "test-key")
+        XCTAssertEqual(result.blocks.map(\.original), ["Hello!", "こんにちは"])
+        XCTAssertEqual(result.blocks[0].boundingBox, anchor.boundingBox)
+        XCTAssertEqual(result.blocks[1].placement, .textOnly)
+    }
+
+    func testImageProbeNeedsNoLocalAnchorsAndPreservesFailureReasons() async throws {
+        let success = client { _ in (200, try self.response(#"{"regions":[{"id":null,"text":"Hello, world!","box":[0.1,0.1,0.5,0.1]}]}"#)) }
+        let result = try await success.recognize(imageData: Data([1]), anchors: [], configuration: configuration, apiKey: "")
+        XCTAssertEqual(result.blocks.map(\.original), ["Hello, world!"])
+        for (reason, expected) in [("content_filter", AIServiceError.contentBlocked), ("length", .outputTruncated), ("stop", .emptyResponse)] {
+            var calls = 0
+            let service = client { _ in
+                calls += 1
+                return (200, try JSONSerialization.data(withJSONObject: ["choices": [["finish_reason": reason, "message": ["content": NSNull()]]]]))
+            }
+            do {
+                _ = try await service.recognize(imageData: Data([1]), anchors: [], configuration: configuration, apiKey: "")
+                XCTFail("Failure must remain actionable")
+            } catch { XCTAssertEqual(error as? AIServiceError, expected) }
+            XCTAssertEqual(calls, 1, "Do not hide or retry provider restrictions")
+        }
+    }
+
     func testChineseTargetIsFixedOnFirstRequestAndWrongLanguageIsRejectedWithoutRetry() async throws {
         let source = block("口元にクリームがついています")
         var calls = 0
@@ -239,12 +289,14 @@ final class OpenAIClientTests: XCTestCase {
     }
 
     func testMalformedAndOversizedResponsesAreRejected() async {
-        for data in [Data("not JSON".utf8), Data("{\"choices\":[]}".utf8), Data(repeating: 65, count: 2_000_001)] {
+        let cases: [(Data, AIServiceError)] = [(Data("not JSON".utf8), .invalidResponse),
+            (Data("{\"choices\":[]}".utf8), .emptyResponse), (Data(repeating: 65, count: 2_000_001), .responseTooLarge)]
+        for (data, expected) in cases {
             let service = client { _ in (200, data) }
             do {
                 _ = try await service.translate([block()], source: "auto", target: "Spanish", preference: .speed, configuration: configuration, apiKey: "")
                 XCTFail("Expected invalid response")
-            } catch { XCTAssertEqual(error as? AIServiceError, data.count > 2_000_000 ? .responseTooLarge : .invalidResponse) }
+            } catch { XCTAssertEqual(error as? AIServiceError, expected) }
         }
     }
 
@@ -257,7 +309,7 @@ final class OpenAIClientTests: XCTestCase {
         do {
             _ = try await service.translate([block], source: "auto", target: "Spanish", preference: .speed, configuration: configuration, apiKey: "")
             XCTFail("Token-limited output must not be marked complete")
-        } catch { XCTAssertEqual(error as? AIServiceError, .invalidResponse) }
+        } catch { XCTAssertEqual(error as? AIServiceError, .outputTruncated) }
     }
 
     func testProductionRedirectPolicyRefusesToForwardRequests() {
