@@ -1,4 +1,4 @@
-name: Build IPA
+name: Build and validate AY Translate
 
 on:
   pull_request:
@@ -61,7 +61,7 @@ jobs:
           for kind in ['summary', 'tests']:
               output = subprocess.check_output(['xcrun', 'xcresulttool', 'get', 'test-results', kind, '--path', str(bundle)])
               (root / ('inspection-' + kind + '.json')).write_bytes(output)
-          predicate = 'process == "ScreenTranslateShare" OR process == "ScreenTranslate" OR eventMessage CONTAINS[c] "gesture gate" OR eventMessage CONTAINS[c] "com.bahaanajjar.ScreenTranslate.ShareExtension"'
+          predicate = 'process == "ScreenTranslateShare" OR process == "ScreenTranslate" OR eventMessage CONTAINS[c] "gesture gate" OR eventMessage CONTAINS[c] "com.atlanyuey.translate.ShareExtension"'
           for index, archive in enumerate((root / 'exported-diagnostics').rglob('*.logarchive')):
               try:
                   output = subprocess.check_output(['log', 'show', '--archive', str(archive), '--style', 'compact', '--info', '--debug', '--predicate', predicate], timeout=90)
@@ -141,7 +141,7 @@ jobs:
             echo "::error::Invalid app version. Use a numeric version such as 1.0.0."
             exit 1
           fi
-          IPA_NAME="TranslateScreen-$VERSION-unsigned.ipa"
+          IPA_NAME="AY-Translate-$VERSION-unsigned.ipa"
           echo "VERSION=$VERSION" >> "$GITHUB_ENV"
           echo "IPA_NAME=$IPA_NAME" >> "$GITHUB_ENV"
           echo "version=$VERSION" >> "$GITHUB_OUTPUT"
@@ -172,12 +172,12 @@ jobs:
           unzip -t "$IPA_NAME"
           shasum -a 256 "$IPA_NAME" > "$IPA_NAME.sha256"
           echo "### Unsigned IPA" >> "$GITHUB_STEP_SUMMARY"
-          echo "Download TranslateScreen-$VERSION-unsigned from this run's Artifacts. It contains $IPA_NAME and its SHA-256 checksum. Sign it yourself before installing on a physical iPhone." >> "$GITHUB_STEP_SUMMARY"
+          echo "Download AY-Translate-$VERSION-unsigned from this run's Artifacts. It contains $IPA_NAME and its SHA-256 checksum. Sign it yourself before installing on a physical iPhone." >> "$GITHUB_STEP_SUMMARY"
 
       - name: Upload IPA artifact
         uses: actions/upload-artifact@v4
         with:
-          name: TranslateScreen-${{ steps.metadata.outputs.version }}-unsigned
+          name: AY-Translate-${{ steps.metadata.outputs.version }}-unsigned
           path: |
             ${{ env.IPA_NAME }}
             ${{ env.IPA_NAME }}.sha256
@@ -476,6 +476,7 @@ jobs:
     permissions:
       contents: write
     steps:
+      - uses: actions/checkout@v4
       - uses: actions/download-artifact@v4
         with:
           name: TranslateScreen-${{ needs.build.outputs.version }}-unsigned
@@ -485,11 +486,16 @@ jobs:
           GH_REPO: ${{ github.repository }}
           RELEASE_TAG: ${{ github.ref_name }}
           IPA_NAME: ${{ needs.build.outputs.ipa_name }}
+          VERSION: ${{ needs.build.outputs.version }}
         shell: bash
         run: |
           set -euo pipefail
+          if [[ "$RELEASE_TAG" != "v$VERSION" ]]; then
+            echo "::error::Release tag must match the app marketing version."
+            exit 1
+          fi
           if gh release view "$RELEASE_TAG" > /dev/null 2>&1; then
             gh release upload "$RELEASE_TAG" "$IPA_NAME" "$IPA_NAME.sha256" --clobber
           else
-            gh release create "$RELEASE_TAG" "$IPA_NAME" "$IPA_NAME.sha256" --verify-tag --generate-notes --title "AY Translate $RELEASE_TAG"
+            gh release create "$RELEASE_TAG" "$IPA_NAME" "$IPA_NAME.sha256" --verify-tag --notes-file docs/releases/1.0.0.md --title "AY Translate $RELEASE_TAG"
           fi

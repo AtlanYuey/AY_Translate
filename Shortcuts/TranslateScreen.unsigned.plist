@@ -19,7 +19,7 @@
 			<key>WFWorkflowActionParameters</key>
 			<dict>
 				<key>WFAppIdentifier</key>
-				<string>com.bahaanajjar.ScreenTranslate</string>
+				<string>com.atlanyuey.translate</string>
 				<key>WFInput</key>
 				<dict>
 					<key>Value</key>

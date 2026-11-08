@@ -1,3 +1,4 @@
+// Modified for AY Translate by AtlanYuey (2026). See NOTICE.
 import SwiftUI
 import UniformTypeIdentifiers
 import UIKit
@@ -145,9 +146,10 @@ private struct AboutView: View {
                 Text("AY Translate").font(.title2.bold())
                 Text("See it. Press. Understand.")
                     .foregroundStyle(.secondary)
-                Text("Version \(Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "1.2")")
+                Text("Version \(Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "1.0.0")")
                     .font(.caption)
                     .foregroundStyle(.tertiary)
+                NavigationLink("Open-source licenses") { LegalNoticesView() }
                 Spacer()
             }
             .padding(.top, 50)

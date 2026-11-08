@@ -3,3 +3,18 @@ Copyright 2026 Bahaa
 
 This product includes software developed by Bahaa and the Translate Screen
 contributors.
+
+AY Translate
+Copyright 2026 AtlanYuey
+
+AY Translate is a modified distribution of Translate Screen by Bahaa and
+contributors, originally published at https://github.com/0xffvirus/translate-screen.
+AY Translate is maintained independently; no upstream endorsement is implied.
+
+Changes include extensible AI providers, image OCR and translation, local OCR
+coverage checks, screenshot overlays, accessibility and interaction improvements,
+Share extension lifecycle and memory handling, optional iCloud settings sync,
+new branding, and the com.atlanyuey.translate application identity.
+
+Provider icon artwork includes LobeHub Icons (MIT). See ProviderIcons-LICENSE.
+The Yomogi font is used only by the test suite, under its bundled SIL OFL 1.1.

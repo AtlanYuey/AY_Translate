@@ -1,3 +1,4 @@
+// Modified for AY Translate by AtlanYuey (2026). See NOTICE.
 import Combine
 import Foundation
 import SwiftUI

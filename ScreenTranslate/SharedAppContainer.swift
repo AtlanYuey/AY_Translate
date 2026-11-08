@@ -9,9 +9,9 @@ enum SharedAppContainer {
             let app = Bundle.main.bundleURL.deletingLastPathComponent().deletingLastPathComponent()
             return Bundle(url: app)?.bundleIdentifier
                 ?? Bundle.main.object(forInfoDictionaryKey: "ContainingAppBundleIdentifier") as? String
-                ?? "com.bahaanajjar.ScreenTranslate"
+                ?? "com.atlanyuey.translate"
         }
-        return Bundle.main.bundleIdentifier ?? "com.bahaanajjar.ScreenTranslate"
+        return Bundle.main.bundleIdentifier ?? "com.atlanyuey.translate"
     }
     static var groupIdentifier: String {
         Bundle.main.object(forInfoDictionaryKey: "SharedAppGroup") as? String ?? "group." + hostIdentifier

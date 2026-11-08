@@ -4,11 +4,11 @@
 <dict>
 	<key>com.apple.security.application-groups</key>
 	<array>
-		<string>group.com.bahaanajjar.ScreenTranslate</string>
+		<string>group.com.atlanyuey.translate</string>
 	</array>
 	<key>keychain-access-groups</key>
 	<array>
-		<string>$(AppIdentifierPrefix)com.bahaanajjar.ScreenTranslate</string>
+		<string>$(AppIdentifierPrefix)com.atlanyuey.translate</string>
 	</array>
 </dict>
 </plist>

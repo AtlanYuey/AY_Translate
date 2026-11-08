@@ -167,6 +167,12 @@ final class ShareAndLanguageTests: XCTestCase {
     }
 
     func testIPAEmbedsAShortcutsDiscoverableShareExtensionAndRequestsFullScreen() throws {
+        XCTAssertEqual(Bundle.main.bundleIdentifier, "com.atlanyuey.translate")
+        XCTAssertEqual(Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String, "1.0.0")
+        XCTAssertEqual(Bundle.main.object(forInfoDictionaryKey: "SharedAppGroup") as? String, "group.com.atlanyuey.translate")
+        XCTAssertTrue(try XCTUnwrap(LegalNotices.text("NOTICE")).contains("Bahaa"))
+        XCTAssertTrue(try XCTUnwrap(LegalNotices.text("Apache-2.0")).contains("Apache License"))
+        XCTAssertTrue(try XCTUnwrap(LegalNotices.text("ProviderIcons-MIT")).contains("LobeHub"))
         let path = Bundle.main.bundleURL.appendingPathComponent("PlugIns/ScreenTranslateShare.appex/Info.plist")
         let plist = try XCTUnwrap(PropertyListSerialization.propertyList(from: Data(contentsOf: path), format: nil) as? [String: Any])
         let settings = try XCTUnwrap(plist["NSExtension"] as? [String: Any])

@@ -9,7 +9,7 @@ root = Path(sys.argv[1])
 fields = {"id", "started", "updated", "context", "target", "stage", "outcome", "event", "memoryWarnings", "footprintBytes", "peakFootprintBytes", "availableBytes", "version", "build", "processSession", "ocrFallback"}
 records = {}
 for path in root.rglob("*.plist"):
-    if not path.name.startswith(("com.bahaanajjar.ScreenTranslate", "group.com.bahaanajjar.ScreenTranslate")) or path.stat().st_size > 1_000_000:
+    if not path.name.startswith(("com.atlanyuey.translate", "group.com.atlanyuey.translate")) or path.stat().st_size > 1_000_000:
         continue
     try:
         preferences = plistlib.loads(path.read_bytes())

@@ -3,10 +3,10 @@
 <plist version="1.0">
 <dict>
 	<key>ContainingAppBundleIdentifier</key>
-	<string>com.bahaanajjar.ScreenTranslate</string>
+	<string>com.atlanyuey.translate</string>
 	<key>SharedAppGroup</key>
-	<string>group.com.bahaanajjar.ScreenTranslate</string>
+	<string>group.com.atlanyuey.translate</string>
 	<key>SharedKeychainGroup</key>
-	<string>$(AppIdentifierPrefix)com.bahaanajjar.ScreenTranslate</string>
+	<string>$(AppIdentifierPrefix)com.atlanyuey.translate</string>
 </dict>
 </plist>
