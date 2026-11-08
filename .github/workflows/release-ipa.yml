@@ -479,7 +479,7 @@ jobs:
       - uses: actions/checkout@v4
       - uses: actions/download-artifact@v4
         with:
-          name: TranslateScreen-${{ needs.build.outputs.version }}-unsigned
+          name: AY-Translate-${{ needs.build.outputs.version }}-unsigned
       - name: Publish tagged release
         env:
           GH_TOKEN: ${{ github.token }}

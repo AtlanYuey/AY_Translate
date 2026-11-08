@@ -1,5 +1,7 @@
 # AY Translate
 
+<p><img src="ScreenTranslate/BrandAssets.xcassets/AYBrandIcon.imageset/AYBrandIcon.png" width="112" alt="AY Translate 应用图标"></p>
+
 面向 iPhone 和 iPad 的截图翻译工具：识别图片中的文字，在原位置显示译文，随时切换原图对照。
 
 [![Build](https://github.com/AtlanYuey/AY-Translate/actions/workflows/release-ipa.yml/badge.svg)](https://github.com/AtlanYuey/AY-Translate/actions/workflows/release-ipa.yml)
