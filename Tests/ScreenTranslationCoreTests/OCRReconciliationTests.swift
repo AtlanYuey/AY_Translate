@@ -24,6 +24,12 @@ final class OCRReconciliationTests: XCTestCase {
         XCTAssertEqual(OCRReconciler.merge([a, b, ruby]).count, 3)
     }
 
+    func testStitchingHorizontalFragmentsPreservesWordSeparators() {
+        let first = block("See you", x: 0.1, y: 0.7, width: 0.12, height: 0.03, flow: .horizontal)
+        let last = block("you tomorrow", x: 0.16, y: 0.7, width: 0.22, height: 0.03, flow: .horizontal)
+        XCTAssertEqual(OCRReconciler.merge([first, last]).map(\.original), ["See you tomorrow"])
+    }
+
     func testIndependentReadRecoversLongMissingLineWithoutDuplicatingExistingText() {
         let known = block("一口食べますか", y: 0.5, height: 0.2)
         let duplicate = block("一口食べますか", y: 0.501, height: 0.2)

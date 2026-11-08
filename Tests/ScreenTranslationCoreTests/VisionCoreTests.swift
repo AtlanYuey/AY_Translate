@@ -50,8 +50,9 @@ final class VisionCoreTests: XCTestCase {
                     draw(String(glyph), x: sample.x, y: y, font: sample.font, size: sample.size, context: context)
                     context.restoreGState()
                     if sample.ruby && index < 3 {
-                        for (row, kana) in ["と", "しょ", "かん"][index].enumerated() {
-                            draw(String(kana), x: sample.x + sample.size + 2, y: y + CGFloat(row) * 9, font: "HiraginoSans-W3", size: 8, context: context)
+                        let reading: String = ["と", "しょ", "かん"][index]
+                        for kana in reading.enumerated() {
+                            draw(String(kana.element), x: sample.x + sample.size + 2, y: y + CGFloat(kana.offset) * 9, font: "HiraginoSans-W3", size: 8, context: context)
                         }
                     }
                 }

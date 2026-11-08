@@ -82,13 +82,18 @@ nonisolated enum OCRReconciler {
         guard extends else { return nil }
         for count in stride(from: min(x.count, y.count) - 1, through: 2, by: -1) {
             guard Array(x.suffix(count)) == Array(y.prefix(count)) else { continue }
-            let text = String(x) + String(y.dropFirst(count))
+            var tail = trailing.original.startIndex, consumed = 0
+            while tail < trailing.original.endIndex && consumed < count {
+                if !trailing.original[tail].isWhitespace { consumed += 1 }
+                tail = trailing.original.index(after: tail)
+            }
+            let text = leading.original + trailing.original[tail...]
             let union = a.boundingBox.union(b.boundingBox)
             let length = a.flow == .vertical ? union.height : union.width
             let sourceLength = a.flow == .vertical ? leading.boundingBox.height : leading.boundingBox.width
             // Text overlap must agree with spatial overlap; repeated words in
             // neighboring bubbles are not a license to concatenate them.
-            let expected = sourceLength * CGFloat(text.count) / CGFloat(x.count)
+            let expected = sourceLength * CGFloat(normalized(text).count) / CGFloat(x.count)
             guard length >= expected * 0.75, length <= expected * 1.25 else { continue }
             let glyphs = (leading.sourceGlyphBoxes ?? []) + (trailing.sourceGlyphBoxes ?? []).filter { glyph in
                 !(leading.sourceGlyphBoxes ?? []).contains { intersection(glyph, $0) > area(glyph) * 0.65 }

@@ -59,7 +59,8 @@ nonisolated enum VisionTextRecognizer {
                 // recognizer, serially and on a bounded bitmap. An omitted
                 // horizontal line must not depend on vertical-gap detection.
                 await checkpoint?("independent_read_begin")
-                let scan = boundedWorkingImage(image, maximum: 1600) ?? image
+                let current = await resourcePolicy?() ?? policy
+                let scan = boundedWorkingImage(image, maximum: current.memoryLimited ? min(1600, current.tileDimension) : 1600) ?? image
                 let task = Task.detached(priority: .userInitiated) {
                     try read(scan, language: language, cpuOnly: policy.prefersCPU, languageCorrection: false)
                 }
