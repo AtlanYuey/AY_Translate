@@ -71,4 +71,14 @@ final class OCRReconciliationTests: XCTestCase {
         let wideCopy = block(body.original, x: 0.435, y: 0.2, width: 0.06, height: 0.2)
         XCTAssertEqual(OCRReconciler.merge([body, wideCopy]).count, 1)
     }
+
+    func testObservationOrderDoesNotChangeWhichBubbleOrBoxSurvives() {
+        let tight = block("図書館", y: 0.7, height: 0.1)
+        let wide = block("図書館", x: 0.195, y: 0.7, width: 0.06, height: 0.1)
+        let separate = block("図書館", y: 0.2, width: 0.04, height: 0.1)
+        let expected = OCRReconciler.merge([tight, wide, separate]).map(\.boundingBox)
+        for order in [[wide, tight, separate], [separate, wide, tight], [tight, separate, wide], [wide, separate, tight]] {
+            XCTAssertEqual(OCRReconciler.merge(order).map(\.boundingBox), expected)
+        }
+    }
 }

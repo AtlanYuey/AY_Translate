@@ -60,12 +60,16 @@ nonisolated enum OCRReconciler {
     /// A second recognizer contributes uncovered text, without replacing a
     /// complete document observation with cross-column horizontal fragments.
     static func supplement(_ primary: [RecognizedBlock], with additions: [RecognizedBlock]) -> [RecognizedBlock] {
+        let regions: [(bounds: CGRect, glyphs: [CGRect])] = primary.map { existing in
+            let glyphs = existing.sourceGlyphBoxes?.isEmpty == false ? existing.sourceGlyphBoxes! : [existing.boundingBox]
+            return (glyphs.reduce(existing.boundingBox) { $0.union($1) }, glyphs)
+        }
         let verified = additions.filter { candidate in
             let glyphs = candidate.sourceGlyphBoxes?.isEmpty == false ? candidate.sourceGlyphBoxes! : [candidate.boundingBox]
             let covered = glyphs.filter { glyph in
-                primary.contains { existing in
-                    let evidence = existing.sourceGlyphBoxes?.isEmpty == false ? existing.sourceGlyphBoxes! : [existing.boundingBox]
-                    return evidence.contains { intersection(glyph, $0) >= area(glyph) * 0.65 }
+                regions.contains { existing in
+                    guard existing.bounds.intersects(glyph) else { return false }
+                    return existing.glyphs.contains { intersection(glyph, $0) >= area(glyph) * 0.65 }
                 }
             }.count
             // A genuinely longer line may correct a truncated native line.
@@ -102,12 +106,14 @@ nonisolated enum OCRReconciler {
         if a.confidence != b.confidence { return a.confidence > b.confidence }
         let countA = a.sourceGlyphBoxes?.count ?? 0, countB = b.sourceGlyphBoxes?.count ?? 0
         if countA != countB { return countA > countB }
-        if a.original == b.original, duplicateTranscript(a, b), area(a.boundingBox) != area(b.boundingBox) {
+        if a.original == b.original, area(a.boundingBox) != area(b.boundingBox) {
             return area(a.boundingBox) < area(b.boundingBox)
         }
         if a.original != b.original { return a.original < b.original }
         if a.boundingBox.maxY != b.boundingBox.maxY { return a.boundingBox.maxY > b.boundingBox.maxY }
-        return a.boundingBox.minX < b.boundingBox.minX
+        if a.boundingBox.minX != b.boundingBox.minX { return a.boundingBox.minX < b.boundingBox.minX }
+        if a.boundingBox.width != b.boundingBox.width { return a.boundingBox.width < b.boundingBox.width }
+        return a.boundingBox.height < b.boundingBox.height
     }
 
     private static func stitch(_ a: RecognizedBlock, _ b: RecognizedBlock) -> RecognizedBlock? {
