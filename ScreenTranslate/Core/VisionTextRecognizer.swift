@@ -73,14 +73,14 @@ nonisolated enum VisionTextRecognizer {
                 let result = try await supplementVerticalGaps(image, blocks: blocks, language: language,
                     detectionImage: boundedWorkingImage(image, maximum: 1600), cpuOnly: policy.prefersCPU)
                 await checkpoint?("coverage_end")
-                return result
+                return OCRReconciler.separatingRuby(OCRReconciler.merge(result))
             }
         }
         await checkpoint?("legacy_begin")
         let working = policy.memoryLimited ? (boundedWorkingImage(image, maximum: policy.tileDimension) ?? image) : image
         let result = try await recognizeLegacy(working, language: language, cpuOnly: policy.prefersCPU)
         await checkpoint?("legacy_end")
-        return result
+        return OCRReconciler.separatingRuby(OCRReconciler.merge(result))
     }
 
     @available(iOS 26.0, macOS 26.0, *)

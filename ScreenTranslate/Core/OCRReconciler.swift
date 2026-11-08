@@ -1,4 +1,7 @@
 import Foundation
+#if canImport(CoreGraphics)
+import CoreGraphics
+#endif
 
 /// Reconcile observations, not just their paragraph rectangles. A tile edge
 /// can contain only the beginning/end of a line; nearby ruby is a separate run.
@@ -6,7 +9,7 @@ nonisolated enum OCRReconciler {
     static func merge(_ candidates: [RecognizedBlock]) -> [RecognizedBlock] {
         var result: [RecognizedBlock] = []
         for candidate in candidates.sorted(by: preferred) {
-            if let index = result.firstIndex(where: { sameRun($0, candidate) }) {
+            if let index = result.firstIndex(where: { sameRun($0, candidate) || duplicateTranscript($0, candidate) }) {
                 let old = result[index]
                 if let joined = stitch(old, candidate) { result[index] = joined }
                 else if intersection(old.boundingBox, candidate.boundingBox) < min(area(old.boundingBox), area(candidate.boundingBox)) * 0.7 {
@@ -21,6 +24,37 @@ nonisolated enum OCRReconciler {
             if $0.boundingBox.minX != $1.boundingBox.minX { return $0.boundingBox.minX < $1.boundingBox.minX }
             return $0.original < $1.original
         }
+    }
+
+    /// Furigana is retained for full-text inspection, but must not receive its
+    /// own translated overlay on top of the larger kanji column it annotates.
+    static func separatingRuby(_ blocks: [RecognizedBlock]) -> [RecognizedBlock] {
+        blocks.map { candidate in
+            let letters = candidate.original.unicodeScalars.filter { CharacterSet.letters.contains($0) }
+            guard candidate.placement == .overlay, !letters.isEmpty,
+                  letters.allSatisfy({ (0x3040...0x30FF).contains($0.value) }) else { return candidate }
+            let box = candidate.boundingBox
+            let parent = blocks.contains { body in
+                guard body.id != candidate.id, body.flow == .vertical, body.placement == .overlay,
+                      body.original.unicodeScalars.contains(where: { (0x3400...0x9FFF).contains($0.value) }) else { return false }
+                let parent = body.boundingBox
+                return box.width < body.originalColumnWidth * 0.6 && box.height < parent.height * 0.65
+                    && box.midX > parent.midX && box.minX < parent.maxX + body.originalColumnWidth * 0.55
+                    && box.maxY <= parent.maxY + body.originalLineHeight * 0.5
+                    && box.minY >= parent.minY - body.originalLineHeight * 0.5
+            }
+            var result = candidate
+            if parent { result.placement = .textOnly }
+            return result
+        }
+    }
+
+    private static func duplicateTranscript(_ a: RecognizedBlock, _ b: RecognizedBlock) -> Bool {
+        guard a.flow == b.flow, a.placement == .overlay, b.placement == .overlay,
+              normalized(a.original) == normalized(b.original) else { return false }
+        // A detector can include ruby in the line's width while another one
+        // tightly bounds only the kanji; text + containment still proves a copy.
+        return intersection(a.boundingBox, b.boundingBox) >= min(area(a.boundingBox), area(b.boundingBox)) * 0.85
     }
 
     /// A second recognizer contributes uncovered text, without replacing a
@@ -68,6 +102,9 @@ nonisolated enum OCRReconciler {
         if a.confidence != b.confidence { return a.confidence > b.confidence }
         let countA = a.sourceGlyphBoxes?.count ?? 0, countB = b.sourceGlyphBoxes?.count ?? 0
         if countA != countB { return countA > countB }
+        if a.original == b.original, duplicateTranscript(a, b), area(a.boundingBox) != area(b.boundingBox) {
+            return area(a.boundingBox) < area(b.boundingBox)
+        }
         if a.original != b.original { return a.original < b.original }
         if a.boundingBox.maxY != b.boundingBox.maxY { return a.boundingBox.maxY > b.boundingBox.maxY }
         return a.boundingBox.minX < b.boundingBox.minX

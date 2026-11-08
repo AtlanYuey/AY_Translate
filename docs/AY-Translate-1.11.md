@@ -15,6 +15,9 @@ Candidate improvements for inconsistent OCR coverage:
   unchanged positioned OCR text, including text already in the target language.
   It does not repeat OCR/translation or change saved translations. The setting is
   included in shared preferences and optional iCloud settings sync.
+- Retain small kana beside kanji as annotations in full-text inspection, avoiding
+  a second translated overlay on the same column. Remove identical transcripts
+  detected with different bounding-box widths.
 - Clamp manual text enlargement to free space between neighboring source regions;
   share the same layout plan between preview and export.
 

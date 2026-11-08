@@ -1,4 +1,7 @@
 import XCTest
+#if canImport(CoreGraphics)
+import CoreGraphics
+#endif
 @testable import ScreenTranslationCore
 
 final class OCRReconciliationTests: XCTestCase {
@@ -54,5 +57,18 @@ final class OCRReconciliationTests: XCTestCase {
         XCTAssertEqual(chinese.translation, "请稍等")
         chinese.placement = .textOnly
         XCTAssertFalse(chinese.shouldOverlay(showUnchanged: true))
+    }
+
+    func testRubyIsRetainedForInspectionWithoutOverlappingBodyText() {
+        let body = block("図書館に行きます", x: 0.44, y: 0.2, width: 0.032, height: 0.2)
+        let ruby = block("と", x: 0.47, y: 0.38, width: 0.01, height: 0.012, flow: .horizontal)
+        let separate = block("はい", x: 0.65, y: 0.38, width: 0.01, height: 0.022)
+        let result = OCRReconciler.separatingRuby([body, ruby, separate])
+        XCTAssertEqual(result[0].placement, .overlay)
+        XCTAssertEqual(result[1].placement, .textOnly)
+        XCTAssertEqual(result[1].original, "と")
+        XCTAssertEqual(result[2].placement, .overlay, "Small independent speech is not ruby")
+        let wideCopy = block(body.original, x: 0.435, y: 0.2, width: 0.06, height: 0.2)
+        XCTAssertEqual(OCRReconciler.merge([body, wideCopy]).count, 1)
     }
 }

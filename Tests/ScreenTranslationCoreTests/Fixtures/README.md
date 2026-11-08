@@ -15,6 +15,8 @@ not device points. These are synthetic fixtures, not real handwriting photograph
 Each identical image runs three times under normal Share memory policy, followed
 by one constrained-memory run. CI artifacts retain the input PNG, every detected
 region, expected/actual text, exact-match status, character error rate and elapsed
-time for every case/run. Missing body-size regions fail the regression test;
-sub-16 px cases and transcription errors are explicitly reported as stress metrics,
-not represented as perfect recognition simply because the test suite passes.
+time for every case/run. On macOS/iOS 26, all six body transcripts are exact-match regressions, including
+the sub-16 px cases. The legacy engine retains metrics and a body-region presence
+check because it is less accurate. Ruby transcriptions are retained separately in
+the report, including their errors; perfect body recognition is not reported as
+perfect recognition of the 8 px annotations.

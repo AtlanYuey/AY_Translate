@@ -68,16 +68,22 @@ final class VisionCoreTests: XCTestCase {
             let duration = start.duration(to: .now).components
             try record(image, blocks: blocks, name: "difficult-japanese-\(pass)")
             for sample in samples {
-                let matches = blocks.filter { sample.bounds.contains(CGPoint(x: $0.boundingBox.midX, y: $0.boundingBox.midY)) }
+                let located = blocks.filter { sample.bounds.contains(CGPoint(x: $0.boundingBox.midX, y: $0.boundingBox.midY)) }
+                let matches = located.filter { $0.placement == .overlay }
                     .sorted { $0.flow == .vertical ? $0.boundingBox.maxY > $1.boundingBox.maxY : $0.boundingBox.minX < $1.boundingBox.minX }
                 let actual = matches.map(\.original).joined().filter { !$0.isWhitespace }
                 report.append(["sample": sample.name, "expected": sample.text, "actual": actual, "pass": pass,
+                    "annotationText": located.filter { $0.placement == .textOnly }.map(\.original).joined(),
+                    "expectedAnnotations": sample.ruby ? "としょかん" : "",
                     "underPressure": pass == 3, "found": !actual.isEmpty, "exact": actual == sample.text,
                     "characterErrorRate": Double(editDistance(sample.text, actual)) / Double(sample.text.count),
                     "seconds": Double(duration.seconds) + Double(duration.attoseconds) / 1e18])
                 // Readable body-size cases are regressions. Sub-16px text is a
                 // stress measurement; record every error instead of hiding it.
                 if sample.size >= 26 { XCTAssertFalse(actual.isEmpty, "Entire body-text region missing: \(sample.name), pass \(pass)") }
+                if #available(macOS 26.0, iOS 26.0, *) {
+                    XCTAssertEqual(actual, sample.text, "Transcript regression in \(sample.name), pass \(pass)")
+                }
             }
         }
         let folder = URL(fileURLWithPath: ProcessInfo.processInfo.environment["RUNNER_TEMP"] ?? NSTemporaryDirectory()).appendingPathComponent("vision-core")
@@ -304,7 +310,7 @@ final class VisionCoreTests: XCTestCase {
         CGImageDestinationAddImage(destination, image, nil)
         XCTAssertTrue(CGImageDestinationFinalize(destination))
         let regions: [[String: Any]] = blocks.map {
-            ["text": $0.original, "box": OCRAlignment.topLeftBox($0.boundingBox), "flow": $0.flow == .vertical ? "vertical" : "horizontal", "confidence": $0.confidence,
+            ["text": $0.original, "box": OCRAlignment.topLeftBox($0.boundingBox), "flow": $0.flow == .vertical ? "vertical" : "horizontal", "confidence": $0.confidence, "placement": $0.placement == .overlay ? "overlay" : "textOnly",
              "glyphs": ($0.sourceGlyphBoxes ?? []).map(OCRAlignment.topLeftBox)]
         }
         try JSONSerialization.data(withJSONObject: regions, options: [.prettyPrinted, .sortedKeys]).write(to: folder.appendingPathComponent(name + ".json"))
