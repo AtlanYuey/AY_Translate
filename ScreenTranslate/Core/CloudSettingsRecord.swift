@@ -4,7 +4,7 @@ import Foundation
 /// their device; provider definitions contain endpoints/models, never API keys.
 nonisolated struct CloudSettingsRecord: Codable, Equatable {
     static let allowedKeys: Set<String> = ["defaultSourceLanguage", "defaultTargetLanguage", "translationAppearance",
-        "ocrEngine", "translationEngine", "translationPreference", "overlayTextScale", "showsTextDetailsOnTap", "defaultResultMode", "interfaceLanguage", "ai.services.v1"]
+        "ocrEngine", "translationEngine", "translationPreference", "overlayTextScale", "showsTextDetailsOnTap", "showsUnchangedText", "defaultResultMode", "interfaceLanguage", "ai.services.v1"]
     let version: Int
     let timestamp: Double
     let device: String

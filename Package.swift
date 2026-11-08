@@ -7,7 +7,7 @@ let package = Package(
     products: [.library(name: "ScreenTranslationCore", targets: ["ScreenTranslationCore"])],
     targets: [
         .target(name: "ScreenTranslationCore", path: "ScreenTranslate/Core", swiftSettings: [.defaultIsolation(MainActor.self)]),
-        .testTarget(name: "ScreenTranslationCoreTests", dependencies: ["ScreenTranslationCore"])
+        .testTarget(name: "ScreenTranslationCoreTests", dependencies: ["ScreenTranslationCore"], resources: [.copy("Fixtures")])
     ],
     swiftLanguageModes: [.v5]
 )

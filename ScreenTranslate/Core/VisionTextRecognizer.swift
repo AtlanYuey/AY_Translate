@@ -55,6 +55,19 @@ nonisolated enum VisionTextRecognizer {
                 index += 1
             }
             if !blocks.isEmpty {
+                // Complement the document recognizer with a different local
+                // recognizer, serially and on a bounded bitmap. An omitted
+                // horizontal line must not depend on vertical-gap detection.
+                await checkpoint?("independent_read_begin")
+                let scan = boundedWorkingImage(image, maximum: 1600) ?? image
+                let task = Task.detached(priority: .userInitiated) {
+                    try read(scan, language: language, cpuOnly: policy.prefersCPU, languageCorrection: false)
+                }
+                if let additional = try? await withTaskCancellationHandler(operation: { try await task.value }, onCancel: { task.cancel() }) {
+                    blocks = OCRReconciler.supplement(blocks, with: additional)
+                }
+                try Task.checkCancellation()
+                await checkpoint?("independent_read_end")
                 await checkpoint?("coverage_begin")
                 let result = try await supplementVerticalGaps(image, blocks: blocks, language: language,
                     detectionImage: boundedWorkingImage(image, maximum: 1600), cpuOnly: policy.prefersCPU)
@@ -90,16 +103,7 @@ nonisolated enum VisionTextRecognizer {
     }
 
     private static func mergeDocument(_ additions: [RecognizedBlock], into blocks: inout [RecognizedBlock]) {
-        for addition in additions {
-            if let index = blocks.firstIndex(where: {
-                $0.flow == addition.flow && overlap($0.boundingBox, addition.boundingBox) >= 0.7
-                    && ($0.flow != .vertical || abs($0.boundingBox.midX - addition.boundingBox.midX) < max($0.boundingBox.width, addition.boundingBox.width) * 0.5)
-            }) {
-                let old = blocks[index]
-                if addition.original.count > old.original.count && addition.confidence >= old.confidence * 0.8
-                    || addition.original.count == old.original.count && addition.confidence > old.confidence { blocks[index] = addition }
-            } else { blocks.append(addition) }
-        }
+        blocks = OCRReconciler.merge(blocks + additions)
     }
 
     private static func boundedWorkingImage(_ image: CGImage, maximum: Int) -> CGImage? {
@@ -142,15 +146,28 @@ nonisolated enum VisionTextRecognizer {
             let columns = VerticalOCRGeometry.mergingColumns(detected, supplemental: inkColumns)
             let missing = OCRCoverage.uncoveredColumns(columns, blocks: blocks, imageSize: size)
             var result = blocks
-            let pending = Array(missing.prefix(32))
+            let pending = missing
             // Four upright columns become four horizontal rows in one small
             // OCR request. This covers short bubbles beyond the old six-column
             // limit without starting a separate Vision request for every column.
             for start in stride(from: 0, to: pending.count, by: 4) {
                 try Task.checkCancellation()
                 let batch = Array(pending[start..<min(start + 4, pending.count)])
-                guard let rows = try? autoreleasepool(invoking: { try readColumns(image, columns: batch, language: language ?? "ja", cpuOnly: cpuOnly) }) else { continue }
-                for (column, recognized) in zip(batch, rows) {
+                let rows = (try? autoreleasepool(invoking: { try readColumns(image, columns: batch, language: language, cpuOnly: cpuOnly) })) ?? []
+                for (offset, column) in batch.enumerated() {
+                    var recognized = rows.indices.contains(offset) ? rows[offset] : []
+                    let initialCount = recognized.map { $0.original.filter { !$0.isWhitespace }.count }.reduce(0, +)
+                    // Retry the unrecognized/partial run in isolation, without
+                    // dictionary correction. Packing neighboring rows can hide
+                    // a line or turn handwritten names into dictionary words.
+                    if initialCount < max(2, Int(Double(column.count) * 0.8)) || (recognized.map(\.confidence).min() ?? 0) < 0.45 {
+                        let retry = try? autoreleasepool { () throws -> [RecognizedBlock] in
+                            guard let strip = stripImage(image, glyphs: column) else { return [] }
+                            return try read(strip, language: language, cpuOnly: cpuOnly, languageCorrection: false)
+                        }
+                        if let retry, retry.map({ $0.original.count }).reduce(0, +) > initialCount,
+                           (retry.map(\.confidence).min() ?? 0) >= 0.45 { recognized = retry }
+                    }
                     guard !OCRCoverage.uncoveredColumns([column], blocks: result, imageSize: size).isEmpty else { continue }
                     let text = recognized.sorted { $0.boundingBox.minX < $1.boundingBox.minX }.map(\.original).joined()
                     guard text.count >= 2, VerticalTextLayout.supports(text),
@@ -219,8 +236,7 @@ nonisolated enum VisionTextRecognizer {
                     let inkColumns = VerticalInkDetector.columns(grayscale: raster.bytes, width: raster.width, height: raster.height)
                     columns = VerticalOCRGeometry.mergingColumns(columns, supplemental: inkColumns)
                 }
-                var attempts = 0
-                for column in columns {
+                    for column in columns {
                     try Task.checkCancellation()
                     let box = column.reduce(CGRect.null) { $0.union($1) }
                     // Aligned first characters in ordinary horizontal rows can
@@ -228,10 +244,8 @@ nonisolated enum VisionTextRecognizer {
                     let existing = blocks.filter { overlap($0.boundingBox, box) > 0.7 }
                     let conflicts = VerticalOCRGeometry.horizontalConflicts(column: column, blocks: blocks, imageSize: size)
                     guard !conflicts.protected else { continue }
-                    guard attempts < 32 else { break }
-                    attempts += 1
                     guard let strip = stripImage(cgImage, glyphs: column) else { continue }
-                    let recognized = try read(strip, language: language ?? "ja", cpuOnly: cpuOnly)
+                    let recognized = try read(strip, language: language, cpuOnly: cpuOnly)
                     let text = recognized.sorted { $0.boundingBox.minX < $1.boundingBox.minX }.map(\.original).joined()
                     guard text.count >= 2, VerticalTextLayout.supports(text),
                           (recognized.map(\.confidence).min() ?? 0) >= 0.4,
@@ -307,14 +321,14 @@ nonisolated enum VisionTextRecognizer {
         } }
     }
 
-    private nonisolated static func read(_ image: CGImage, language: String?, region: CGRect = CGRect(x: 0, y: 0, width: 1, height: 1), originalSize: CGSize? = nil, cpuOnly: Bool = false) throws -> [RecognizedBlock] {
+    private nonisolated static func read(_ image: CGImage, language: String?, region: CGRect = CGRect(x: 0, y: 0, width: 1, height: 1), originalSize: CGSize? = nil, cpuOnly: Bool = false, languageCorrection: Bool = true) throws -> [RecognizedBlock] {
         return try autoreleasepool {
         let request = VNRecognizeTextRequest()
         request.preferBackgroundProcessing = true
         request.usesCPUOnly = cpuOnly
         request.recognitionLevel = .accurate
         request.minimumTextHeight = 0.0025 // Vision's 1/32 default drops small print.
-        request.usesLanguageCorrection = true
+        request.usesLanguageCorrection = languageCorrection
         request.automaticallyDetectsLanguage = language == nil
         let supported = try request.supportedRecognitionLanguages()
         let desired = language.map { [$0] } ?? (Locale.preferredLanguages + ["en-US", "ja-JP", "zh-Hans", "zh-Hant", "ko-KR", "es-ES", "fr-FR", "de-DE", "it-IT", "pt-PT", "ru-RU", "ar-SA"])
@@ -333,9 +347,16 @@ nonisolated enum VisionTextRecognizer {
                              width: local.width * region.width, height: local.height * region.height)
             let vertical = VerticalTextLayout.supports(candidate.string) && box.height * imageSize.height > box.width * imageSize.width * 1.8 && candidate.string.count >= 2
             let glyphWidth = min(box.width, box.height * imageSize.height / imageSize.width / CGFloat(max(1, candidate.string.filter { !$0.isWhitespace }.count)))
+            let glyphs = candidate.string.indices.prefix(256).compactMap { index -> CGRect? in
+                guard !candidate.string[index].isWhitespace,
+                      let observation = try? candidate.boundingBox(for: index..<candidate.string.index(after: index)) else { return nil }
+                let glyph = observation.boundingBox
+                return CGRect(x: region.minX + glyph.minX * region.width, y: region.minY + glyph.minY * region.height,
+                              width: glyph.width * region.width, height: glyph.height * region.height)
+            }
             return RecognizedBlock(id: UUID(), original: candidate.string, translation: candidate.string, boundingBox: box,
                 confidence: candidate.confidence, sourceLineHeight: vertical ? glyphWidth * imageSize.width / imageSize.height : box.height,
-                flow: vertical ? .vertical : .horizontal, sourceColumnWidth: vertical ? glyphWidth : nil)
+                flow: vertical ? .vertical : .horizontal, sourceColumnWidth: vertical ? glyphWidth : nil, sourceGlyphBoxes: glyphs.isEmpty ? nil : glyphs)
         }
         }
     }
@@ -346,15 +367,10 @@ nonisolated enum VisionTextRecognizer {
     }
 
     private nonisolated static func merge(_ additions: [RecognizedBlock], into blocks: inout [RecognizedBlock]) {
-        for addition in additions {
-            if let index = blocks.firstIndex(where: { overlap($0.boundingBox, addition.boundingBox) >= 0.7 }) {
-                // Prefer the more complete crop result, not a clipped tile edge.
-                if addition.original.count >= blocks[index].original.count && addition.confidence > blocks[index].confidence { blocks[index] = addition }
-            } else { blocks.append(addition) }
-        }
+        blocks = OCRReconciler.merge(blocks + additions)
     }
 
-    private static func readColumns(_ image: CGImage, columns: [[CGRect]], language: String, cpuOnly: Bool = false) throws -> [[RecognizedBlock]] {
+    private static func readColumns(_ image: CGImage, columns: [[CGRect]], language: String?, cpuOnly: Bool = false) throws -> [[RecognizedBlock]] {
         let width = max(48, (columns.map(\.count).max() ?? 1) * 48)
         let height = columns.count * 96
         guard columns.count <= 4, width <= 3840, height > 0,

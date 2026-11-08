@@ -23,6 +23,11 @@ nonisolated struct RecognizedBlock: Identifiable, Hashable, Sendable {
     /// Local glyph guidance only; actual ink is segmented before restoration.
     var sourceGlyphBoxes: [CGRect]? = nil
 
+    func shouldOverlay(showUnchanged: Bool) -> Bool {
+        placement == .overlay && !translation.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+            && (showUnchanged || translation != original)
+    }
+
     var originalColumnWidth: CGFloat {
         sourceColumnWidth ?? boundingBox.width / CGFloat(max(1, original.split(separator: "\n").count))
     }

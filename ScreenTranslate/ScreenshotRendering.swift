@@ -14,6 +14,48 @@ enum ScreenshotRendering {
         let canRender: Bool
     }
 
+    /// Keep manual enlargement within free space around neighboring source
+    /// regions. Compute once for the page and share with screen/export drawing.
+    static func textLayouts(for blocks: [RecognizedBlock], canvasSize: CGSize, textScale: Double) -> [UUID: TextLayout] {
+        let positioned = blocks.filter { $0.placement == .overlay }
+        let bases = Dictionary(uniqueKeysWithValues: positioned.map {
+            ($0.id, textLayout(for: $0, canvasSize: canvasSize, textScale: min(1, textScale)))
+        })
+        return Dictionary(uniqueKeysWithValues: positioned.map { block in
+            let base = bases[block.id]!
+            guard textScale > 1 else { return (block.id, base) }
+            // Split the available gap equally, so two enlarged neighboring
+            // translations cannot each consume all of the same free space.
+            func collides(_ layout: TextLayout) -> Bool {
+                let expanded = layout.textRect.insetBy(dx: -layout.fontSize * 0.08, dy: -layout.fontSize * 0.08)
+                return bases.contains { id, other in
+                    guard id != block.id, !base.sourceRect.intersects(other.sourceRect) else { return false }
+                    let horizontalGap = max(other.sourceRect.minX - base.sourceRect.maxX, base.sourceRect.minX - other.sourceRect.maxX)
+                    let verticalGap = max(other.sourceRect.minY - base.sourceRect.maxY, base.sourceRect.minY - other.sourceRect.maxY)
+                    if horizontalGap > 0 && verticalGap <= 0 {
+                        return expanded.minX < base.sourceRect.minX - horizontalGap / 2 && other.sourceRect.midX < base.sourceRect.midX
+                            || expanded.maxX > base.sourceRect.maxX + horizontalGap / 2 && other.sourceRect.midX > base.sourceRect.midX
+                    }
+                    if verticalGap > 0 && horizontalGap <= 0 {
+                        return expanded.minY < base.sourceRect.minY - verticalGap / 2 && other.sourceRect.midY < base.sourceRect.midY
+                            || expanded.maxY > base.sourceRect.maxY + verticalGap / 2 && other.sourceRect.midY > base.sourceRect.midY
+                    }
+                    return false
+                }
+            }
+            let requested = textLayout(for: block, canvasSize: canvasSize, textScale: textScale)
+            guard collides(requested) else { return (block.id, requested) }
+            var low = 1.0, high = textScale, best = base
+            for _ in 0..<6 {
+                let middle = (low + high) / 2
+                let candidate = textLayout(for: block, canvasSize: canvasSize, textScale: middle)
+                if collides(candidate) { high = middle }
+                else { low = middle; best = candidate }
+            }
+            return (block.id, best)
+        })
+    }
+
     /// Recover a font size from each OCR line's typographic height, not the
     /// paragraph union or a fixed viewport size. Include fallback-font leading.
     /// All distances scale with the image; there is no viewport-point minimum.
@@ -156,9 +198,9 @@ enum ScreenshotRendering {
         let rect: CGRect
     }
 
-    static func restorationsAsync(for document: TranslationDocument) async -> [UUID: RestoredRegion] {
+    static func restorationsAsync(for document: TranslationDocument, showUnchanged: Bool = false) async -> [UUID: RestoredRegion] {
         guard let image = restorationImage(document.image) else { return [:] }
-        let blocks = document.blocks.filter { $0.translation != $0.original }
+        let blocks = document.blocks.filter { $0.shouldOverlay(showUnchanged: showUnchanged) }
         let task = Task.detached(priority: .userInitiated) { restore(image, blocks: blocks) }
         return await withTaskCancellationHandler(operation: { await task.value }, onCancel: { task.cancel() })
     }
@@ -173,7 +215,7 @@ enum ScreenshotRendering {
     private nonisolated static func restore(_ image: CGImage, blocks: [RecognizedBlock]) -> [UUID: RestoredRegion] {
         var result: [UUID: RestoredRegion] = [:]
         var retainedPixels = 0
-        for block in blocks where block.placement == .overlay && block.translation != block.original {
+        for block in blocks where block.placement == .overlay {
             if Task.isCancelled { break }
             let restored = autoreleasepool { restoreRegion(image, block: block) }
             if let restored {
@@ -231,7 +273,7 @@ enum ScreenshotRendering {
     }
 
     /// Render an already processed document without repeating OCR or translation.
-    static func translatedImage(_ document: TranslationDocument, palette: [UUID: SampledColor], textScale: Double) -> UIImage {
+    static func translatedImage(_ document: TranslationDocument, palette: [UUID: SampledColor], textScale: Double, showUnchanged: Bool = false) -> UIImage {
         let width: CGFloat = 390
         let naturalSize = CGSize(width: width, height: width * document.image.size.height / max(1, document.image.size.width))
         let format = UIGraphicsImageRendererFormat()
@@ -242,15 +284,16 @@ enum ScreenshotRendering {
         // same pixel boundary so an opaque canvas cannot leave a black last row.
         let size = CGSize(width: ceil(naturalSize.width * format.scale) / format.scale,
                           height: ceil(naturalSize.height * format.scale) / format.scale)
-        let restorations = restorationImage(document.image).map { restore($0, blocks: document.blocks) } ?? [:]
+        let restorations = restorationImage(document.image).map { restore($0, blocks: document.blocks.filter { $0.shouldOverlay(showUnchanged: showUnchanged) }) } ?? [:]
+        let layouts = textLayouts(for: document.blocks, canvasSize: size, textScale: textScale)
         return UIGraphicsImageRenderer(size: size, format: format).image { renderer in
             document.image.draw(in: CGRect(origin: .zero, size: size))
-            for block in document.blocks where block.placement == .overlay && block.translation != block.original {
-                let layout = textLayout(for: block, canvasSize: size, textScale: textScale)
+            for block in document.blocks where block.shouldOverlay(showUnchanged: showUnchanged) {
+                guard let layout = layouts[block.id] else { continue }
                 if layout.canRender { drawRestoration(restorations[block.id], canvas: size, in: renderer.cgContext) }
             }
-            for block in document.blocks where block.placement == .overlay && block.translation != block.original {
-                let layout = textLayout(for: block, canvasSize: size, textScale: textScale)
+            for block in document.blocks where block.shouldOverlay(showUnchanged: showUnchanged) {
+                guard let layout = layouts[block.id] else { continue }
                 guard layout.canRender else { continue } // Keep the original intact rather than paint a fragment/ellipsis.
                 let color = palette[block.id] ?? SampledColor(red: 1, green: 1, blue: 1)
                 drawText(block.translation, layout: layout, color: color.usesDarkText ? .black : .white,

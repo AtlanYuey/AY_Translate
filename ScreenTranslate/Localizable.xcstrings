@@ -21174,6 +21174,50 @@
           }
         }
       }
+    },
+    "Redraw unchanged recognized text": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Redraw unchanged recognized text"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "覆盖显示未变化的原文"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "覆蓋顯示未變化的原文"
+          }
+        }
+      }
+    },
+    "Also redraw recognized text already in the target language. Unchanged text is not translated again. Turn off to keep its original pixels.": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Also redraw recognized text already in the target language. Unchanged text is not translated again. Turn off to keep its original pixels."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "已识别且原本就是目标语言的文字也会覆盖显示。仅改变显示，不重复翻译；关闭时保留原图文字。"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "已識別且原本就是目標語言的文字也會覆蓋顯示。僅改變顯示，不重複翻譯；關閉時保留原圖文字。"
+          }
+        }
+      }
     }
   },
   "version": "1.0"

@@ -20,10 +20,15 @@ struct TranslationResultView: View {
     @State private var isClosing = false
     @State private var showsRecovery = false
     @State private var settingsAfterRecovery = false
-    @State private var preparedDocumentID: UUID?
+    private struct RenderingID: Hashable { let document: UUID; let showUnchanged: Bool }
+    private var renderingID: RenderingID? {
+        guard appState.phase == .ready, let id = appState.document?.id else { return nil }
+        return RenderingID(document: id, showUnchanged: settings.showsUnchangedText)
+    }
+    @State private var preparedDocumentID: RenderingID?
 
     private var showsImage: Bool { appState.displayedDocument != nil && (mode != .text || appState.document == nil) }
-    private var preparingImage: Bool { appState.phase == .ready && appState.document != nil && preparedDocumentID != appState.document?.id }
+    private var preparingImage: Bool { appState.phase == .ready && appState.document != nil && preparedDocumentID != renderingID }
     private var processing: Bool { appState.isProcessing || preparingImage }
     private var usesRootDismissGesture: Bool { !processing && !showsImage && mode != .text && imageZoom <= 1.01 }
 
@@ -98,21 +103,23 @@ struct TranslationResultView: View {
             guard appState.document != nil else { return }
             mode = settings.defaultResultMode
         }
-        .task(id: appState.phase == .ready ? appState.document?.id : nil) {
+        .task(id: renderingID) {
             // Vision/model decoding and inpainting must not allocate their
             // largest buffers at the same time inside the Share extension.
             guard appState.phase == .ready, let document = appState.document else { return }
+            let preparation = renderingID
+            let showUnchanged = settings.showsUnchangedText
             appState.beginRendering(id: document.id)
             let backgroundStart = ContinuousClock.now
             async let colors = ScreenshotRendering.paletteAsync(for: document)
-            async let patches = ScreenshotRendering.restorationsAsync(for: document)
+            async let patches = ScreenshotRendering.restorationsAsync(for: document, showUnchanged: showUnchanged)
             let (sampled, restored) = await (colors, patches)
             guard !Task.isCancelled, appState.document?.id == document.id else { return }
             palette = sampled
             restorations = restored
             let duration = backgroundStart.duration(to: .now).components
             backgroundSeconds = Double(duration.seconds) + Double(duration.attoseconds) / 1e18
-            preparedDocumentID = document.id
+            preparedDocumentID = preparation
             appState.finishRendering(id: document.id)
         }
     }
@@ -124,7 +131,7 @@ struct TranslationResultView: View {
                     FullTextContent(document: document).contentMargins(.bottom, 90)
                 } else {
                     ZoomableScreenshot(document: document, showsOriginal: mode == .original || processing, appearance: settings.appearance,
-                                       textScale: settings.overlayTextScale, allowsTextDetails: settings.showsTextDetailsOnTap, palette: palette, restorations: restorations, resetZoom: resetZoom,
+                                       textScale: settings.overlayTextScale, showUnchanged: settings.showsUnchangedText, allowsTextDetails: settings.showsTextDetailsOnTap, palette: palette, restorations: restorations, resetZoom: resetZoom,
                                        zoomChanged: { imageZoom = $0 }, allowsDismiss: !processing, dismissAction: { if !processing { close() } }) { selectedBlock = $0 }
                         .id(document.id)
                 }
@@ -292,6 +299,7 @@ private struct ZoomableScreenshot: View {
     let showsOriginal: Bool
     let appearance: TranslationAppearance
     let textScale: Double
+    let showUnchanged: Bool
     let allowsTextDetails: Bool
     let palette: [UUID: SampledColor]
     let restorations: [UUID: ScreenshotRendering.RestoredRegion]
@@ -304,14 +312,15 @@ private struct ZoomableScreenshot: View {
     var body: some View {
         GeometryReader { proxy in
             let fitted = ImageViewport.fittedSize(image: document.image.size, container: proxy.size)
+            let layouts = ScreenshotRendering.textLayouts(for: document.blocks, canvasSize: fitted, textScale: textScale)
             NativeZoomScroll(size: fitted, resetID: resetZoom, zoomChanged: zoomChanged, allowsDismiss: allowsDismiss, dismissAction: dismissAction) {
                 ZStack(alignment: .topLeading) {
                     Image(uiImage: document.image).resizable().frame(width: fitted.width, height: fitted.height)
                     if !showsOriginal {
                         Canvas { context, _ in
                             context.withCGContext { cg in
-                                for block in document.blocks where block.placement == .overlay && block.translation != block.original {
-                                    let layout = ScreenshotRendering.textLayout(for: block, canvasSize: fitted, textScale: textScale)
+                                for block in document.blocks where block.shouldOverlay(showUnchanged: showUnchanged) {
+                                    guard let layout = layouts[block.id] else { continue }
                                     guard layout.canRender else { continue }
                                     if appearance == .natural {
                                         ScreenshotRendering.drawRestoration(restorations[block.id], canvas: fitted, in: cg)
@@ -322,9 +331,11 @@ private struct ZoomableScreenshot: View {
                                 }
                             }
                         }.frame(width: fitted.width, height: fitted.height).allowsHitTesting(false)
-                        ForEach(document.blocks.filter { $0.placement == .overlay && $0.translation != $0.original }) { block in
-                            OverlayTextView(block: block, canvasSize: fitted, appearance: appearance, isRTL: document.target.isRightToLeft, textScale: textScale, color: palette[block.id] ?? SampledColor(red: 1, green: 1, blue: 1), restoration: restorations[block.id]) { select(block) }
+                        ForEach(document.blocks.filter { $0.shouldOverlay(showUnchanged: showUnchanged) }) { block in
+                            if let layout = layouts[block.id] {
+                            OverlayTextView(block: block, layout: layout, canvasSize: fitted, appearance: appearance, isRTL: document.target.isRightToLeft, textScale: textScale, color: palette[block.id] ?? SampledColor(red: 1, green: 1, blue: 1), restoration: restorations[block.id]) { select(block) }
                                 .allowsHitTesting(allowsTextDetails)
+                            }
                         }
                     }
                 }.frame(width: fitted.width, height: fitted.height)
@@ -335,6 +346,7 @@ private struct ZoomableScreenshot: View {
 
 private struct OverlayTextView: View {
     let block: RecognizedBlock
+    let layout: ScreenshotRendering.TextLayout
     let canvasSize: CGSize
     let appearance: TranslationAppearance
     let isRTL: Bool
@@ -344,15 +356,12 @@ private struct OverlayTextView: View {
     let onTap: () -> Void
 
     var body: some View {
-        let layout = ScreenshotRendering.textLayout(for: block, canvasSize: canvasSize, textScale: textScale,
-                                                   text: block.translation)
         let drawingRect = layout.textRect.insetBy(dx: -layout.fontSize * 0.08, dy: -layout.fontSize * 0.08)
         Canvas { context, _ in
             guard layout.canRender else { return }
-            let local = ScreenshotRendering.textLayout(for: block, canvasSize: canvasSize, textScale: textScale)
             context.withCGContext { cg in
                 cg.translateBy(x: -drawingRect.minX, y: -drawingRect.minY)
-                ScreenshotRendering.drawText(block.translation, layout: local,
+                ScreenshotRendering.drawText(block.translation, layout: layout,
                     color: appearance == .readable || !color.usesDarkText ? .white : .black, isRTL: isRTL, in: cg)
             }
         }

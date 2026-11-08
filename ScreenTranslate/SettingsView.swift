@@ -173,6 +173,10 @@ private struct DisplaySettingsView: View {
                 Picker("Overlay Appearance", selection: $settings.appearance) {
                     ForEach(TranslationAppearance.allCases) { Text(LocalizedStringKey($0.name)).tag($0) }
                 }
+                Toggle("Redraw unchanged recognized text", isOn: $settings.showsUnchangedText)
+                    .accessibilityIdentifier("settings.unchanged-text")
+                Text("Also redraw recognized text already in the target language. Unchanged text is not translated again. Turn off to keep its original pixels.")
+                    .font(.footnote).foregroundStyle(.secondary)
                 Toggle("Tap text for details", isOn: $settings.showsTextDetailsOnTap).accessibilityIdentifier("settings.text-details")
                 LabeledContent("Text Size", value: settings.overlayTextScale.formatted(.percent.precision(.fractionLength(0))))
                 Slider(value: $settings.overlayTextScale, in: 0.8...1.8, step: 0.1).accessibilityLabel("Translation text size")

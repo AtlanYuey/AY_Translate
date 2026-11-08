@@ -24,6 +24,37 @@ final class InterfaceAndServiceTests: XCTestCase {
         SavedAIService(name: name, configuration: .init(baseURL: url, model: "test-model"))
     }
 
+    func testUnchangedChineseOverlayIsOptInAndPreservesDocumentText() throws {
+        XCTAssertFalse(settings.showsUnchangedText)
+        let block = RecognizedBlock(id: UUID(), original: "请稍等", translation: "请稍等",
+            boundingBox: CGRect(x: 0.2, y: 0.7, width: 0.3, height: 0.04), confidence: 1)
+        let document = TranslationDocument(id: UUID(), image: image(), blocks: [block], source: .chinese, target: .chinese, createdAt: Date())
+        let off = ScreenshotRendering.translatedImage(document, palette: [:], textScale: 1)
+        let empty = TranslationDocument(id: document.id, image: document.image, blocks: [], source: .chinese, target: .chinese, createdAt: Date())
+        let untouched = ScreenshotRendering.translatedImage(empty, palette: [:], textScale: 1)
+        XCTAssertEqual(off.pngData(), untouched.pngData())
+        let on = ScreenshotRendering.translatedImage(document, palette: [:], textScale: 1, showUnchanged: true)
+        XCTAssertNotEqual(on.pngData(), untouched.pngData(), "Recognized target-language text must visibly draw when enabled")
+        XCTAssertEqual(document.blocks[0].translation, "请稍等")
+        settings.showsUnchangedText = true
+        XCTAssertTrue(AppSettings(defaults: defaults, keyStore: keys).showsUnchangedText)
+    }
+
+    func testEnlargedAdjacentVerticalTranslationsDoNotOverlap() throws {
+        let blocks = [0.3, 0.335].map { x in
+            RecognizedBlock(id: UUID(), original: "これは何ですか", translation: "这是什么东西", boundingBox: CGRect(x: x, y: 0.4, width: 0.03, height: 0.25), confidence: 1,
+                sourceLineHeight: 0.02, flow: .vertical, sourceColumnWidth: 0.03)
+        }
+        let layouts = ScreenshotRendering.textLayouts(for: blocks, canvasSize: CGSize(width: 390, height: 844), textScale: 1.8)
+        let first = try XCTUnwrap(layouts[blocks[0].id]), second = try XCTUnwrap(layouts[blocks[1].id])
+        XCTAssertTrue(first.canRender && second.canRender)
+        let a = first.textRect.insetBy(dx: -first.fontSize * 0.08, dy: -first.fontSize * 0.08)
+        let b = second.textRect.insetBy(dx: -second.fontSize * 0.08, dy: -second.fontSize * 0.08)
+        XCTAssertFalse(a.intersects(b), "Both translations must fit in their own space, including their outlines")
+        XCTAssertEqual(first.vertical?.glyphs.count, blocks[0].translation.count)
+        XCTAssertEqual(second.vertical?.glyphs.count, blocks[1].translation.count)
+    }
+
     private func image() -> UIImage {
         UIGraphicsImageRenderer(size: CGSize(width: 390, height: 780)).image { renderer in
             UIColor.white.setFill(); renderer.fill(CGRect(x: 0, y: 0, width: 390, height: 390))
@@ -356,12 +387,13 @@ final class InterfaceAndServiceTests: XCTestCase {
         let a = service("Feather 自签服务")
         try main.saveService(a, keyReplacement: "fixture-key-shared")
         try main.selectService(a.id, for: .translation)
-        main.target = .japanese; main.overlayTextScale = 1.2
+        main.target = .japanese; main.overlayTextScale = 1.2; main.showsUnchangedText = true
         let extensionSettings = AppSettings(defaults: other, keyStore: keys, syncThroughKeychain: true)
         XCTAssertEqual(extensionSettings.serviceCatalog, main.serviceCatalog)
         XCTAssertEqual(extensionSettings.translationEngine, .ai)
         XCTAssertEqual(extensionSettings.target, .japanese)
         XCTAssertEqual(extensionSettings.overlayTextScale, 1.2)
+        XCTAssertTrue(extensionSettings.showsUnchangedText)
         XCTAssertEqual(try extensionSettings.readAPIKey(for: .translation), "fixture-key-shared")
         try keys.save("", for: .sharedPreferences)
         main.refreshSharedPreferences()

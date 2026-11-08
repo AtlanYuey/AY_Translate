@@ -8,6 +8,93 @@ import XCTest
 @testable import ScreenTranslationCore
 
 final class VisionCoreTests: XCTestCase {
+    func testDifficultJapaneseCoverageAndRepeatabilityBenchmark() async throws {
+        // Synthetic handwriting-style type is NOT a real handwriting corpus.
+        // Include very small cases as measured limits, not a claim of 100% OCR.
+        let fontURL = try XCTUnwrap(Bundle.module.url(forResource: "Yomogi-Regular", withExtension: "ttf", subdirectory: "Fixtures"))
+        CTFontManagerRegisterFontsForURL(fontURL as CFURL, .process, nil)
+        let registered = CTFontCreateWithName("Yomogi-Regular" as CFString, 32, nil)
+        XCTAssertTrue((CTFontCopyFamilyName(registered) as String).contains("Yomogi"), "Do not silently substitute a printed font")
+        struct Sample {
+            let name: String, text: String, font: String
+            let x: CGFloat, y: CGFloat, size: CGFloat
+            let vertical: Bool, crooked: Bool, ruby: Bool
+            var bounds: CGRect {
+                let width = vertical ? size * 1.7 : CGFloat(text.count) * size * 1.12
+                let height = vertical ? CGFloat(text.count) * size * 1.3 : size * 1.7
+                return CGRect(x: (x - 6) / 900, y: 1 - (y + height + 6) / 1600, width: (width + 12) / 900, height: (height + 12) / 1600)
+            }
+        }
+        let samples = [
+            Sample(name: "handwriting-style-horizontal", text: "明日は図書館に行きます", font: "Yomogi-Regular", x: 90, y: 100, size: 32, vertical: false, crooked: false, ruby: false),
+            Sample(name: "handwriting-style-vertical", text: "ありがとうございます", font: "Yomogi-Regular", x: 680, y: 300, size: 32, vertical: true, crooked: false, ruby: false),
+            Sample(name: "crooked-vertical", text: "文字を確認してください", font: "HiraginoSans-W3", x: 500, y: 300, size: 26, vertical: true, crooked: true, ruby: false),
+            Sample(name: "tiny-12px-horizontal", text: "小さい文字も読み取ります", font: "HiraginoSans-W3", x: 90, y: 850, size: 12, vertical: false, crooked: false, ruby: false),
+            Sample(name: "tiny-14px-vertical", text: "今日はいい天気ですね", font: "HiraginoSans-W3", x: 720, y: 1000, size: 14, vertical: true, crooked: false, ruby: false),
+            Sample(name: "kanji-with-ruby", text: "図書館に行きます", font: "HiraginoSans-W3", x: 400, y: 1000, size: 26, vertical: true, crooked: false, ruby: true)
+        ]
+        let context = try canvas()
+        for sample in samples {
+            if !sample.vertical {
+                draw(sample.text, x: sample.x, y: sample.y, font: sample.font, size: sample.size, context: context)
+            } else {
+                for (index, glyph) in sample.text.enumerated() {
+                    let y = sample.y + CGFloat(index) * sample.size * 1.3
+                    context.saveGState()
+                    if sample.crooked {
+                        let center = CGPoint(x: sample.x + sample.size / 2, y: 1600 - y - sample.size / 2)
+                        context.translateBy(x: center.x, y: center.y)
+                        context.rotate(by: CGFloat([7, -9, 4, -5][index % 4]) * .pi / 180)
+                        context.translateBy(x: -center.x + CGFloat(index % 3 - 1) * 2, y: -center.y)
+                    }
+                    draw(String(glyph), x: sample.x, y: y, font: sample.font, size: sample.size, context: context)
+                    context.restoreGState()
+                    if sample.ruby && index < 3 {
+                        for (row, kana) in ["と", "しょ", "かん"][index].enumerated() {
+                            draw(String(kana), x: sample.x + sample.size + 2, y: y + CGFloat(row) * 9, font: "HiraginoSans-W3", size: 8, context: context)
+                        }
+                    }
+                }
+            }
+        }
+        let image = try XCTUnwrap(context.makeImage())
+        var report: [[String: Any]] = []
+        // Repeat the identical input three times; then change only the memory
+        // policy to expose differences caused by the tile grid.
+        for pass in 0..<4 {
+            let start = ContinuousClock.now
+            let blocks = try await VisionTextRecognizer.recognize(image, language: "ja", memoryLimited: true, underPressure: pass == 3)
+            let duration = start.duration(to: .now).components
+            try record(image, blocks: blocks, name: "difficult-japanese-\(pass)")
+            for sample in samples {
+                let matches = blocks.filter { sample.bounds.contains(CGPoint(x: $0.boundingBox.midX, y: $0.boundingBox.midY)) }
+                    .sorted { $0.flow == .vertical ? $0.boundingBox.maxY > $1.boundingBox.maxY : $0.boundingBox.minX < $1.boundingBox.minX }
+                let actual = matches.map(\.original).joined().filter { !$0.isWhitespace }
+                report.append(["sample": sample.name, "expected": sample.text, "actual": actual, "pass": pass,
+                    "underPressure": pass == 3, "found": !actual.isEmpty, "exact": actual == sample.text,
+                    "characterErrorRate": Double(editDistance(sample.text, actual)) / Double(sample.text.count),
+                    "seconds": Double(duration.seconds) + Double(duration.attoseconds) / 1e18])
+                // Readable body-size cases are regressions. Sub-16px text is a
+                // stress measurement; record every error instead of hiding it.
+                if sample.size >= 26 { XCTAssertFalse(actual.isEmpty, "Entire body-text region missing: \(sample.name), pass \(pass)") }
+            }
+        }
+        let folder = URL(fileURLWithPath: ProcessInfo.processInfo.environment["RUNNER_TEMP"] ?? NSTemporaryDirectory()).appendingPathComponent("vision-core")
+        try JSONSerialization.data(withJSONObject: report, options: [.prettyPrinted, .sortedKeys])
+            .write(to: folder.appendingPathComponent("difficult-japanese-metrics.json"))
+    }
+
+    private func editDistance(_ expected: String, _ actual: String) -> Int {
+        let a = Array(expected), b = Array(actual)
+        var previous = Array(0...b.count)
+        for (i, x) in a.enumerated() {
+            var row = [i + 1]
+            for (j, y) in b.enumerated() { row.append(min(previous[j + 1] + 1, row[j] + 1, previous[j] + (x == y ? 0 : 1))) }
+            previous = row
+        }
+        return previous[b.count]
+    }
+
     func testShortVerticalRepliesWithNoPrimaryObservationAreRecovered() async throws {
         let context = try canvas()
         for (column, phrase) in ["はい", "いいえ", "どうぞ"].enumerated() {
