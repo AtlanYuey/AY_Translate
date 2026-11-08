@@ -2,6 +2,4 @@
 
 ## 1.0.0
 
-AY Translate 的首个正式发布。功能、安装和迁移说明见 [发布说明](docs/releases/1.0.0.md)。
-
-本仓库保留开发历史；旧测试包中的 1.x 编号属于之前的应用身份，不代表 AY Translate 正式版本序列。
+AY Translate 的首个正式发布。功能与安装说明见 [发布说明](docs/releases/1.0.0.md)。

@@ -2,65 +2,57 @@
 
 <p><img src="ScreenTranslate/BrandAssets.xcassets/AYBrandIcon.imageset/AYBrandIcon.png" width="112" alt="AY Translate 应用图标"></p>
 
-面向 iPhone 和 iPad 的截图翻译工具：识别图片中的文字，在原位置显示译文，随时切换原图对照。
+面向 iPhone 和 iPad 的截图翻译工具。识别图片中的文字，将译文覆盖在原位置，保留画面上下文，随时切换原图对照。
 
-[![Build](https://github.com/AtlanYuey/AY-Translate/actions/workflows/release-ipa.yml/badge.svg)](https://github.com/AtlanYuey/AY-Translate/actions/workflows/release-ipa.yml)
-[![License: Apache 2.0](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](LICENSE)
+[下载应用](https://github.com/AtlanYuey/AY-Translate/releases/latest) · 最低支持 **iOS / iPadOS 26.5**。下载 IPA 后，使用 Feather 等工具和自己的签名安装。
 
-## 下载与安装
+## 功能与特色
 
-从 [Releases](https://github.com/AtlanYuey/AY-Translate/releases/latest) 下载 `AY-Translate-1.0.0-unsigned.ipa`，使用 Feather 等工具和自己的有效 Apple 签名安装。最低要求为 **iOS / iPadOS 26.5**。未签名 IPA 需要签名后才能安装；本仓库不提供签名证书。
+- **直接在图片上读译文**：按文字位置和字号显示翻译，处理原文笔画背景，支持描边和多种显示样式。
+- **多服务、多模型切换**：保存多组 AI 配置，给不同服务命名，在翻译时切换；支持获取模型列表，也可手动填写模型。
+- **识别与翻译分别选择**：可以使用苹果识别搭配 AI 翻译，也可以选择支持图片输入的 AI 进行识别；默认使用无需 API Key 的苹果本机引擎。
+- **日文竖排与识别核对**：支持竖排文字、分块合并和交叉查漏；可显示已识别但未变化的原文，方便检查哪些文字被识别到了。
+- **截图快捷翻译**：内置蓝色“AY Translate”快捷指令，可绑定操作按钮或轻点背面，在当前应用上方查看译图，关闭后返回。
+- **阅读方式可调整**：双指缩放、拖动、原图对照、全文阅读、译文字号、点字详情都可按习惯使用。
+- **可选历史与设置同步**：按需保存翻译历史，或开启 iCloud 自动同步语言、显示和 AI 服务配置；API Key、图片和历史不参与 iCloud 同步。
 
-首个正式版本为 **1.0.0**。此前 1.x 开发测试包属于旧应用身份，不代表本仓库的正式发布版本。
+AY Translate 的特色是把“识别、翻译、显示”分别交给你选择：既能直接使用本机引擎，也能组合自己的 AI 服务，并在原画面中阅读和核对结果。识别效果会受图片清晰度、字体和所选引擎影响。
 
-## 功能
+## 开始翻译
 
-- Apple Vision 本机文字识别与 Apple 翻译，默认无需 API Key。
-- 日文竖排、分块文字合并和本机交叉查漏；无法保证任意图片或极小、模糊文字都完全识别。
-- 多个 OpenAI 兼容 AI 服务，可分别选择识别和翻译模型；支持模型列表、参数预设、自定义参数和测试。
-- 按文字笔画处理原文背景，译文位置和字号自适应，支持描边、原图对照、全文阅读及原生缩放。
-- “覆盖显示未变化的原文”开关，可查看原本已是目标语言的已识别文字。
-- 随包提供蓝色“AY Translate”截屏快捷指令，可自行绑定操作按钮或轻点背面。
-- 可选翻译历史、可选文字详情、中文等多语言界面，以及 iPhone/iPad 横竖屏布局。
-- 开启 iCloud 后自动同步语言、显示设置和 AI 服务定义；密钥、截图、历史及云端调用许可保留在本机。
+1. 打开底部“翻译”页面，选择源语言和目标语言；源语言可设为自动检测。使用苹果翻译时，按系统提示下载所需语言模型。
+2. 点击“选择图片翻译”，从照片中选取截图或图片；也可以在系统分享菜单中选择 AY Translate。
+3. 想用截屏触发：进入“设置 → 快捷操作 → 操作按钮与快捷指令”，点击“添加截图翻译指令”，再到系统设置中绑定操作按钮或轻点背面。
+4. 想用 AI：进入“设置 → AI 服务”添加服务，填写接口地址、API Key 和模型，完成测试后，在“识别引擎”或“翻译引擎”中选用。AI 处理会在授权后将相应图片或文字发送至你配置的服务。
 
-## 使用
+## 设置在哪里
 
-1. 打开应用，选择目标语言；使用苹果翻译时按系统提示下载所需语言模型。
-2. 从照片选择图片，或通过系统分享将截图发送到 AY Translate。
-3. 在“设置 → 快捷操作”导入内置快捷指令，并在系统中绑定操作按钮等触发方式。
-4. 使用 AI 时先在“设置 → AI 服务”添加服务、密钥和模型，并进行文字/图片识别测试。
+| 想调整什么 | 入口与说明 |
+| --- | --- |
+| 软件界面语言 | 设置 → 软件语言 |
+| 文字识别方式 | 设置 → 文字识别 → 识别引擎；源语言也在这里选择 |
+| 翻译方式和目标语言 | 设置 → 译文 → 翻译引擎、目标语言；可选择速度优先或质量优先 |
+| 添加、编辑 AI 服务 | 设置 → AI 服务；支持模型列表、请求参数、测试翻译，图片模型还可测试图片识别 |
+| 译文样式和字号 | 设置 → 显示 → 文字显示样式、译文字号 |
+| 默认打开译图、原图或全文 | 设置 → 显示 → 默认结果模式 |
+| 显示已识别但没有变化的文字 | 设置 → 显示 → 覆盖显示未变化的原文；包括原本就是目标语言的文字，默认关闭 |
+| 点击文字查看原文和译文 | 设置 → 显示 → 点击文字查看详情，默认关闭 |
+| 保存、清空翻译历史 | 设置 → 翻译历史；开启保存后，底部出现“历史”页面 |
+| 设置同步和配置复制 | 设置 → 配置同步 |
+| 查看隐私说明、撤销云端调用许可 | 设置 → 隐私 |
+| 设置截屏快捷指令 | 设置 → 快捷操作 → 操作按钮与快捷指令 |
+| 查看处理诊断 | 设置 → 处理诊断 |
+| 版本与开源许可 | 设置 → 关于AY Translate |
 
-iOS 的系统分享宿主有时以卡片展示扩展。快捷指令导入和硬件触发器绑定需要用户在系统界面确认。
+## 译图页面怎么操作
 
-## iCloud 与签名
+- **双指缩放、拖动平移**：查看小字和图片细节，双击切换缩放。
+- **点击右下角原图图标**：在原图与译图之间切换。
+- **长按原图图标**：打开更多操作，包括复制原文或译文、全文阅读、重置缩放、切换引擎和目标语言、查看处理耗时及进入设置。
+- **点击关闭按钮**：结束本次查看；通过快捷指令或系统分享进入时，返回原应用。
 
-- 主应用 Bundle ID：`com.atlanyuey.translate`
-- 分享扩展：`com.atlanyuey.translate.ShareExtension`
-- App Group：`group.com.atlanyuey.translate`
-- 共享钥匙串组：`$(AppIdentifierPrefix)com.atlanyuey.translate`
-- iCloud 键值存储：`$(TeamIdentifierPrefix)com.atlanyuey.translate`
+有自己的 Apple 开发者账号、希望使用 iCloud 同步，可按[配置方法](docs/Signing-and-iCloud.md)为应用启用键值存储权限，签名安装后在“设置 → 配置同步”开启同步。
 
-本项目使用 `NSUbiquitousKeyValueStore`，不使用 CloudKit 数据库，也不需要另建 `iCloud.com…` CloudKit 容器。需要在 Apple Developer 中为显式 App ID 配置 iCloud 键值存储能力，并让签名描述文件保留对应权限。只有填写 Bundle ID 并不能开通 iCloud。各设备需使用同一 iCloud 账号和匹配的签名身份；Feather 或签名服务若移除该权限，应用不能自行补回。
+---
 
-在“设置 → 配置同步”开启 iCloud 后，保存的设置和后续更改会自动排队同步，手动上传仅为备用入口。跨设备实际同步仍由系统、网络和签名权限决定。
-
-## 从旧测试版迁移
-
-新 ID 与旧测试版相互隔离，正式版可与旧版并存。在旧版“设置 → 配置同步 → 复制配置与 API 密钥”中复制，随即打开新版的同一页面导入。配置只在本机剪贴板保留 60 秒；导入后重新确认云端调用许可。旧快捷指令指向旧 ID，请导入正式版随附的快捷指令。
-
-## 开发与构建
-
-使用 Xcode 26.6 或提供兼容 SDK 的更新版本打开 `ScreenTranslate.xcodeproj`。选择自己的开发团队，注册上述 App ID、App Group 和能力后编译。工程内部保留部分 `ScreenTranslate` 文件/目标名称，以保留上游历史；对外名称为 AY Translate。
-
-核心测试：`swift test --jobs 3`。Apple CI 另外运行实际 Vision 识别、iPhone 流程、连续分享和 iPad 横竖屏测试。`v*` 标签在全部检查通过后生成 GitHub Release。快捷指令源模板在 `Shortcuts/`，本地重新签名可使用 `tools/sign-shortcut.sh`；CI 验证签名归档与源模板一致。
-
-[首发说明](docs/releases/1.0.0.md) · [签名与 iCloud 配置](docs/Signing-and-iCloud.md) · [修改声明](MODIFICATIONS.md)
-
-## 开源来源与许可
-
-AY Translate 由 AtlanYuey 维护，基于 Bahaa 和贡献者开发的 [Translate Screen](https://github.com/0xffvirus/translate-screen) 修改，独立发布，不代表原作者背书。
-
-代码以 [Apache License 2.0](LICENSE) 发布，并保留原项目 [NOTICE](NOTICE)。主要修改见 [MODIFICATIONS.md](MODIFICATIONS.md)。服务商图标包含 LobeHub Icons，遵循 [MIT 许可](docs/ProviderIcons-LICENSE)；这些品牌图标仅用于识别对应服务。Yomogi 字体仅用于测试，其 SIL OFL 1.1 随测试资源保留，不包含在安装包中。应用“关于 → 开源许可”也提供相关声明。
-
-AY Translate is an independent Apache-2.0 derivative of Translate Screen. Original attribution and third-party licenses are retained in the repository and distributed app.
+基于 Bahaa 及贡献者的 [Translate Screen](https://github.com/0xffvirus/translate-screen) 修改，以 [Apache 2.0](LICENSE) 发布；原作者声明和第三方许可见 [NOTICE](NOTICE)。
