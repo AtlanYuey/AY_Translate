@@ -1,0 +1,81 @@
+name: Publish an already verified release
+
+on:
+  workflow_dispatch:
+    inputs:
+      run_id:
+        description: "Successful build/test run containing the unsigned IPA"
+        required: true
+        type: string
+      tag:
+        description: "Existing version tag matching the tested source"
+        required: true
+        type: string
+
+permissions:
+  contents: write
+  actions: read
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Verify tested source and required checks
+        id: verified
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+          RUN_ID: ${{ inputs.run_id }}
+          RELEASE_TAG: ${{ inputs.tag }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          import json, os, re, subprocess
+          repo, run, tag = os.environ['GH_REPO'], os.environ['RUN_ID'], os.environ['RELEASE_TAG']
+          assert re.fullmatch(r'\d+', run)
+          assert re.fullmatch(r'v\d+\.\d+\.\d+', tag)
+          def api(path):
+              return json.loads(subprocess.check_output(['gh', 'api', 'repos/' + repo + '/' + path]))
+          build = api('actions/runs/' + run)
+          assert build['status'] == 'completed', 'Build has not finished'
+          assert build['path'] == '.github/workflows/release-ipa.yml'
+          assert build['repository']['full_name'].lower() == repo.lower()
+          ref = api('git/ref/tags/' + tag)['object']
+          if ref['type'] == 'tag':
+              ref = api('git/tags/' + ref['sha'])['object']
+          assert ref['type'] == 'commit' and ref['sha'] == build['head_sha'], 'Tag differs from tested source'
+          checks = {j['name']: j['conclusion'] for j in api('actions/runs/' + run + '/jobs?per_page=100')['jobs']}
+          for name in ['Test and build unsigned IPA', 'Verify native Vision on macOS 15 Intel', 'Check iPad portrait and landscape']:
+              assert checks.get(name) == 'success', 'Required validation did not pass: ' + name
+          with open(os.environ['GITHUB_OUTPUT'], 'a') as output:
+              output.write('version=' + tag[1:] + '\n')
+              output.write('sha=' + ref['sha'] + '\n')
+          PY
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ steps.verified.outputs.sha }}
+      - uses: actions/download-artifact@v4
+        with:
+          github-token: ${{ github.token }}
+          run-id: ${{ inputs.run_id }}
+          name: AY-Translate-${{ steps.verified.outputs.version }}-unsigned
+          path: release-files
+      - name: Verify checksum and publish files
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+          RELEASE_TAG: ${{ inputs.tag }}
+          VERSION: ${{ steps.verified.outputs.version }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          IPA_NAME="AY-Translate-$VERSION-unsigned.ipa"
+          (cd release-files && sha256sum -c "$IPA_NAME.sha256")
+          test -s "docs/releases/$VERSION.md"
+          if gh release view "$RELEASE_TAG" > /dev/null 2>&1; then
+            gh release upload "$RELEASE_TAG" "release-files/$IPA_NAME" "release-files/$IPA_NAME.sha256" --clobber
+            gh release edit "$RELEASE_TAG" --draft=false --prerelease=false --latest --title "AY Translate $VERSION" --notes-file "docs/releases/$VERSION.md"
+          else
+            gh release create "$RELEASE_TAG" "release-files/$IPA_NAME" "release-files/$IPA_NAME.sha256" --verify-tag --latest --title "AY Translate $VERSION" --notes-file "docs/releases/$VERSION.md"
+          fi
