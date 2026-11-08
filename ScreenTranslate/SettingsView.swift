@@ -135,14 +135,10 @@ private struct AboutView: View {
     var body: some View {
         NavigationStack {
             VStack(spacing: 18) {
-                ZStack {
-                    RoundedRectangle(cornerRadius: 24)
-                        .fill(.blue.gradient)
-                        .frame(width: 104, height: 104)
-                    Image(systemName: "viewfinder")
-                        .font(.system(size: 50, weight: .medium))
-                        .foregroundStyle(.white)
-                }
+                Image("AYBrandIcon")
+                    .resizable().scaledToFit()
+                    .frame(width: 104, height: 104)
+                    .clipShape(RoundedRectangle(cornerRadius: 24))
                 Text("AY Translate").font(.title2.bold())
                 Text("See it. Press. Understand.")
                     .foregroundStyle(.secondary)
