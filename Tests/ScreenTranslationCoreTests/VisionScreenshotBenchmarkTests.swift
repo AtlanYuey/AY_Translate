@@ -64,6 +64,11 @@ final class VisionScreenshotBenchmarkTests: XCTestCase {
                 report.append(["mode": mode, "sample": sample.name, "expected": expected, "actual": actual, "exact": actual == expected,
                                "characterErrorRate": Double(errors) / Double(expected.count), "seconds": seconds])
                 if sample.body { XCTAssertFalse(actual.isEmpty, "\(sample.name) missing in \(mode) mode") }
+                // On the current document engine every mode, including the
+                // app, must transcribe the whole page exactly (11–12 px too).
+                if #available(macOS 26.0, iOS 26.0, *) {
+                    XCTAssertEqual(actual, expected, "Transcript regression in \(sample.name), \(mode) mode")
+                }
             }
             // Duplicate overlays of the same ink are a visible error ("too much").
             let overlays = blocks.filter { $0.placement == .overlay }

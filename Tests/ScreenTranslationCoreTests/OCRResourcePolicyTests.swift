@@ -26,6 +26,13 @@ final class OCRResourcePolicyTests: XCTestCase {
         XCTAssertFalse(app.prefersCPU); XCTAssertTrue(app.allowsConcurrentPasses)
     }
 
+    func testAppAlsoReadsLargePagesInSourceResolutionTiles() {
+        let app = OCRResourcePolicy(memoryLimited: false)
+        XCTAssertEqual(app.tileDimension, 1536)
+        XCTAssertEqual(app.regions(for: CGSize(width: 1179, height: 2556)).count, 2, "Small print needs source-resolution tiles")
+        XCTAssertEqual(app.regions(for: CGSize(width: 900, height: 1200)), [CGRect(x: 0, y: 0, width: 1, height: 1)])
+    }
+
     func testOverlappingWindowsCoverEverySourcePixelAndBoundTheWorkingArea() {
         for constrained in [false, true] {
             let policy = OCRResourcePolicy(memoryLimited: true, recentWarning: constrained)

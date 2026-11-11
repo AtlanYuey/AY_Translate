@@ -29,9 +29,10 @@ nonisolated struct OCRResourcePolicy: Sendable {
 
     /// Overlap preserves lines straddling a tile boundary. Each tile uses source
     /// pixels rather than shrinking the whole page (and its small ruby text).
+    /// The app tiles too: a single full-page request misread 11–12 px print
+    /// that the same tiles read exactly (phone-screenshot benchmark).
     func regions(for size: CGSize) -> [CGRect] {
         guard size.width > 0, size.height > 0, size.width.isFinite, size.height.isFinite else { return [] }
-        guard memoryLimited else { return [CGRect(x: 0, y: 0, width: 1, height: 1)] }
         let dimension = CGFloat(tileDimension)
         func starts(_ extent: CGFloat) -> [CGFloat] {
             guard extent > dimension else { return [0] }
