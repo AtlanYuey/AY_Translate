@@ -200,7 +200,7 @@ final class OpenAIClientTests: XCTestCase {
             XCTAssertTrue(prompt.contains("番号0") && prompt.contains("番号29"), "Every batch sees the whole screen")
             let data = try XCTUnwrap(prompt.components(separatedBy: "Regions to translate:\n").last?.data(using: .utf8))
             let input = try XCTUnwrap(JSONSerialization.jsonObject(with: data) as? [[String: String]])
-            XCTAssertLessThanOrEqual(input.count, 12)
+            XCTAssertLessThanOrEqual(input.count, 20)
             let translations = input.map { ["id": $0["id"]!, "text": "译" + $0["text"]!.suffix(3)] }
             return (200, try self.response(String(decoding: JSONSerialization.data(withJSONObject: ["translations": translations]), as: UTF8.self)))
         }

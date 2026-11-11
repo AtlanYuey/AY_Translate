@@ -183,7 +183,7 @@ nonisolated struct OpenAIClient: Sendable {
     /// fixed region count. A long article still uses a bounded request count.
     static func translationBatches(_ blocks: [RecognizedBlock], preference: TranslationPreference) -> [[RecognizedBlock]] {
         let total = blocks.reduce(0) { $0 + $1.original.count }
-        let regions = preference == .quality ? 24 : 12
+        let regions = preference == .quality ? 32 : 20
         let characters = max(preference == .quality ? 900 : 360, total / 8 + 1)
         var batches: [[RecognizedBlock]] = [], current: [RecognizedBlock] = [], count = 0
         for block in blocks {
