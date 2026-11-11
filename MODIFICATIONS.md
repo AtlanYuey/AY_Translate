@@ -118,6 +118,7 @@ AY Translate 由 AtlanYuey 于 2026 年基于 [Translate Screen](https://github.
 - `Tests/ScreenTranslationCoreTests/Fixtures/OFL.txt`
 - `Tests/ScreenTranslationCoreTests/Fixtures/README.md`
 - `Tests/ScreenTranslationCoreTests/Fixtures/Yomogi-Regular.ttf`
+- `Tests/ScreenTranslationCoreTests/Fixtures/landscape-title-gray-392x109.raw`
 - `Tests/ScreenTranslationCoreTests/GeometryAndPlanningTests.swift`
 - `Tests/ScreenTranslationCoreTests/OCRReconciliationTests.swift`
 - `Tests/ScreenTranslationCoreTests/OCRResourcePolicyTests.swift`

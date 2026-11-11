@@ -20,3 +20,11 @@ the sub-16 px cases. The legacy engine retains metrics and a body-region presenc
 check because it is less accurate. Ruby transcriptions are retained separately in
 the report, including their errors; perfect body recognition is not reported as
 perfect recognition of the 8 px annotations.
+
+`landscape-title-gray-392x109.raw` is an 8-bit grayscale crop (392 × 109, row-major,
+top-left origin) of the "MENU SEMANA" title from the iOS landscape-photo rendering
+test (44 pt bold system font on white, 2048 × 1152 source, crop origin 365,112).
+Tiled recognition returns a tighter 35.7 px line box for it; the background
+samples of the second M's left foot then fall in the neighbouring letters.
+`RestorationEquivalenceTests` uses it to show the wider background retry removes
+that remnant.

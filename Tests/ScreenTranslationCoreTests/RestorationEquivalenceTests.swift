@@ -5,8 +5,8 @@ import CoreGraphics
 #endif
 @testable import ScreenTranslationCore
 
-/// The allocation-free restoration must stay byte-identical to the previous
-/// implementation (kept verbatim below as the reference).
+/// Without the wider background retry, the allocation-free restoration must
+/// stay byte-identical to the previous implementation (kept verbatim below).
 final class RestorationEquivalenceTests: XCTestCase {
     func testOptimizedRestorationMatchesTheReferenceByteForByte() {
         var generator = SystemRandomNumberGenerator()
@@ -24,11 +24,41 @@ final class RestorationEquivalenceTests: XCTestCase {
             let glyphs = [CGRect(x: 4, y: 4, width: Double(width) * 0.45, height: Double(height) - 8),
                           CGRect(x: Double(width) * 0.5, y: 6, width: Double(width) * 0.4, height: Double(height) * 0.6)]
             let size = Double.random(in: 4...30, using: &generator)
-            let fast = TextInkRestoration.restore(pixels: pixels, width: width, height: height, glyphs: glyphs, glyphSize: size)
+            let fast = TextInkRestoration.restore(pixels: pixels, width: width, height: height, glyphs: glyphs, glyphSize: size, widerRetry: false)
             let reference = Self.legacyRestore(pixels: pixels, width: width, height: height, glyphs: glyphs, glyphSize: size)
             XCTAssertEqual(fast.pixels, reference.pixels, "trial \(trial)")
             XCTAssertEqual(fast.changedPixels, reference.changedPixels, "trial \(trial)")
         }
+    }
+
+    /// Real pixels: tight, tiled-recognition glyph boxes around a bold title.
+    /// The first background estimate of the second M's foot lands in the
+    /// neighbouring letters; the wider retry must still remove that ink.
+    func testWiderBackgroundRetryRemovesBoldStrokeNextToNeighbouringLetter() throws {
+        let url = try XCTUnwrap(Bundle.module.url(forResource: "landscape-title-gray-392x109", withExtension: "raw", subdirectory: "Fixtures"))
+        let gray = [UInt8](try Data(contentsOf: url))
+        let width = 392, height = 109
+        XCTAssertEqual(gray.count, width * height)
+        var pixels = [UInt8](repeating: 255, count: width * height * 4)
+        for i in gray.indices { pixels[i * 4] = gray[i]; pixels[i * 4 + 1] = gray[i]; pixels[i * 4 + 2] = gray[i] }
+        // Ink spans of "MENU SEMANA" (source x), rows 150...182, crop origin 365,112.
+        let spans = [(403, 434), (441, 460), (466, 491), (498, 523), (538, 561), (567, 586), (592, 623), (629, 657), (661, 686), (691, 719)]
+        let margin = 35.72 * 0.1
+        let glyphs = spans.map { CGRect(x: Double($0.0 - 365) - margin, y: Double(149 - 112) - margin,
+                                        width: Double($0.1 - $0.0 + 1) + 2 * margin, height: 35 + 2 * margin) }
+        func remnants(_ patch: TextInkRestoration.Patch) -> Int {
+            var count = 0
+            for y in (145 - 112)...(190 - 112) { for x in 0..<width where patch.pixels[(y * width + x) * 4] < 200 { count += 1 } }
+            return count
+        }
+        let original = TextInkRestoration.restore(pixels: pixels, width: width, height: height, glyphs: glyphs, glyphSize: 35.72, widerRetry: false)
+        XCTAssertGreaterThan(remnants(original), 0, "Reproduces the remnant left by the single-radius estimate")
+        let retried = TextInkRestoration.restore(pixels: pixels, width: width, height: height, glyphs: glyphs, glyphSize: 35.72)
+        XCTAssertEqual(remnants(retried), 0)
+        // Pixels outside the glyph guidance remain untouched.
+        for y in 0..<height { for x in 0..<width where !glyphs.contains(where: { $0.insetBy(dx: -1, dy: -1).contains(CGPoint(x: Double(x) + 0.5, y: Double(y) + 0.5)) }) {
+            XCTAssertEqual(retried.pixels[(y * width + x) * 4], pixels[(y * width + x) * 4])
+        } }
     }
 
     // MARK: - Reference implementation (AY Translate 1.0.0)

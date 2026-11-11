@@ -42,7 +42,10 @@ nonisolated enum TextInkRestoration {
         return result
     }
 
-    static func restore(pixels: [UInt8], width: Int, height: Int, glyphs: [CGRect], glyphSize: Double) -> Patch {
+    /// `widerRetry` re-estimates the background once at 1.5× the radius when
+    /// the first eight samples disagree, e.g. a bold stroke whose samples land
+    /// in the neighbouring letter. Disabled only for the reference comparison.
+    static func restore(pixels: [UInt8], width: Int, height: Int, glyphs: [CGRect], glyphSize: Double, widerRetry: Bool = true) -> Patch {
         guard width > 2, height > 2, width * height <= 1_000_000, pixels.count == width * height * 4 else {
             return Patch(pixels: pixels, width: width, height: height, changedPixels: 0)
         }
@@ -67,12 +70,12 @@ nonisolated enum TextInkRestoration {
         // Eight surrounding samples estimate background without a global dark/
         // light assumption. Both dark glyphs and white outline can be detected.
         // One reused scratch buffer: no heap allocation per pixel.
-        let offsets = [(-radius,0),(radius,0),(0,-radius),(0,radius),(-radius,-radius),(radius,-radius),(-radius,radius),(radius,radius)]
+        let directions = [(-1,0),(1,0),(0,-1),(0,1),(-1,-1),(1,-1),(-1,1),(1,1)]
+        let wide = radius * 3 / 2 + 1
         var samples = [Int](repeating: 0, count: 8)
-        for i in allowed.indices where allowed[i] {
-            let x = i % width, y = i / width
-            for (k, (dx, dy)) in offsets.enumerated() {
-                let xx = min(width - 1, max(0, x + dx)), yy = min(height - 1, max(0, y + dy))
+        func estimate(_ x: Int, _ y: Int, _ distance: Int) -> Int {
+            for (k, (dx, dy)) in directions.enumerated() {
+                let xx = min(width - 1, max(0, x + dx * distance)), yy = min(height - 1, max(0, y + dy * distance))
                 samples[k] = Int(luminance[yy * width + xx])
             }
             // Insertion sort of eight values, identical order to sort().
@@ -82,11 +85,20 @@ nonisolated enum TextInkRestoration {
                 while b >= 0 && samples[b] > value { samples[b + 1] = samples[b]; b -= 1 }
                 samples[b + 1] = value
             }
-            let middle = (samples[3] + samples[4]) / 2
-            localBackground[i] = UInt8(middle)
+            return (samples[3] + samples[4]) / 2
+        }
+        for i in allowed.indices where allowed[i] {
+            let x = i % width, y = i / width
+            var middle = estimate(x, y, radius)
             // Ignore uncertain picture edges; outlined text remains readable
             // there even if conservative restoration retains some original ink.
-            mask[i] = abs(Int(luminance[i]) - middle) > 58 && samples[5] - samples[2] < 80
+            var ink = abs(Int(luminance[i]) - middle) > 58 && samples[5] - samples[2] < 80
+            if !ink && widerRetry {
+                let second = estimate(x, y, wide)
+                if abs(Int(luminance[i]) - second) > 58 && samples[5] - samples[2] < 80 { middle = second; ink = true }
+            }
+            localBackground[i] = UInt8(middle)
+            mask[i] = ink
         }
         // Recover connected stroke edges from a confirmed ink seed. Periodic
         // letters can contaminate the surrounding samples at a cap/descender.
@@ -111,7 +123,6 @@ nonisolated enum TextInkRestoration {
             if frontier.isEmpty { break }
         }
         var output = pixels, changed = 0
-        let directions = [(-1,0),(1,0),(0,-1),(0,1),(-1,-1),(1,-1),(-1,1),(1,1)]
         var found = [Int](repeating: 0, count: 8), distances = [Int](repeating: 0, count: 8), weights = [Double](repeating: 0, count: 8)
         for i in mask.indices where mask[i] {
             let x = i % width, y = i / width
