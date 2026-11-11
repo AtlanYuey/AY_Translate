@@ -248,9 +248,17 @@ enum ScreenshotRendering {
             return true
         }
         guard rendered, !Task.isCancelled else { return nil }
-        let glyphs = (block.sourceGlyphBoxes ?? [block.boundingBox]).map {
+        // Glyph boxes from different recognition windows can differ by a pixel
+        // or two at a baseline or the last stroke. Allow a margin proportional
+        // to the glyph; restoration still removes only locally contrasting ink.
+        let margin = min(6, max(1, font * min(sx, sy) * 0.1))
+        // A character without its own box (the framework returned none) must
+        // not survive as untouched original ink: fall back to the line box.
+        var guidance = block.sourceGlyphBoxes ?? [block.boundingBox]
+        if guidance.count < block.original.filter({ !$0.isWhitespace }).count { guidance.append(block.boundingBox) }
+        let glyphs = guidance.map {
             CGRect(x: ($0.minX * width - rect.minX) * sx, y: ((1 - $0.maxY) * height - rect.minY) * sy,
-                   width: $0.width * width * sx, height: $0.height * height * sy).insetBy(dx: -1, dy: -1)
+                   width: $0.width * width * sx, height: $0.height * height * sy).insetBy(dx: -margin, dy: -margin)
         }
         let patch = TextInkRestoration.restore(pixels: bytes, width: w, height: h, glyphs: glyphs, glyphSize: font * min(sx, sy))
         guard patch.changedPixels > 0, !Task.isCancelled else { return nil }
