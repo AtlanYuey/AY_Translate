@@ -17,7 +17,14 @@ struct ProcessingServices {
             vision: { try await ScreenReader.recognize(in: $0, source: $1) },
             aiOCR: { image, anchors, configuration, key in
                 let data = try screenshotJPEG(image)
-                return try await client.recognize(imageData: data, anchors: anchors, configuration: configuration, apiKey: key)
+                // A small grayscale copy lets text found only by the model
+                // (often handwriting) be placed where local pixels show ink.
+                let upright = try ScreenshotInput.bounded(image).cgImage
+                let locator = await Task.detached(priority: .userInitiated) { () -> InkLocator? in
+                    guard let upright, let raster = VisionTextRecognizer.grayscaleImage(upright) else { return nil }
+                    return InkLocator(pixels: raster.bytes, width: raster.width, height: raster.height)
+                }.value
+                return try await client.recognize(imageData: data, anchors: anchors, configuration: configuration, apiKey: key, locator: locator)
             },
             aiTranslation: { blocks, source, target, preference, configuration, key in
                 try await client.translate(blocks, source: source == .automatic ? "auto-detect" : source.name, target: target.name + " (" + target.rawValue + ")", preference: preference, configuration: configuration, apiKey: key)

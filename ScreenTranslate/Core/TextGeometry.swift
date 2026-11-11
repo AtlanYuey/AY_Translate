@@ -56,15 +56,34 @@ nonisolated struct AIRecognizedRegion: Codable, Sendable {
         self.id = id; self.text = text; self.box = box
     }
 
-    private enum CodingKeys: String, CodingKey { case id, text, box }
+    private enum CodingKeys: String, CodingKey { case id, text, box, box_2d }
     init(from decoder: Decoder) throws {
         let values = try decoder.container(keyedBy: CodingKeys.self)
         // Both 0 and "0" identify the same compact anchor. Gemini commonly
         // emits integer IDs even when the prompt's example uses strings.
         if let integer = try? values.decode(Int.self, forKey: .id) { id = String(integer) }
-        else { id = try values.decodeIfPresent(String.self, forKey: .id) }
+        else { id = try? values.decodeIfPresent(String.self, forKey: .id) }
         text = try values.decode(String.self, forKey: .text)
-        box = try values.decodeIfPresent([Double].self, forKey: .box)
+        if let box = try? values.decodeIfPresent([Double].self, forKey: .box) { self.box = box }
+        else { box = (try? values.decodeIfPresent([Double].self, forKey: .box_2d)).flatMap(Self.normalizedBox2D) }
+    }
+
+    func encode(to encoder: Encoder) throws {
+        var values = encoder.container(keyedBy: CodingKeys.self)
+        try values.encodeIfPresent(id, forKey: .id)
+        try values.encode(text, forKey: .text)
+        try values.encodeIfPresent(box, forKey: .box)
+    }
+
+    /// Gemini's native detection format: [ymin, xmin, ymax, xmax] on a 0–1000
+    /// grid, origin top left. Converted to the app's [x, y, width, height].
+    static func normalizedBox2D(_ values: [Double]) -> [Double]? {
+        guard values.count == 4, values.allSatisfy({ $0.isFinite && $0 >= 0 }) else { return nil }
+        let scale = values.allSatisfy { $0 <= 1 } ? 1.0 : 1000.0
+        let v = values.map { min(1, $0 / scale) }
+        let (top, left, bottom, right) = (min(v[0], v[2]), min(v[1], v[3]), max(v[0], v[2]), max(v[1], v[3]))
+        guard right > left, bottom > top else { return nil }
+        return [left, top, right - left, bottom - top]
     }
 }
 
@@ -82,7 +101,7 @@ nonisolated enum OCRAlignment {
 
     /// AI coordinates alone are never trusted for overlays. An ID or a unique
     /// text/geometry match must resolve to a real, local Vision observation.
-    static func resolve(_ regions: [AIRecognizedRegion], anchors: [RecognizedBlock]) throws -> OCRResult {
+    static func resolve(_ regions: [AIRecognizedRegion], anchors: [RecognizedBlock], locator: InkLocator? = nil) throws -> OCRResult {
         guard !regions.isEmpty, regions.count <= 500,
               regions.allSatisfy({ !$0.text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty && $0.text.count <= 8_000 }) else {
             throw AIServiceError.invalidRegions
@@ -92,6 +111,7 @@ nonisolated enum OCRAlignment {
         var blocks = anchors
         var used = Set<UUID>()
         var unmatched: [RecognizedBlock] = []
+        var located: [RecognizedBlock] = []
         for region in regions {
             let text = region.text.trimmingCharacters(in: .whitespacesAndNewlines)
             let byID = region.id.flatMap(UUID.init(uuidString:)).flatMap { id in anchors.firstIndex { $0.id == id } }
@@ -107,12 +127,43 @@ nonisolated enum OCRAlignment {
                 used.insert(anchors[index].id)
                 let anchor = anchors[index]
                 blocks[index] = RecognizedBlock(id: anchor.id, original: text, translation: text, boundingBox: anchor.boundingBox, confidence: anchor.confidence, sourceLineHeight: anchor.originalLineHeight, flow: anchor.flow, sourceColumnWidth: anchor.sourceColumnWidth, sourceGlyphBoxes: anchor.sourceGlyphBoxes)
+            } else if let locator, let modelBox = visionRect(from: region.box), let box = locator.verifiedBox(modelBox),
+                      !covered(box, by: (anchors + located).filter { $0.placement == .overlay }.map(\.boundingBox)) {
+                // Text the local recognizer missed (often handwriting). Overlay
+                // it only where local pixels confirm contrasting ink.
+                located.append(locatedBlock(text, box: box, aspect: CGFloat(locator.width) / CGFloat(locator.height)))
             } else {
                 unmatched.append(RecognizedBlock(id: UUID(), original: text, translation: text, boundingBox: .zero, confidence: 0, placement: .textOnly))
             }
         }
+        blocks.append(contentsOf: located)
         blocks.append(contentsOf: unmatched)
         return OCRResult(blocks: blocks, notice: unmatched.isEmpty ? nil : "Some AI text has no verified local position. It is available in Full Text; only Vision-verified regions are overlaid.")
+    }
+
+    /// Half of the new box already belongs to positioned regions: the model
+    /// re-read known text without its anchor ID. Never paint it twice.
+    private static func covered(_ box: CGRect, by existing: [CGRect]) -> Bool {
+        let area = box.width * box.height
+        guard area > 0 else { return true }
+        let overlap = existing.reduce(CGFloat(0)) { total, other in
+            let intersection = box.intersection(other)
+            return total + (intersection.isNull ? 0 : intersection.width * intersection.height)
+        }
+        return overlap >= area * 0.5
+    }
+
+    private static func locatedBlock(_ text: String, box: CGRect, aspect: CGFloat) -> RecognizedBlock {
+        let lines = CGFloat(max(1, text.split(separator: "\n", omittingEmptySubsequences: true).count))
+        let glyphs = text.filter { !$0.isWhitespace }.count
+        // aspect = image width / height; compare the box in pixel proportions.
+        let vertical = VerticalTextLayout.supports(text) && glyphs >= 2 && box.height > box.width * aspect * 1.6
+        if vertical {
+            let column = box.width / lines
+            return RecognizedBlock(id: UUID(), original: text, translation: text, boundingBox: box, confidence: 0.5,
+                sourceLineHeight: column * aspect, flow: .vertical, sourceColumnWidth: column)
+        }
+        return RecognizedBlock(id: UUID(), original: text, translation: text, boundingBox: box, confidence: 0.5, sourceLineHeight: box.height / lines)
     }
 
     static func similarity(_ lhs: String, _ rhs: String) -> Double {

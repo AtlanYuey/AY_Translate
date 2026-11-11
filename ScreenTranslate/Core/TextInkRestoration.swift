@@ -66,14 +66,22 @@ nonisolated enum TextInkRestoration {
         var localBackground = luminance
         // Eight surrounding samples estimate background without a global dark/
         // light assumption. Both dark glyphs and white outline can be detected.
+        // One reused scratch buffer: no heap allocation per pixel.
+        let offsets = [(-radius,0),(radius,0),(0,-radius),(0,radius),(-radius,-radius),(radius,-radius),(-radius,radius),(radius,radius)]
+        var samples = [Int](repeating: 0, count: 8)
         for i in allowed.indices where allowed[i] {
             let x = i % width, y = i / width
-            var samples: [Int] = []
-            for (dx, dy) in [(-radius,0),(radius,0),(0,-radius),(0,radius),(-radius,-radius),(radius,-radius),(-radius,radius),(radius,radius)] {
+            for (k, (dx, dy)) in offsets.enumerated() {
                 let xx = min(width - 1, max(0, x + dx)), yy = min(height - 1, max(0, y + dy))
-                samples.append(Int(luminance[yy * width + xx]))
+                samples[k] = Int(luminance[yy * width + xx])
             }
-            samples.sort()
+            // Insertion sort of eight values, identical order to sort().
+            for a in 1..<8 {
+                let value = samples[a]
+                var b = a - 1
+                while b >= 0 && samples[b] > value { samples[b + 1] = samples[b]; b -= 1 }
+                samples[b + 1] = value
+            }
             let middle = (samples[3] + samples[4]) / 2
             localBackground[i] = UInt8(middle)
             // Ignore uncertain picture edges; outlined text remains readable
@@ -103,23 +111,27 @@ nonisolated enum TextInkRestoration {
             if frontier.isEmpty { break }
         }
         var output = pixels, changed = 0
+        let directions = [(-1,0),(1,0),(0,-1),(0,1),(-1,-1),(1,-1),(-1,1),(1,1)]
+        var found = [Int](repeating: 0, count: 8), distances = [Int](repeating: 0, count: 8), weights = [Double](repeating: 0, count: 8)
         for i in mask.indices where mask[i] {
             let x = i % width, y = i / width
-            var samples: [(index: Int, distance: Int)] = []
-            for (dx,dy) in [(-1,0),(1,0),(0,-1),(0,1),(-1,-1),(1,-1),(-1,1),(1,1)] {
+            var count = 0
+            for (dx, dy) in directions {
                 for step in 1...radius * 2 {
                     let xx = x + dx * step, yy = y + dy * step
                     if xx < 0 || xx >= width || yy < 0 || yy >= height { break }
                     let j = yy * width + xx
-                    if !mask[j] && abs(Int(luminance[j]) - Int(localBackground[i])) < 40 { samples.append((j, step)); break }
+                    if !mask[j] && abs(Int(luminance[j]) - Int(localBackground[i])) < 40 { found[count] = j; distances[count] = step; count += 1; break }
                 }
             }
-            guard samples.count >= 3 else { continue }
-            let weights = samples.map { 1.0 / Double($0.distance * $0.distance) }
-            let total = weights.reduce(0, +)
+            guard count >= 3 else { continue }
+            // Same inverse-square weighting and summation order as before.
+            var total = 0.0
+            for k in 0..<count { weights[k] = 1.0 / Double(distances[k] * distances[k]); total += weights[k] }
             for c in 0..<3 {
-                let value = zip(samples, weights).reduce(0.0) { $0 + Double(pixels[$1.0.index * 4 + c]) * $1.1 } / total
-                output[i * 4 + c] = UInt8(min(255, max(0, value.rounded())))
+                var sum = 0.0
+                for k in 0..<count { sum += Double(pixels[found[k] * 4 + c]) * weights[k] }
+                output[i * 4 + c] = UInt8(min(255, max(0, (sum / total).rounded())))
             }
             changed += 1
         }
