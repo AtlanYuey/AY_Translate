@@ -7,6 +7,66 @@ nonisolated enum TranslationPlanner {
     /// Join likely wrapped prose before either translator sees it. Keep columns,
     /// short UI labels, unpositioned text, and widely separated rows independent.
     static func paragraphs(_ blocks: [RecognizedBlock], preference: TranslationPreference) -> [RecognizedBlock] {
+        // Everything inside one dialogue bubble is one utterance: translate it
+        // together and lay it out once. Other text keeps the line heuristics.
+        let bubbles = bubbleParagraphs(blocks.filter { $0.placement == .overlay && $0.container != nil })
+        let blocks = blocks.filter { $0.placement != .overlay || $0.container == nil }
+        return bubbles + lineParagraphs(blocks, preference: preference)
+    }
+
+    /// Merge the lines of each bubble in reading order and drop a second
+    /// reading of the same ink, so a bubble never receives two overlays.
+    static func bubbleParagraphs(_ blocks: [RecognizedBlock]) -> [RecognizedBlock] {
+        var groups: [(container: CGRect, members: [RecognizedBlock])] = []
+        for block in blocks {
+            guard let container = block.container else { continue }
+            if let index = groups.firstIndex(where: { $0.container == container }) { groups[index].members.append(block) }
+            else { groups.append((container, [block])) }
+        }
+        func area(_ r: CGRect) -> CGFloat { max(0, r.width) * max(0, r.height) }
+        let merged = groups.map { group -> RecognizedBlock in
+            var kept: [RecognizedBlock] = []
+            for member in group.members.sorted(by: { $0.original.count != $1.original.count ? $0.original.count > $1.original.count : $0.confidence > $1.confidence }) {
+                let duplicate = kept.contains { other in
+                    let overlap = other.boundingBox.intersection(member.boundingBox)
+                    return !overlap.isNull && area(overlap) >= min(area(other.boundingBox), area(member.boundingBox)) * 0.6
+                }
+                if !duplicate { kept.append(member) }
+            }
+            let vertical = kept.contains { $0.flow == .vertical }
+            let ordered = kept.sorted { a, b in
+                if vertical {
+                    if abs(a.boundingBox.midX - b.boundingBox.midX) > min(a.originalColumnWidth, b.originalColumnWidth) * 0.5 { return a.boundingBox.midX > b.boundingBox.midX }
+                    return a.boundingBox.maxY > b.boundingBox.maxY
+                }
+                if abs(a.boundingBox.midY - b.boundingBox.midY) > min(a.originalLineHeight, b.originalLineHeight) * 0.5 { return a.boundingBox.midY > b.boundingBox.midY }
+                return a.boundingBox.minX < b.boundingBox.minX
+            }
+            guard ordered.count > 1 else { return ordered[0] }
+            var text = ordered[0].original
+            for next in ordered.dropFirst() {
+                // Japanese/Chinese lines continue without a separator.
+                let cjk = text.unicodeScalars.last.map(isCJK) == true || next.original.unicodeScalars.first.map(isCJK) == true
+                text += (cjk ? "" : " ") + next.original
+            }
+            func median(_ values: [CGFloat]) -> CGFloat { let sorted = values.sorted(); return sorted[sorted.count / 2] }
+            return RecognizedBlock(id: ordered[0].id, original: text, translation: text,
+                boundingBox: ordered.dropFirst().reduce(ordered[0].boundingBox) { $0.union($1.boundingBox) },
+                confidence: ordered.map(\.confidence).min() ?? 0,
+                sourceLineHeight: median(ordered.map(\.originalLineHeight)),
+                flow: vertical ? .vertical : .horizontal,
+                sourceColumnWidth: vertical ? median(ordered.filter { $0.flow == .vertical }.map(\.originalColumnWidth)) : nil,
+                sourceGlyphBoxes: ordered.flatMap { $0.sourceGlyphBoxes ?? [$0.boundingBox] },
+                container: group.container, inkColor: ordered.compactMap(\.inkColor).first)
+        }
+        // Reading order: top band first; vertical (manga) bubbles right to left.
+        return merged.sorted { a, b in
+            if abs(a.boundingBox.maxY - b.boundingBox.maxY) > 0.06 { return a.boundingBox.maxY > b.boundingBox.maxY }
+            return a.flow == .vertical ? a.boundingBox.midX > b.boundingBox.midX : a.boundingBox.midX < b.boundingBox.midX
+        }
+    }
+
+    private static func lineParagraphs(_ blocks: [RecognizedBlock], preference: TranslationPreference) -> [RecognizedBlock] {
         let positioned = blocks.filter { $0.placement == .overlay && $0.flow == .horizontal }.sorted {
             if $0.boundingBox.midY == $1.boundingBox.midY {
                 return $0.boundingBox.minX < $1.boundingBox.minX
@@ -52,11 +112,13 @@ nonisolated enum TranslationPlanner {
                     && overlap / max(0.0001, min(a.height, b.height)) >= 0.65
                     && min(previous.originalColumnWidth, candidate.originalColumnWidth) / max(0.0001, width) >= 0.6
                     && !"。！？!?".contains(previous.original.last ?? " ")
+                    // Hand-lettered pages colour each speaker differently.
+                    && !BackgroundSampling.inksDiffer(previous.inkColor, candidate.inkColor)
             }), count < 8 {
                 let next = remaining.remove(at: index)
                 let text = group.original + "\n" + next.original
                 let columnWidth = (group.originalColumnWidth * count + next.originalColumnWidth) / (count + 1)
-                group = RecognizedBlock(id: group.id, original: text, translation: text, boundingBox: group.boundingBox.union(next.boundingBox), confidence: min(group.confidence, next.confidence), sourceLineHeight: min(group.originalLineHeight, next.originalLineHeight), flow: .vertical, sourceColumnWidth: columnWidth, sourceGlyphBoxes: (group.sourceGlyphBoxes ?? [group.boundingBox]) + (next.sourceGlyphBoxes ?? [next.boundingBox]))
+                group = RecognizedBlock(id: group.id, original: text, translation: text, boundingBox: group.boundingBox.union(next.boundingBox), confidence: min(group.confidence, next.confidence), sourceLineHeight: min(group.originalLineHeight, next.originalLineHeight), flow: .vertical, sourceColumnWidth: columnWidth, sourceGlyphBoxes: (group.sourceGlyphBoxes ?? [group.boundingBox]) + (next.sourceGlyphBoxes ?? [next.boundingBox]), inkColor: group.inkColor ?? next.inkColor)
                 previous = next; count += 1
             }
             result.append(group)

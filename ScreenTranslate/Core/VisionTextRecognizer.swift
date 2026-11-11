@@ -108,7 +108,13 @@ nonisolated enum VisionTextRecognizer {
                 let result = try await supplementVerticalGaps(image, blocks: blocks, language: language,
                     detectionImage: working, cpuOnly: cpuOnly)
                 await checkpoint?("coverage_end")
-                return OCRReconciler.separatingRuby(OCRReconciler.merge(result))
+                // Dialogue bubbles: read short lines nothing else covered
+                // (わっ, ぱぱー!, えと…) and group each bubble's lines.
+                await checkpoint?("bubbles_begin")
+                let bubbled = try await supplementBubbles(image, blocks: OCRReconciler.merge(result), language: language, cpuOnly: cpuOnly)
+                await checkpoint?("bubbles_end")
+                let final = BubbleText.assignContainers(OCRReconciler.separatingRuby(OCRReconciler.merge(bubbled.blocks)), bubbles: bubbled.bubbles)
+                return annotatingInk(image, blocks: final)
             }
             // No document text: stop the overlapping reader before the legacy
             // path allocates its own recognizer.
@@ -240,6 +246,130 @@ nonisolated enum VisionTextRecognizer {
             }
         }
         return try await withTaskCancellationHandler(operation: { try await task.value }, onCancel: { task.cancel() })
+    }
+
+    /// Record each region's lettering colour (when it is not black or grey)
+    /// from a small RGBA copy. Speaker colours keep lines apart when grouping.
+    nonisolated static func annotatingInk(_ image: CGImage, blocks: [RecognizedBlock]) -> [RecognizedBlock] {
+        autoreleasepool {
+            let factor = min(1, 640 / Double(max(image.width, image.height)))
+            let width = max(1, Int(Double(image.width) * factor)), height = max(1, Int(Double(image.height) * factor))
+            var pixels = [UInt8](repeating: 255, count: width * height * 4)
+            let drawn = pixels.withUnsafeMutableBytes { buffer -> Bool in
+                guard let context = CGContext(data: buffer.baseAddress, width: width, height: height, bitsPerComponent: 8, bytesPerRow: width * 4,
+                    space: CGColorSpaceCreateDeviceRGB(), bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue) else { return false }
+                context.draw(image, in: CGRect(x: 0, y: 0, width: width, height: height))
+                return true
+            }
+            guard drawn else { return blocks }
+            return blocks.map { block in
+                guard block.placement == .overlay, block.inkColor == nil else { return block }
+                var result = block
+                let background = BackgroundSampling.sample(pixels: pixels, width: width, height: height, region: block.boundingBox)
+                result.inkColor = BackgroundSampling.ink(pixels: pixels, width: width, height: height, region: block.boundingBox, background: background)
+                return result
+            }
+        }
+    }
+
+    /// Find dialogue bubbles locally and read the ink inside them that no
+    /// recognized line covers. Never uploads anything; failures keep the input.
+    static func supplementBubbles(_ image: CGImage, blocks: [RecognizedBlock], language: String?, cpuOnly: Bool = false) async throws -> (blocks: [RecognizedBlock], bubbles: [SpeechBubble]) {
+        guard language == nil || language == "ja" || language?.hasPrefix("zh") == true else { return (blocks, []) }
+        let task = Task.detached(priority: .userInitiated) { () throws -> ([RecognizedBlock], [SpeechBubble]) in
+            guard let raster = grayscaleImage(image) else { return (blocks, []) }
+            let bubbles = BubbleDetector.bubbles(grayscale: raster.bytes, width: raster.width, height: raster.height)
+            try Task.checkCancellation()
+            let size = CGSize(width: image.width, height: image.height)
+            var pending: [[GlyphCell]] = []
+            for bubble in bubbles where bubble.holdsText && bubble.fill >= 0.5 {
+                pending += BubbleText.missingColumns(in: bubble, blocks: blocks, imageSize: size).filter { $0.count <= 20 }
+            }
+            var result = blocks
+            let columns = Array(pending.prefix(24))
+            for start in stride(from: 0, to: columns.count, by: 4) {
+                try Task.checkCancellation()
+                let batch = Array(columns[start..<min(start + 4, columns.count)])
+                let rows = (try? autoreleasepool(invoking: { try readCellColumns(image, columns: batch, language: language ?? "ja", cpuOnly: cpuOnly) })) ?? []
+                for (offset, column) in batch.enumerated() {
+                    let recognized = rows.indices.contains(offset) ? rows[offset] : []
+                    let text = recognized.sorted { $0.boundingBox.minX < $1.boundingBox.minX }.map(\.original).joined().filter { !$0.isWhitespace }
+                    let confidence = recognized.map(\.confidence).min() ?? 0
+                    // Kana or kanji must be present; a column is never longer
+                    // than about two characters per cell.
+                    guard VerticalTextLayout.supports(text), confidence >= 0.3, text.count <= column.count * 2 + 2 else { continue }
+                    let boxes = column.map(\.box)
+                    let upright = column.filter { !$0.rotate }.map(\.box)
+                    let widths = (upright.isEmpty ? boxes : upright).map(\.width).sorted()
+                    let heights = (upright.isEmpty ? boxes : upright).map { max($0.width * size.width, $0.height * size.height) / size.height }.sorted()
+                    result.append(RecognizedBlock(id: UUID(), original: text, translation: text,
+                        boundingBox: boxes.dropFirst().reduce(boxes[0]) { $0.union($1) }, confidence: confidence,
+                        sourceLineHeight: heights[heights.count * 3 / 4], flow: .vertical,
+                        sourceColumnWidth: widths[widths.count * 3 / 4], sourceGlyphBoxes: boxes))
+                }
+            }
+            return (result, bubbles)
+        }
+        return try await withTaskCancellationHandler(operation: { try await task.value }, onCancel: { task.cancel() })
+    }
+
+    /// Up to four vertical columns, each turned into one horizontal row.
+    private static func readCellColumns(_ image: CGImage, columns: [[GlyphCell]], language: String, cpuOnly: Bool) throws -> [[RecognizedBlock]] {
+        let strips = columns.map { cellStrip(image, cells: $0) }
+        let width = strips.compactMap { $0?.width }.max() ?? 0
+        let rowHeight = 112, height = rowHeight * columns.count
+        guard width > 0, columns.count <= 4,
+              let context = CGContext(data: nil, width: width, height: height, bitsPerComponent: 8, bytesPerRow: 0,
+                  space: CGColorSpaceCreateDeviceRGB(), bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue) else { return [] }
+        context.setFillColor(CGColor(gray: 1, alpha: 1))
+        context.fill(CGRect(x: 0, y: 0, width: width, height: height))
+        for (index, strip) in strips.enumerated() {
+            guard let strip else { continue }
+            context.draw(strip, in: CGRect(x: 0, y: height - (index + 1) * rowHeight + 8, width: strip.width, height: strip.height))
+        }
+        guard let composite = context.makeImage() else { return [] }
+        let recognized = try read(composite, language: language, cpuOnly: cpuOnly, languageCorrection: false)
+        var rows = [[RecognizedBlock]](repeating: [], count: columns.count)
+        for block in recognized {
+            let row = Int((1 - block.boundingBox.midY) * CGFloat(height) / CGFloat(rowHeight))
+            if rows.indices.contains(row), block.boundingBox.height * CGFloat(height) < CGFloat(rowHeight) * 0.9 { rows[row].append(block) }
+        }
+        return rows
+    }
+
+    /// Lay one vertical column's cells out as a horizontal line, keeping the
+    /// cells' relative sizes (a small っ stays small and sits on the
+    /// baseline) and turning rotated marks (ー, 〜, ︙) back to horizontal.
+    nonisolated static func cellStrip(_ image: CGImage, cells: [GlyphCell]) -> CGImage? {
+        let W = CGFloat(image.width), H = CGFloat(image.height)
+        let rects = cells.map { CGRect(x: $0.box.minX * W, y: (1 - $0.box.maxY) * H, width: $0.box.width * W, height: $0.box.height * H) }
+        let sizes = zip(cells, rects).filter { !$0.0.rotate }.map { max($0.1.width, $0.1.height) }.sorted()
+        let main = sizes.isEmpty ? (rects.map { max($0.width, $0.height) }.max() ?? 20) : sizes[min(sizes.count - 1, sizes.count * 3 / 4)]
+        let scale = 52 / max(4, main), advance: CGFloat = 64, height = 96
+        let width = 32 + Int(advance) * cells.count
+        guard !cells.isEmpty, let context = CGContext(data: nil, width: width, height: height, bitsPerComponent: 8, bytesPerRow: 0,
+            space: CGColorSpaceCreateDeviceRGB(), bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue) else { return nil }
+        context.setFillColor(CGColor(gray: 1, alpha: 1))
+        context.fill(CGRect(x: 0, y: 0, width: width, height: height))
+        context.interpolationQuality = .high
+        for (index, (cell, rect)) in zip(cells, rects).enumerated() {
+            guard let crop = image.cropping(to: rect.insetBy(dx: -1, dy: -1).integral) else { continue }
+            let w = CGFloat(crop.width) * scale, h = CGFloat(crop.height) * scale
+            let center = 16 + CGFloat(index) * advance + advance / 2
+            if cell.rotate {
+                context.saveGState()
+                context.translateBy(x: center, y: CGFloat(height) / 2)
+                context.rotate(by: -.pi / 2)
+                context.draw(crop, in: CGRect(x: -w / 2, y: -h / 2, width: w, height: h))
+                context.restoreGState()
+            } else {
+                // CoreGraphics origin is bottom left; the baseline is 22 px up.
+                let small = max(rect.width, rect.height) < main * 0.7
+                let y = small ? 22 : (CGFloat(height) - h) / 2
+                context.draw(crop, in: CGRect(x: center - w / 2, y: y, width: w, height: h))
+            }
+        }
+        return context.makeImage()
     }
 
     static func recognizeLegacy(_ cgImage: CGImage, language: String?, cpuOnly: Bool = false) async throws -> [RecognizedBlock] {

@@ -20,11 +20,17 @@ struct ProcessingServices {
                 // A small grayscale copy lets text found only by the model
                 // (often handwriting) be placed where local pixels show ink.
                 let upright = try ScreenshotInput.bounded(image).cgImage
-                let locator = await Task.detached(priority: .userInitiated) { () -> InkLocator? in
-                    guard let upright, let raster = VisionTextRecognizer.grayscaleImage(upright) else { return nil }
-                    return InkLocator(pixels: raster.bytes, width: raster.width, height: raster.height)
+                let local = await Task.detached(priority: .userInitiated) { () -> (InkLocator?, [SpeechBubble]) in
+                    guard let upright, let raster = VisionTextRecognizer.grayscaleImage(upright) else { return (nil, []) }
+                    return (InkLocator(pixels: raster.bytes, width: raster.width, height: raster.height),
+                            BubbleDetector.bubbles(grayscale: raster.bytes, width: raster.width, height: raster.height))
                 }.value
-                return try await client.recognize(imageData: data, anchors: anchors, configuration: configuration, apiKey: key, locator: locator)
+                var result = try await client.recognize(imageData: data, anchors: anchors, configuration: configuration, apiKey: key, locator: local.0)
+                // Text only the model found joins its bubble and keeps its
+                // lettering colour, exactly like locally recognized lines.
+                result.blocks = BubbleText.assignContainers(result.blocks, bubbles: local.1)
+                if let upright { result.blocks = VisionTextRecognizer.annotatingInk(upright, blocks: result.blocks) }
+                return result
             },
             aiTranslation: { blocks, source, target, preference, configuration, key in
                 try await client.translate(blocks, source: source == .automatic ? "auto-detect" : source.name, target: target.name + " (" + target.rawValue + ")", preference: preference, configuration: configuration, apiKey: key)

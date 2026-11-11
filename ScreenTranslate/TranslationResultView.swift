@@ -362,7 +362,7 @@ private struct OverlayTextView: View {
             context.withCGContext { cg in
                 cg.translateBy(x: -drawingRect.minX, y: -drawingRect.minY)
                 ScreenshotRendering.drawText(block.translation, layout: layout,
-                    color: appearance == .readable || !color.usesDarkText ? .white : .black, isRTL: isRTL, in: cg)
+                    color: ScreenshotRendering.textColor(color, appearance: appearance), isRTL: isRTL, in: cg)
             }
         }
         .frame(width: drawingRect.width, height: drawingRect.height)

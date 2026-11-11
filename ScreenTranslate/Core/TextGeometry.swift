@@ -22,6 +22,11 @@ nonisolated struct RecognizedBlock: Identifiable, Hashable, Sendable {
     var sourceColumnWidth: CGFloat? = nil
     /// Local glyph guidance only; actual ink is segmented before restoration.
     var sourceGlyphBoxes: [CGRect]? = nil
+    /// The enclosing dialogue bubble's usable area (Vision-normalized). Lines
+    /// sharing a bubble are translated together and laid out in this area.
+    var container: CGRect? = nil
+    /// Distinct lettering colour (RGB 0–1) when the text is not black/grey.
+    var inkColor: [Double]? = nil
 
     func shouldOverlay(showUnchanged: Bool) -> Bool {
         placement == .overlay && !translation.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
@@ -126,7 +131,7 @@ nonisolated enum OCRAlignment {
             if let index, !used.contains(anchors[index].id), similarity(text, anchors[index].original) >= 0.65 {
                 used.insert(anchors[index].id)
                 let anchor = anchors[index]
-                blocks[index] = RecognizedBlock(id: anchor.id, original: text, translation: text, boundingBox: anchor.boundingBox, confidence: anchor.confidence, sourceLineHeight: anchor.originalLineHeight, flow: anchor.flow, sourceColumnWidth: anchor.sourceColumnWidth, sourceGlyphBoxes: anchor.sourceGlyphBoxes)
+                blocks[index] = RecognizedBlock(id: anchor.id, original: text, translation: text, boundingBox: anchor.boundingBox, confidence: anchor.confidence, sourceLineHeight: anchor.originalLineHeight, flow: anchor.flow, sourceColumnWidth: anchor.sourceColumnWidth, sourceGlyphBoxes: anchor.sourceGlyphBoxes, container: anchor.container, inkColor: anchor.inkColor)
             } else if let locator, let modelBox = visionRect(from: region.box), let box = locator.verifiedBox(modelBox),
                       !covered(box, by: (anchors + located).filter { $0.placement == .overlay }.map(\.boundingBox)) {
                 // Text the local recognizer missed (often handwriting). Overlay
