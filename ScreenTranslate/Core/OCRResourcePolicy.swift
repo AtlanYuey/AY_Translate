@@ -8,13 +8,23 @@ import CoreGraphics
 nonisolated struct OCRResourcePolicy: Sendable {
     let memoryLimited: Bool
     let constrained: Bool
+    /// The extension's measured headroom (os_proc_available_memory) is large
+    /// enough for the Neural Engine path and two overlapping recognizers.
+    /// Device logs showed the accelerated path adding roughly 70 MB; require
+    /// more than twice that. An unknown (zero) budget is never treated as ample.
+    let ample: Bool
     var tileDimension: Int { constrained ? 1024 : 1536 }
-    var prefersCPU: Bool { memoryLimited }
+    var prefersCPU: Bool { memoryLimited && !ample }
+    /// Run the independent full-page recognizer alongside the document tiles.
+    var allowsConcurrentPasses: Bool { !memoryLimited || ample }
+
+    static let ampleHeadroom: UInt64 = 160 * 1_024 * 1_024
 
     init(memoryLimited: Bool, recentWarning: Bool = false, availableBytes: UInt64 = 0, footprintBytes: UInt64 = 0) {
         self.memoryLimited = memoryLimited
         constrained = memoryLimited && (recentWarning || (availableBytes > 0 && availableBytes < 96 * 1_024 * 1_024)
             || footprintBytes >= 140 * 1_024 * 1_024)
+        ample = memoryLimited && !constrained && availableBytes >= Self.ampleHeadroom
     }
 
     /// Overlap preserves lines straddling a tile boundary. Each tile uses source

@@ -10,7 +10,9 @@ struct ProcessingEdgeGlow: View {
 
     var body: some View {
         GeometryReader { geometry in
-            TimelineView(.animation(minimumInterval: 1.0 / 30, paused: reduceMotion || frameTime != nil)) { timeline in
+            // 20 fps is visually smooth for a slow colour flow and leaves CPU
+            // time for on-device recognition running at the same moment.
+            TimelineView(.animation(minimumInterval: 1.0 / 20, paused: reduceMotion || frameTime != nil)) { timeline in
                 let time = frameTime ?? (reduceMotion ? 0 : timeline.date.timeIntervalSinceReferenceDate)
                 let radius = min(cornerRadius, min(geometry.size.width, geometry.size.height) / 3)
                 let tiles = Self.tiles(size: geometry.size, radius: radius)
@@ -35,8 +37,8 @@ struct ProcessingEdgeGlow: View {
                             // Fine steps approximate Gaussian falloff without
                             // coarse visible bands or offscreen blur textures.
                             var previousOpacity = 0.0
-                            for step in stride(from: 24, through: 1, by: -1) {
-                                let distance = Double(step) * 0.75
+                            for step in stride(from: 16, through: 1, by: -1) {
+                                let distance = Double(step) * 1.125
                                 let opacity = 0.92 * exp(-pow(distance / 7.0, 1.35))
                                 var layer = context
                                 layer.opacity = (opacity - previousOpacity) / (1 - previousOpacity)

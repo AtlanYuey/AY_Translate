@@ -225,12 +225,28 @@ final class AppState: ObservableObject {
                     self.translationConfiguration = cachedAppleConfiguration
                 } else {
                     phase = .translating
-                    let translations = try await services.aiTranslation(blocks, source, target, preference, translationConfiguration, translationKey)
+                    let translations: [UUID: String]
+                    var incomplete = false
+                    do {
+                        translations = try await services.aiTranslation(blocks, source, target, preference, translationConfiguration, translationKey)
+                    } catch let partial as PartialTranslationError {
+                        // Keep every verified region; only the failed ones show
+                        // their original text. One bad region must not blank the page.
+                        translations = partial.translations
+                        incomplete = true
+                        diagnostics?.event("ai_translation_partial_" + partial.reason.diagnosticCode)
+                    }
                     guard isActive(processID), var current = document else { return }
-                    guard current.blocks.allSatisfy({ translations[$0.id]?.isEmpty == false }) else { throw AIServiceError.incompleteTranslation }
-                    for index in current.blocks.indices { current.blocks[index].translation = translations[current.blocks[index].id]! }
+                    guard incomplete || current.blocks.allSatisfy({ translations[$0.id]?.isEmpty == false }) else { throw AIServiceError.incompleteTranslation }
+                    for index in current.blocks.indices {
+                        if let text = translations[current.blocks[index].id], !text.isEmpty { current.blocks[index].translation = text }
+                    }
                     document = current
-                    translatedBlockCount = current.blocks.count
+                    translatedBlockCount = current.blocks.filter { translations[$0.id]?.isEmpty == false }.count
+                    if incomplete {
+                        let message = "Some regions could not be translated. Their original text is preserved; tap a translated region to read it in full."
+                        notice = notice.map { $0 + "\n" + AppLocalization.text(message) } ?? message
+                    }
                     finish(processID)
                 }
             } catch {

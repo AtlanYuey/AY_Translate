@@ -39,6 +39,12 @@ nonisolated struct AIServiceConfiguration: Codable, Equatable, Sendable {
             && ["/v1beta/openai/chat/completions", "/v1/openai/chat/completions"].contains(url.path)
     }
 
+    /// OpenAI's own endpoint documents JSON mode for chat completions.
+    var isOfficialOpenAIEndpoint: Bool {
+        guard let url = try? endpoint() else { return false }
+        return url.host?.lowercased() == "api.openai.com"
+    }
+
     func normalizedModelID(_ value: String) -> String {
         let trimmed = value.trimmingCharacters(in: .whitespacesAndNewlines)
         return isGoogleCompatibilityEndpoint && trimmed.hasPrefix("models/") ? String(trimmed.dropFirst(7)) : trimmed

@@ -38,12 +38,17 @@ final class ProcessingDiagnostics {
     private var current: UUID?
     private static let processSession = UUID()
     private var memoryObserver: NSObjectProtocol?
+    /// The shared App Group already carries records between the app and the
+    /// extension. A synchronous Keychain write per checkpoint is only needed
+    /// when a re-signed install removed that group.
+    private let mirrorsToKeychain: Bool
     var currentID: UUID? { current }
 
     init(defaults: UserDefaults? = nil, keys: (any APIKeyStoring)? = nil, context: String? = nil) {
         self.defaults = defaults ?? SharedAppContainer.preferences
         self.keys = keys ?? KeychainStore()
         self.context = context ?? (Bundle.main.bundleURL.pathExtension == "appex" ? "share" : "app")
+        mirrorsToKeychain = defaults != nil || SharedAppContainer.url == nil
         entries = self.defaults.data(forKey: "processing.diagnostics." + self.context)
             .flatMap { try? JSONDecoder().decode([Entry].self, from: $0) } ?? []
         memoryObserver = NotificationCenter.default.addObserver(forName: UIApplication.didReceiveMemoryWarningNotification,
@@ -113,6 +118,7 @@ final class ProcessingDiagnostics {
         defaults.set(data, forKey: "processing.diagnostics." + context)
         // Reuse the existing local shared-Keychain bridge when Feather has
         // removed App Groups. This slot is never included in iCloud settings.
+        guard mirrorsToKeychain else { return }
         try? keys.save(String(decoding: data, as: UTF8.self), for: .processingDiagnostics(context))
     }
 

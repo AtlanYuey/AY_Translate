@@ -59,7 +59,7 @@ final class OpenAIClientTests: XCTestCase {
         }
     }
 
-    func testChineseTargetIsFixedOnFirstRequestAndWrongLanguageIsRejectedWithoutRetry() async throws {
+    func testChineseTargetIsFixedOnEveryRequestAndPersistentWrongLanguageIsRejected() async throws {
         let source = block("口元にクリームがついています")
         var calls = 0
         let service = client { request in
@@ -75,7 +75,7 @@ final class OpenAIClientTests: XCTestCase {
             _ = try await service.translate([source], source: "Japanese", target: "Chinese (zh-Hans)", preference: .speed, configuration: configuration, apiKey: "")
             XCTFail("A wrong-language sentence must never be published")
         } catch { XCTAssertEqual(error as? AIServiceError, .wrongTargetLanguage) }
-        XCTAssertEqual(calls, 1, "Wrong-language output must not start automatic retranslation")
+        XCTAssertEqual(calls, 2, "Wrong-language output gets exactly one bounded repair request, never a loop")
         XCTAssertThrowsError(try AIRequestOptions(bodyJSON: #"{"target_language":"en"}"#).parameters())
     }
 
@@ -83,6 +83,7 @@ final class OpenAIClientTests: XCTestCase {
 
     override func tearDown() {
         MockURLProtocol.handler = nil
+        MockURLProtocol.headers = [:]
         super.tearDown()
     }
 
@@ -155,6 +156,100 @@ final class OpenAIClientTests: XCTestCase {
         let result = try await service.translate([first, second], source: "English", target: "Chinese", preference: .speed, configuration: configuration, apiKey: "")
         XCTAssertEqual(calls, 2)
         XCTAssertEqual(result[first.id], "第一句"); XCTAssertEqual(result[second.id], "第二句")
+    }
+
+    func testWrongLanguageRegionIsRepairedOnceAndOthersAreKept() async throws {
+        let first = block("口元にクリームがついています"), second = block("明日は図書館に行きます")
+        var calls = 0
+        let service = client { request in
+            calls += 1
+            let body = try XCTUnwrap(JSONSerialization.jsonObject(with: XCTUnwrap(request.httpBody)) as? [String: Any])
+            let prompt = try XCTUnwrap((body["messages"] as? [[String: Any]])?.last?["content"] as? String)
+            if calls == 1 {
+                XCTAssertTrue(prompt.contains(first.original) && prompt.contains(second.original))
+                return (200, try self.response(#"{"translations":[{"id":"0","text":"There is cream on your mouth."},{"id":1,"text":"明天去图书馆。"}]}"#))
+            }
+            XCTAssertFalse(prompt.components(separatedBy: "Regions to translate:").last!.contains(second.original), "Successful regions are not retranslated")
+            return (200, try self.response(#"{"translations":[{"id":"0","text":"嘴角沾着奶油。"}]}"#))
+        }
+        let result = try await service.translate([first, second], source: "Japanese", target: "Chinese (zh-Hans)", preference: .speed, configuration: configuration, apiKey: "")
+        XCTAssertEqual(calls, 2)
+        XCTAssertEqual(result[first.id], "嘴角沾着奶油。")
+        XCTAssertEqual(result[second.id], "明天去图书馆。")
+    }
+
+    func testUnrecoverableRegionsKeepVerifiedTranslationsAsPartialResult() async throws {
+        let first = block("First sentence"), second = block("Second sentence")
+        let service = client { _ in (200, try self.response(#"{"translations":[{"id":"0","text":"第一句"},{"id":"7","text":"extra"}]}"#)) }
+        do {
+            _ = try await service.translate([first, second], source: "English", target: "Chinese", preference: .speed, configuration: configuration, apiKey: "")
+            XCTFail("An omitted region must not be reported as complete")
+        } catch let partial as PartialTranslationError {
+            XCTAssertEqual(partial.translations, [first.id: "第一句"], "Unknown IDs are discarded; verified text is kept")
+            XCTAssertEqual(partial.reason, .incompleteTranslation)
+        }
+    }
+
+    func testLongScreensAreSplitIntoParallelContextPreservingBatches() async throws {
+        let blocks = (0..<30).map { block("これは長い吹き出しの台詞です。番号\($0)") }
+        let counter = RequestCounter()
+        let service = client { request in
+            counter.increment()
+            let object = try XCTUnwrap(JSONSerialization.jsonObject(with: XCTUnwrap(request.httpBody)) as? [String: Any])
+            let prompt = try XCTUnwrap((object["messages"] as? [[String: Any]])?[1]["content"] as? String)
+            XCTAssertTrue(prompt.contains("番号0") && prompt.contains("番号29"), "Every batch sees the whole screen")
+            let data = try XCTUnwrap(prompt.components(separatedBy: "Regions to translate:\n").last?.data(using: .utf8))
+            let input = try XCTUnwrap(JSONSerialization.jsonObject(with: data) as? [[String: String]])
+            XCTAssertLessThanOrEqual(input.count, 12)
+            let translations = input.map { ["id": $0["id"]!, "text": "译" + $0["text"]!.suffix(3)] }
+            return (200, try self.response(String(decoding: JSONSerialization.data(withJSONObject: ["translations": translations]), as: UTF8.self)))
+        }
+        let result = try await service.translate(blocks, source: "Japanese", target: "Chinese", preference: .speed, configuration: configuration, apiKey: "")
+        XCTAssertGreaterThan(counter.value, 1)
+        XCTAssertEqual(result.count, 30)
+        XCTAssertEqual(result[blocks[29].id], "译号29")
+    }
+
+    func testBatchesAreBoundedForVeryLongPages() {
+        let blocks = (0..<200).map { block(String(repeating: "あ", count: 60 + $0 % 7)) }
+        let batches = OpenAIClient.translationBatches(blocks, preference: .speed)
+        XCTAssertEqual(batches.flatMap { $0 }.map(\.id), blocks.map(\.id), "Reading order and coverage are preserved")
+        XCTAssertLessThanOrEqual(batches.count, 20)
+        XCTAssertEqual(OpenAIClient.translationBatches([block("Hi")], preference: .quality).count, 1)
+    }
+
+    func testTransientRateLimitIsRetriedOnceWithServerAdvice() async throws {
+        let region = block()
+        var calls = 0
+        MockURLProtocol.headers = ["Retry-After": "0"]
+        let service = client { _ in
+            calls += 1
+            if calls == 1 { return (429, Data("busy".utf8)) }
+            return (200, try self.response(self.translated(region)))
+        }
+        let result = try await service.translate([region], source: "English", target: "Spanish", preference: .speed, configuration: configuration, apiKey: "")
+        XCTAssertEqual(calls, 2)
+        XCTAssertEqual(result[region.id], "Hola")
+    }
+
+    func testJSONWrappedInProseIsAccepted() throws {
+        let output = try OpenAIClient.decodeJSONPayload(TranslationOutput.self, from: "Here is the JSON:\n{\"translations\":[{\"id\":0,\"text\":\"你好\"}]}\nDone.")
+        XCTAssertEqual(output.translations.first?.id, "0")
+        XCTAssertEqual(output.translations.first?.text, "你好")
+        XCTAssertThrowsError(try OpenAIClient.decodeJSONPayload(TranslationOutput.self, from: "no json here"))
+    }
+
+    func testOfficialOpenAIEndpointRequestsJSONModeButCustomHostsDoNot() async throws {
+        let region = block()
+        for (url, expected) in [("https://api.openai.com/v1", true), ("https://example.test/v1", false)] {
+            let service = client { request in
+                let body = try XCTUnwrap(JSONSerialization.jsonObject(with: XCTUnwrap(request.httpBody)) as? [String: Any])
+                XCTAssertEqual(body["response_format"] != nil, expected, url)
+                return (200, try self.response(self.translated(region)))
+            }
+            _ = try await service.translate([region], source: "English", target: "Spanish", preference: .speed,
+                configuration: AIServiceConfiguration(baseURL: url, model: "gpt-4.1-mini"), apiKey: "")
+        }
     }
 
     func testModelDiscoveryUsesGETAndWorksWithoutAChosenModel() async throws {
@@ -379,6 +474,11 @@ final class OpenAIClientTests: XCTestCase {
 private final class MockURLProtocol: URLProtocol {
     private static let lock = NSLock()
     private static var storedHandler: ((URLRequest) throws -> (Int, Data))?
+    private static var storedHeaders: [String: String] = [:]
+    static var headers: [String: String] {
+        get { lock.lock(); defer { lock.unlock() }; return storedHeaders }
+        set { lock.lock(); defer { lock.unlock() }; storedHeaders = newValue }
+    }
     static var handler: ((URLRequest) throws -> (Int, Data))? {
         get { lock.lock(); defer { lock.unlock() }; return storedHandler }
         set { lock.lock(); defer { lock.unlock() }; storedHandler = newValue }
@@ -402,7 +502,7 @@ private final class MockURLProtocol: URLProtocol {
                 request.httpBody = body
             }
             let (status, data) = try handler(request)
-            let response = HTTPURLResponse(url: request.url!, statusCode: status, httpVersion: nil, headerFields: ["Content-Type": "application/json"])!
+            let response = HTTPURLResponse(url: request.url!, statusCode: status, httpVersion: nil, headerFields: ["Content-Type": "application/json"].merging(Self.headers) { _, new in new })!
             client?.urlProtocol(self, didReceive: response, cacheStoragePolicy: .notAllowed)
             client?.urlProtocol(self, didLoad: data)
             client?.urlProtocolDidFinishLoading(self)

@@ -13,6 +13,7 @@ enum ScreenReader {
         let id = journal.currentID
         return try await VisionTextRecognizer.recognize(cgImage, language: source.recognitionCode,
             resourcePolicy: { await MainActor.run { ProcessingMemory.ocrPolicy } },
-            checkpoint: { point in await MainActor.run { journal.checkpoint(point, id: id) } })
+            // Journal writes happen on the main actor; Vision must not wait for them.
+            checkpoint: { point in _ = Task { @MainActor in journal.checkpoint(point, id: id) } })
     }
 }

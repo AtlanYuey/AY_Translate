@@ -31,6 +31,22 @@ nonisolated enum VisionTextRecognizer {
             var completed: [CGRect] = []
             var dimension = policy.tileDimension
             var index = 0
+            // One bounded full-page bitmap serves both the independent
+            // recognizer and the character-box detector below. With enough
+            // headroom, the second recognizer overlaps the document tiles
+            // instead of waiting for them; under pressure it stays serial and
+            // its bitmap is allocated only after the tiles are released.
+            var scan: CGImage?
+            var independent: Task<[RecognizedBlock], Error>?
+            if policy.allowsConcurrentPasses {
+                let early = boundedWorkingImage(image, maximum: policy.memoryLimited ? min(1600, policy.tileDimension) : 1600) ?? image
+                let cpuOnly = policy.prefersCPU
+                scan = early
+                independent = Task.detached(priority: .userInitiated) {
+                    try read(early, language: language, cpuOnly: cpuOnly, languageCorrection: false)
+                }
+            }
+            do {
             while !regions.isEmpty {
                 try Task.checkCancellation()
                 // Pressure can arrive during the first request. Do not keep
@@ -43,27 +59,46 @@ nonisolated enum VisionTextRecognizer {
                 }
                 guard !regions.isEmpty else { break }
                 let region = regions.removeFirst()
-                await checkpoint?(policy.prefersCPU ? "document_cpu_\(index + 1)_begin" : "document_begin")
+                // Re-evaluate the compute device per tile: headroom can shrink
+                // after the first accelerated request, never the other way round.
+                let preferCPU = policy.prefersCPU || current.prefersCPU
+                await checkpoint?(preferCPU ? "document_cpu_\(index + 1)_begin" : "document_\(index + 1)_begin")
                 do {
                     // The scoped helper releases each crop and all document
                     // observations before the next tile is allocated.
-                    let additions = try await readDocumentRegion(image, region: region, language: language, preferCPU: policy.prefersCPU)
+                    let additions = try await readDocumentRegion(image, region: region, language: language, preferCPU: preferCPU)
                     mergeDocument(additions, into: &blocks)
                     completed.append(region)
                 } catch { try Task.checkCancellation() }
                 await checkpoint?("document_\(index + 1)_end")
                 index += 1
             }
+            } catch {
+                // A cancelled page must not leave its overlapping recognizer
+                // running into the next screenshot's serial work slot.
+                if let running = independent {
+                    running.cancel()
+                    _ = try? await running.value
+                }
+                throw error
+            }
             if !blocks.isEmpty {
                 // Complement the document recognizer with a different local
-                // recognizer, serially and on a bounded bitmap. An omitted
-                // horizontal line must not depend on vertical-gap detection.
+                // recognizer on a bounded bitmap. An omitted horizontal line
+                // must not depend on vertical-gap detection.
                 await checkpoint?("independent_read_begin")
                 let current = await resourcePolicy?() ?? policy
-                let scan = boundedWorkingImage(image, maximum: current.memoryLimited ? min(1600, current.tileDimension) : 1600) ?? image
-                let task = Task.detached(priority: .userInitiated) {
-                    try read(scan, language: language, cpuOnly: policy.prefersCPU, languageCorrection: false)
+                let working = scan ?? boundedWorkingImage(image, maximum: current.memoryLimited ? min(1600, current.tileDimension) : 1600) ?? image
+                let cpuOnly = policy.prefersCPU || current.prefersCPU
+                let task: Task<[RecognizedBlock], Error>
+                if let running = independent {
+                    task = running
+                } else {
+                    task = Task.detached(priority: .userInitiated) {
+                        try read(working, language: language, cpuOnly: cpuOnly, languageCorrection: false)
+                    }
                 }
+                independent = nil
                 if let additional = try? await withTaskCancellationHandler(operation: { try await task.value }, onCancel: { task.cancel() }) {
                     blocks = OCRReconciler.supplement(blocks, with: additional)
                 }
@@ -71,9 +106,15 @@ nonisolated enum VisionTextRecognizer {
                 await checkpoint?("independent_read_end")
                 await checkpoint?("coverage_begin")
                 let result = try await supplementVerticalGaps(image, blocks: blocks, language: language,
-                    detectionImage: boundedWorkingImage(image, maximum: 1600), cpuOnly: policy.prefersCPU)
+                    detectionImage: working, cpuOnly: cpuOnly)
                 await checkpoint?("coverage_end")
                 return OCRReconciler.separatingRuby(OCRReconciler.merge(result))
+            }
+            // No document text: stop the overlapping reader before the legacy
+            // path allocates its own recognizer.
+            if let running = independent {
+                running.cancel()
+                _ = try? await running.value
             }
         }
         await checkpoint?("legacy_begin")

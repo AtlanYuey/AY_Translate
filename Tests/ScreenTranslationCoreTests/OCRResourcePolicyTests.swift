@@ -11,6 +11,21 @@ final class OCRResourcePolicyTests: XCTestCase {
         XCTAssertFalse(OCRResourcePolicy(memoryLimited: true).constrained, "An unknown simulator budget is not zero free RAM")
     }
 
+    func testAcceleratedAndConcurrentRecognitionNeedsMeasuredHeadroom() {
+        // The 1.10 device record: 42 MB available at the first document tile.
+        let tight = OCRResourcePolicy(memoryLimited: true, availableBytes: 42_743_728, footprintBytes: 187_942_992)
+        XCTAssertTrue(tight.prefersCPU); XCTAssertFalse(tight.allowsConcurrentPasses)
+        let unknown = OCRResourcePolicy(memoryLimited: true)
+        XCTAssertTrue(unknown.prefersCPU, "An unknown budget must keep the conservative path")
+        let roomy = OCRResourcePolicy(memoryLimited: true, availableBytes: 180 * 1_024 * 1_024, footprintBytes: 60 * 1_024 * 1_024)
+        XCTAssertFalse(roomy.prefersCPU); XCTAssertTrue(roomy.allowsConcurrentPasses)
+        XCTAssertEqual(roomy.tileDimension, 1536)
+        let warned = OCRResourcePolicy(memoryLimited: true, recentWarning: true, availableBytes: 300 * 1_024 * 1_024)
+        XCTAssertTrue(warned.prefersCPU, "A recent memory warning always selects the conservative path")
+        let app = OCRResourcePolicy(memoryLimited: false)
+        XCTAssertFalse(app.prefersCPU); XCTAssertTrue(app.allowsConcurrentPasses)
+    }
+
     func testOverlappingWindowsCoverEverySourcePixelAndBoundTheWorkingArea() {
         for constrained in [false, true] {
             let policy = OCRResourcePolicy(memoryLimited: true, recentWarning: constrained)
