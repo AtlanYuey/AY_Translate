@@ -169,7 +169,10 @@ final class AIRecognitionPlacementTests: XCTestCase {
         // A reply that stopped inside an item keeps the finished items.
         let cut = #"{"regions":[{"id":"0","text":"a } \" ]","box_2d":[1,2,3,4]},{"id":"1","text":"unfinis"#
         XCTAssertEqual(try OpenAIClient.decodeJSONPayload(Output.self, from: cut).regions.map(\.text), [#"a } " ]"#])
-        XCTAssertTrue(OpenAIClient.closingOpenJSON(#"{"a":[1,2]}"#).isEmpty)
+        // A remark written after the last item, inside the object.
+        let remark = #"{"regions":[{"id":null,"text":"ですか?","box_2d":[622, 62, 659, 82]}] dialogue-bubble boxes are implied by the texts inside.}"#
+        XCTAssertEqual(try OpenAIClient.decodeJSONPayload(Output.self, from: remark).regions.map(\.text), ["ですか?"])
+        XCTAssertEqual(OpenAIClient.closingOpenJSON(#"{"a":[1,2]}"#), [])
         XCTAssertThrowsError(try OpenAIClient.decodeJSONPayload(Output.self, from: "{\"regions\":"))
     }
 

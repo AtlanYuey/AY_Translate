@@ -103,10 +103,17 @@ nonisolated struct OpenAIClient: Sendable {
         Local OCR anchors from an on-device recognizer follow, in the same coordinate format. They can contain misreadings and can miss text. Return every anchor with its ID and corrected text; keep the same ID for the same visual text. An anchor with empty text marks writing the recognizer located but could not read (often a short reply in a speech bubble): transcribe what is written inside its box and return it under that ID, or return empty text if nothing is written there. Add text the anchors missed with a null ID. Never reuse an ID. Include a box for every region.
         Anchors: \(String(decoding: anchorData, as: UTF8.self))
         """
-        let output: Output = try await request(configuration: configuration, apiKey: apiKey, system: instructions, content: [
+        let content: [ContentPart] = [
             .text("Read all text and its location in this image."),
             .image("data:image/jpeg;base64," + imageData.base64EncodedString())
-        ], maxTokens: 8_192)
+        ]
+        let output: Output
+        do {
+            output = try await request(configuration: configuration, apiKey: apiKey, system: instructions, content: content, maxTokens: 8_192)
+        } catch AIServiceError.invalidResponse {
+            // An unreadable reply is usually a one-off generation glitch.
+            output = try await request(configuration: configuration, apiKey: apiKey, system: instructions, content: content, maxTokens: 8_192)
+        }
         let regions = output.regions.map { region -> AIRecognizedRegion in
             guard let id = region.id else { return region }
             // A model-generated ID for newly found text is not a local anchor.
@@ -383,22 +390,24 @@ extension OpenAIClient {
             throw AIServiceError.invalidResponse
         }
         if let decoded = try? JSONDecoder().decode(Output.self, from: Data(json[open...close].utf8)) { return decoded }
-        // A complete answer whose final brackets were dropped (seen from
-        // Gemini's JSON mode: `…]}]` without the last `}`) is still an answer.
+        // A complete answer whose final brackets were dropped, or that has a
+        // remark written after its last item (both seen from Gemini's JSON
+        // mode: `…]}]` without the last `}`, and `…]}] some words.}`), is
+        // still an answer.
         for candidate in closingOpenJSON(String(json[open...])) {
             if let decoded = try? JSONDecoder().decode(Output.self, from: Data(candidate.utf8)) { return decoded }
         }
         throw AIServiceError.invalidResponse
     }
 
-    /// Close the objects and arrays a reply left open: first as written, then
-    /// cut back to the last finished element (a reply that stopped mid-item).
-    /// Returns nothing for balanced text.
+    /// Repairs for a reply that is not valid JSON: close the objects and
+    /// arrays it left open, and cut it back to its last finished element
+    /// (a reply that stopped mid-item, or carries stray text after its items).
     nonisolated static func closingOpenJSON(_ json: String) -> [String] {
         var stack: [Character] = []
-        var inString = false, escaped = false
+        var inString = false, escaped = false, mismatched = false
         var checkpoint: (end: String.Index, stack: [Character])?
-        for index in json.indices {
+        scan: for index in json.indices {
             let character = json[index]
             if inString {
                 if escaped { escaped = false }
@@ -411,20 +420,22 @@ extension OpenAIClient {
             case "{": stack.append("}")
             case "[": stack.append("]")
             case "}", "]":
-                guard stack.last == character else { return [] }
+                guard stack.last == character else { mismatched = true; break scan }
                 stack.removeLast()
                 if !stack.isEmpty { checkpoint = (json.index(after: index), stack) }
             default: break
             }
         }
-        guard !stack.isEmpty else { return [] }
         var result: [String] = []
-        if !inString {
+        if !stack.isEmpty, !inString, !mismatched {
             var body = json
             while let last = body.last, last.isWhitespace || last == "," { body.removeLast() }
             if let last = body.last, last != ":" { result.append(body + String(stack.reversed())) }
         }
-        if let checkpoint { result.append(String(json[..<checkpoint.end]) + String(checkpoint.stack.reversed())) }
+        if let checkpoint {
+            let cut = String(json[..<checkpoint.end]) + String(checkpoint.stack.reversed())
+            if cut != json { result.append(cut) }
+        }
         return result
     }
 }
