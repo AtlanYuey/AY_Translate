@@ -27,13 +27,25 @@ nonisolated enum TranslationPlanner {
         let merged = groups.map { group -> RecognizedBlock in
             var kept: [RecognizedBlock] = []
             for member in group.members.sorted(by: { $0.original.count != $1.original.count ? $0.original.count > $1.original.count : $0.confidence > $1.confidence }) {
-                let duplicate = kept.contains { other in
+                var covered: CGFloat = 0
+                var duplicate = false
+                for other in kept {
                     let overlap = other.boundingBox.intersection(member.boundingBox)
-                    return !overlap.isNull && area(overlap) >= min(area(other.boundingBox), area(member.boundingBox)) * 0.6
+                    guard !overlap.isNull else { continue }
+                    covered += area(overlap)
+                    if area(overlap) >= min(area(other.boundingBox), area(member.boundingBox)) * 0.6 { duplicate = true }
                 }
+                // A short reading that lies across longer lines already kept
+                // (a "column" cut through two stacked rows of a title) is the
+                // same ink read a second time, in the wrong direction.
+                if covered >= area(member.boundingBox) * 0.6 { duplicate = true }
                 if !duplicate { kept.append(member) }
             }
-            let vertical = kept.contains { $0.flow == .vertical }
+            // The writing direction most of the text was read in; one stray
+            // vertical fragment must not turn a horizontal title on its side.
+            let total = kept.reduce(0) { $0 + $1.original.count }
+            let upright = kept.filter { $0.flow == .vertical }.reduce(0) { $0 + $1.original.count }
+            let vertical = upright * 2 > total
             let ordered = kept.sorted { a, b in
                 if vertical {
                     if abs(a.boundingBox.midX - b.boundingBox.midX) > min(a.originalColumnWidth, b.originalColumnWidth) * 0.5 { return a.boundingBox.midX > b.boundingBox.midX }

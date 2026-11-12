@@ -72,6 +72,37 @@ final class OCRNoiseTests: XCTestCase {
     }
 }
 
+final class BubbleParagraphDirectionTests: XCTestCase {
+    func testAStrayVerticalFragmentDoesNotTurnAHorizontalTitleOnItsSide() {
+        let area = CGRect(x: 0.6, y: 0.7, width: 0.3, height: 0.1)
+        func line(_ text: String, _ box: CGRect, vertical: Bool = false) -> RecognizedBlock {
+            RecognizedBlock(id: UUID(), original: text, translation: text, boundingBox: box, confidence: 0.8, sourceLineHeight: vertical ? nil : box.height,
+                            flow: vertical ? .vertical : .horizontal, sourceColumnWidth: vertical ? box.width : nil, container: area)
+        }
+        let top = line("元セフレと", CGRect(x: 0.70, y: 0.770, width: 0.10, height: 0.016))
+        let middle = line("マッチング", CGRect(x: 0.69, y: 0.742, width: 0.22, height: 0.028))
+        let bottom = line("しました。", CGRect(x: 0.74, y: 0.722, width: 0.13, height: 0.018))
+        // Two stacked glyphs read as a vertical column across the two rows.
+        let stray = line("グた", CGRect(x: 0.80, y: 0.724, width: 0.03, height: 0.044), vertical: true)
+        let merged = TranslationPlanner.bubbleParagraphs([stray, bottom, top, middle])
+        XCTAssertEqual(merged.count, 1)
+        XCTAssertEqual(merged[0].flow, .horizontal)
+        XCTAssertEqual(merged[0].original, "元セフレとマッチングしました。")
+    }
+
+    func testVerticalDialogueStaysVertical() {
+        let area = CGRect(x: 0.1, y: 0.1, width: 0.3, height: 0.4)
+        func column(_ text: String, x: CGFloat) -> RecognizedBlock {
+            RecognizedBlock(id: UUID(), original: text, translation: text, boundingBox: CGRect(x: x, y: 0.2, width: 0.03, height: 0.2), confidence: 0.8,
+                            flow: .vertical, sourceColumnWidth: 0.03, container: area)
+        }
+        let merged = TranslationPlanner.bubbleParagraphs([column("どんな子だろう…", x: 0.2), column("今回の女の子は", x: 0.25)])
+        XCTAssertEqual(merged.count, 1)
+        XCTAssertEqual(merged[0].flow, .vertical)
+        XCTAssertEqual(merged[0].original, "今回の女の子はどんな子だろう…")
+    }
+}
+
 final class VerticalColumnBalanceTests: XCTestCase {
     private func columns(_ layout: VerticalTextLayout) -> [[String]] {
         var result: [(x: CGFloat, glyphs: [VerticalGlyph])] = []
