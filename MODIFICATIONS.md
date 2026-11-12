@@ -38,6 +38,7 @@ AY Translate 由 AtlanYuey 于 2026 年基于 [Translate Screen](https://github.
 - `ScreenTranslate/Core/InkLocator.swift`
 - `ScreenTranslate/Core/InterfaceLanguage.swift`
 - `ScreenTranslate/Core/OCRCoverage.swift`
+- `ScreenTranslate/Core/OCRNoise.swift`
 - `ScreenTranslate/Core/OCRReconciler.swift`
 - `ScreenTranslate/Core/OCRResourcePolicy.swift`
 - `ScreenTranslate/Core/OpenAIClient.swift`
@@ -123,7 +124,9 @@ AY Translate 由 AtlanYuey 于 2026 年基于 [Translate Screen](https://github.
 - `Tests/ScreenTranslationCoreTests/Fixtures/Yomogi-Regular.ttf`
 - `Tests/ScreenTranslationCoreTests/Fixtures/landscape-title-gray-392x109.raw`
 - `Tests/ScreenTranslationCoreTests/GeometryAndPlanningTests.swift`
+- `Tests/ScreenTranslationCoreTests/LiveServiceTests.swift`
 - `Tests/ScreenTranslationCoreTests/MangaLetteringBenchmarkTests.swift`
+- `Tests/ScreenTranslationCoreTests/OCRNoiseTests.swift`
 - `Tests/ScreenTranslationCoreTests/OCRReconciliationTests.swift`
 - `Tests/ScreenTranslationCoreTests/OCRResourcePolicyTests.swift`
 - `Tests/ScreenTranslationCoreTests/OpenAIClientTests.swift`
