@@ -68,6 +68,30 @@ final class InterfaceAndServiceTests: XCTestCase {
         XCTAssertEqual(drawn.count, 1, "One translation is kept; the other region shows its original")
     }
 
+    func testBubbleTranslationNeverLeavesItsBubbleAtAnyTextSize() throws {
+        let canvas = CGSize(width: 390, height: 844)
+        let container = CGRect(x: 0.40, y: 0.50, width: 0.20, height: 0.22)
+        let block = RecognizedBlock(id: UUID(), original: "でも今日は勉強してきたから", translation: "不过今天我可是做了功课才来的",
+            boundingBox: CGRect(x: 0.44, y: 0.53, width: 0.10, height: 0.17), confidence: 1, sourceLineHeight: 0.02, flow: .vertical,
+            sourceColumnWidth: 0.045, container: container)
+        let area = CGRect(x: container.minX * canvas.width, y: (1 - container.maxY) * canvas.height,
+                          width: container.width * canvas.width, height: container.height * canvas.height)
+        var sizes: [CGFloat] = []
+        for scale in [0.8, 1.0, 1.4, 1.8] {
+            let layout = try XCTUnwrap(ScreenshotRendering.textLayouts(for: [block], canvasSize: canvas, textScale: scale)[block.id])
+            XCTAssertTrue(layout.canRender, "Scale \(scale) must shrink to fit, not hide the translation")
+            XCTAssertTrue(area.insetBy(dx: -0.5, dy: -0.5).contains(layout.textRect), "Scale \(scale): \(layout.textRect) left \(area)")
+            let glyphs = try XCTUnwrap(layout.vertical?.glyphs)
+            XCTAssertEqual(glyphs.count, block.translation.count)
+            for glyph in glyphs {
+                XCTAssertTrue(glyph.center.x >= 0 && glyph.center.x <= area.width && glyph.center.y >= 0 && glyph.center.y <= area.height)
+            }
+            sizes.append(layout.fontSize)
+        }
+        XCTAssertLessThanOrEqual(sizes[0], sizes[1], "The size setting still moves the target size")
+        XCTAssertLessThanOrEqual(sizes[1], sizes[3])
+    }
+
     func testEnlargedAdjacentVerticalTranslationsDoNotOverlap() throws {
         let blocks = [0.3, 0.335].map { x in
             RecognizedBlock(id: UUID(), original: "これは何ですか", translation: "这是什么东西", boundingBox: CGRect(x: x, y: 0.4, width: 0.03, height: 0.25), confidence: 1,
