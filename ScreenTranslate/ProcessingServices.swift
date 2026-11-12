@@ -27,11 +27,16 @@ struct ProcessingServices {
                 }.value
                 // Bubble text the on-device recognizer could not read is sent
                 // as empty anchors: the model reads it, the position is local.
-                let unread = upright.map { BubbleText.unreadAnchors(bubbles: local.1, blocks: anchors, imageSize: CGSize(width: $0.width, height: $0.height)) } ?? []
+                let unread = upright.map { page in
+                    // Enclosed skin (a face, a hand) is not a bubble to read.
+                    let paper = local.1.filter { !$0.isDialogue || !VisionTextRecognizer.isSkinToned(page, region: $0.bounds) }
+                    return BubbleText.unreadAnchors(bubbles: paper, blocks: anchors, imageSize: CGSize(width: page.width, height: page.height))
+                } ?? []
                 var result = try await client.recognize(imageData: data, anchors: anchors + unread, configuration: configuration, apiKey: key, locator: local.0)
                 // Text only the model found joins its bubble and keeps its
                 // lettering colour, exactly like locally recognized lines.
                 if let upright { result.blocks = BubbleText.assignContainers(result.blocks, bubbles: local.1, imageSize: CGSize(width: upright.width, height: upright.height)) }
+                result.blocks = OCRNoise.suppress(result.blocks)
                 if let upright { result.blocks = VisionTextRecognizer.annotatingInk(upright, blocks: result.blocks) }
                 return result
             },

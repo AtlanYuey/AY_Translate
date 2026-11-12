@@ -63,6 +63,28 @@ nonisolated enum BackgroundSampling {
         return color
     }
 
+    /// The light "paper" of a region (Vision-normalized) is skin-coloured
+    /// rather than white or a flat tint: an enclosed face, hand or body, whose
+    /// features must not be read as lettering.
+    static func isSkinTone(pixels: [UInt8], width: Int, height: Int, region: CGRect) -> Bool {
+        guard width > 0, height > 0, pixels.count >= width * height * 4 else { return false }
+        let left = max(0, Int(region.minX * Double(width))), right = min(width - 1, Int(region.maxX * Double(width)))
+        let top = max(0, Int((1 - region.maxY) * Double(height))), bottom = min(height - 1, Int((1 - region.minY) * Double(height)))
+        guard left <= right, top <= bottom else { return false }
+        let step = max(1, Int(Double((right - left + 1) * (bottom - top + 1)).squareRoot() / 60))
+        var light = 0, skin = 0
+        for y in stride(from: top, through: bottom, by: step) { for x in stride(from: left, through: right, by: step) {
+            let i = (y * width + x) * 4
+            let r = Int(pixels[i]), g = Int(pixels[i + 1]), b = Int(pixels[i + 2])
+            let luminance = (r * 299 + g * 587 + b * 114) / 1000
+            guard luminance >= 170 else { continue }
+            light += 1
+            // Warm and ordered R > G > B, clearly away from neutral paper.
+            if r - g >= 9 && g - b >= 7 && r - b >= 26 { skin += 1 }
+        } }
+        return light >= 12 && skin * 2 >= light
+    }
+
     /// Ink colours of two text regions that clearly differ (speaker colours).
     static func inksDiffer(_ a: [Double]?, _ b: [Double]?) -> Bool {
         guard let a, let b, a.count == 3, b.count == 3 else { return false }

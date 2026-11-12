@@ -14,19 +14,65 @@ nonisolated struct VerticalTextLayout: Sendable {
     let fontSize: CGFloat
     let glyphs: [VerticalGlyph]
     let fits: Bool
+    /// Number of columns the glyphs occupy.
+    let columnCount: Int
 
     init(scaling base: VerticalTextLayout, by factor: CGFloat) {
         fontSize = base.fontSize * factor
         glyphs = base.glyphs.map { VerticalGlyph(text: $0.text, center: CGPoint(x: $0.center.x * factor, y: $0.center.y * factor)) }
         fits = base.fits
+        columnCount = base.columnCount
     }
 
     static func supports(_ text: String) -> Bool {
         text.unicodeScalars.contains { (0x2E80...0x9FFF).contains($0.value) || (0xAC00...0xD7AF).contains($0.value) }
     }
 
-    init(text: String, size: CGSize, preferred: CGFloat, scale: CGFloat) {
-        let chars = text.filter { !$0.isWhitespace }
+    /// Marks that must not begin a column: they belong to the text before.
+    private static let closing = Set("。、，．,.！？!?…‥）)」』】〉》”’：；:;・ー～〜—")
+
+    /// Characters per column, right to left. Columns are filled evenly, and a
+    /// closing mark that would begin a column stays with the text before it
+    /// when that column has room (or takes one character along otherwise).
+    static func distribution(_ chars: [Character], columns: Int, maximumRows: Int) -> [Int] {
+        let count = chars.count
+        guard count > 0 else { return [] }
+        let columns = min(count, max(1, columns))
+        var sizes = (0..<columns).map { count / columns + ($0 < count % columns ? 1 : 0) }
+        var start = 0
+        var index = 0
+        while index + 1 < sizes.count {
+            let boundary = start + sizes[index]
+            // Hang closing marks at the foot of the column they follow.
+            while sizes[index + 1] > 0, sizes[index] < maximumRows, closing.contains(chars[start + sizes[index]]) {
+                sizes[index] += 1; sizes[index + 1] -= 1
+            }
+            if sizes[index + 1] == 0 { sizes.remove(at: index + 1); continue }
+            // No room: carry the last character over, so the mark does not lead.
+            if start + sizes[index] == boundary, closing.contains(chars[boundary]), sizes[index] > 1,
+               sizes[index + 1] < maximumRows, !closing.contains(chars[boundary - 1]) {
+                sizes[index] -= 1; sizes[index + 1] += 1
+            }
+            start += sizes[index]
+            index += 1
+        }
+        return sizes
+    }
+
+    /// Number of columns in a set of glyph or line boxes of vertical text.
+    static func columnCount(of boxes: [CGRect], columnWidth: CGFloat) -> Int {
+        var centers: [CGFloat] = []
+        for box in boxes.sorted(by: { $0.midX > $1.midX }) {
+            if let last = centers.last, abs(last - box.midX) < max(columnWidth, box.width) * 0.5 { continue }
+            centers.append(box.midX)
+        }
+        return max(1, centers.count)
+    }
+
+    /// `compact` uses as few columns as the height allows (dialogue set in a
+    /// bubble's free area); otherwise the source area's column rhythm is kept.
+    init(text: String, size: CGSize, preferred: CGFloat, scale: CGFloat, compact: Bool = false) {
+        let chars = Array(text.filter { !$0.isWhitespace })
         func capacity(_ font: CGFloat) -> Int {
             max(0, Int((size.width + font * 0.08) / (font * 1.08))) * max(0, Int(size.height / (font * 1.05)))
         }
@@ -38,20 +84,29 @@ nonisolated struct VerticalTextLayout: Sendable {
         // Keep the source area's column rhythm, distributing shorter Chinese
         // evenly instead of leaving a tall empty tail or a lone final character.
         let sourceColumns = max(1, Int((size.width + preferred * 0.08) / (preferred * 1.08)))
-        let balancedColumns = min(sourceColumns, max(1, Int(ceil(Double(chars.count) / 3))))
-        let rows = min(maximumRows, max(1, Int(ceil(Double(chars.count) / Double(balancedColumns)))))
-        let columns = max(1, Int(ceil(Double(chars.count) / Double(rows))))
+        let rhythm = compact ? 1 : min(sourceColumns, max(1, Int(ceil(Double(chars.count) / 3))))
+        let needed = max(1, Int(ceil(Double(chars.count) / Double(maximumRows))))
+        let sizes = Self.distribution(chars, columns: max(needed, rhythm), maximumRows: maximumRows)
+        columnCount = max(1, sizes.count)
         fits = capacity(finalSize) >= chars.count && !chars.isEmpty
-        let gridWidth = CGFloat(columns) * finalSize * 1.08
+        let gridWidth = CGFloat(columnCount) * finalSize * 1.08
         let startX = (size.width + gridWidth) / 2 - finalSize * 0.54
-        let usedRows = min(rows, chars.count)
+        let usedRows = sizes.max() ?? 1
         let startY = max(0, (size.height - CGFloat(usedRows) * finalSize * 1.05) / 2)
         let punctuation: [Character: String] = ["。": "︒", "、": "︑", "，": "︐", "！": "！", "？": "？", "…": "︙", "（": "︵", "）": "︶", "「": "﹁", "」": "﹂", "『": "﹃", "』": "﹄", "ー": "丨", "—": "丨"]
-        glyphs = chars.enumerated().map { index, character in
-            VerticalGlyph(text: punctuation[character] ?? String(character), center: CGPoint(
-                x: startX - CGFloat(index / rows) * finalSize * 1.08,
-                y: startY + finalSize * 0.525 + CGFloat(index % rows) * finalSize * 1.05))
+        var placed: [VerticalGlyph] = []
+        placed.reserveCapacity(chars.count)
+        var next = 0
+        for (column, rows) in sizes.enumerated() {
+            for row in 0..<rows {
+                let character = chars[next]
+                next += 1
+                let x: CGFloat = startX - CGFloat(column) * finalSize * 1.08
+                let y: CGFloat = startY + finalSize * 0.525 + CGFloat(row) * finalSize * 1.05
+                placed.append(VerticalGlyph(text: punctuation[character] ?? String(character), center: CGPoint(x: x, y: y)))
+            }
         }
+        glyphs = placed
     }
 }
 

@@ -114,8 +114,8 @@ nonisolated enum VisionTextRecognizer {
                 let bubbled = try await supplementBubbles(image, blocks: OCRReconciler.merge(result), language: language, cpuOnly: cpuOnly)
                 await checkpoint?("bubbles_end")
                 let reconciled = OCRReconciler.droppingContainedFragments(OCRReconciler.separatingRuby(OCRReconciler.merge(bubbled.blocks)))
-                let final = BubbleText.assignContainers(reconciled, bubbles: bubbled.bubbles, imageSize: CGSize(width: image.width, height: image.height))
-                return annotatingInk(image, blocks: final)
+                let grouped = BubbleText.assignContainers(reconciled, bubbles: bubbled.bubbles, imageSize: CGSize(width: image.width, height: image.height))
+                return annotatingInk(image, blocks: OCRNoise.suppress(grouped))
             }
             // No document text: stop the overlapping reader before the legacy
             // path allocates its own recognizer.
@@ -128,7 +128,7 @@ nonisolated enum VisionTextRecognizer {
         let working = policy.memoryLimited ? (boundedWorkingImage(image, maximum: policy.tileDimension) ?? image) : image
         let result = try await recognizeLegacy(working, language: language, cpuOnly: policy.prefersCPU)
         await checkpoint?("legacy_end")
-        return OCRReconciler.separatingRuby(OCRReconciler.merge(result))
+        return OCRNoise.suppress(OCRReconciler.separatingRuby(OCRReconciler.merge(result)))
     }
 
     @available(iOS 26.0, macOS 26.0, *)
@@ -256,9 +256,9 @@ nonisolated enum VisionTextRecognizer {
         return blocks.map { block in
             guard block.placement == .overlay else { return block }
             var result = block
-            // Punctuation or symbols alone ("…", "!", stray marks) need no
-            // overlay; keep them for Full Text instead of painting them.
-            if !block.original.unicodeScalars.contains(where: { CharacterSet.letters.contains($0) || CharacterSet.decimalDigits.contains($0) }) {
+            // Punctuation, symbols or numbers alone ("…", "!", "13:21") need
+            // no overlay; keep them for Full Text instead of painting them.
+            if OCRNoise.isLetterless(block.original) {
                 result.placement = .textOnly
                 return result
             }
@@ -303,7 +303,10 @@ nonisolated enum VisionTextRecognizer {
             let size = CGSize(width: image.width, height: image.height)
             var pending: [[GlyphCell]] = []
             for bubble in bubbles where bubble.isDialogue {
-                pending += BubbleText.missingColumns(in: bubble, blocks: blocks, imageSize: size).filter { $0.count <= 20 }
+                let columns = BubbleText.missingColumns(in: bubble, blocks: blocks, imageSize: size).filter { $0.count <= 20 }
+                // An enclosed face or hand is "paper" with marks in it too;
+                // its skin tone tells it apart from a bubble before any read.
+                if !columns.isEmpty && !isSkinToned(image, region: bubble.bounds) { pending += columns }
             }
             var result = blocks
             let columns = Array(pending.prefix(24))
@@ -322,7 +325,10 @@ nonisolated enum VisionTextRecognizer {
                     // with at least two characters for Chinese pages.
                     let kana = text.unicodeScalars.contains { (0x3041...0x30FA).contains($0.value) }
                     let chinese = language?.hasPrefix("zh") == true && text.unicodeScalars.filter { (0x3400...0x9FFF).contains($0.value) }.count >= 2
-                    guard VerticalTextLayout.supports(text), kana || chinese, confidence >= 0.3, text.count <= column.count * 2 + 2 else { continue }
+                    // One character alone is the easiest thing to hallucinate
+                    // from a stray mark: it needs a clearly confident reading.
+                    let required: Float = text.count <= 1 ? 0.5 : 0.3
+                    guard VerticalTextLayout.supports(text), kana || chinese, confidence >= required, text.count <= column.count * 2 + 2 else { continue }
                     let boxes = column.map(\.box)
                     let upright = column.filter { !$0.rotate }.map(\.box)
                     let widths = (upright.isEmpty ? boxes : upright).map(\.width).sorted()
@@ -336,6 +342,28 @@ nonisolated enum VisionTextRecognizer {
             return (result, bubbles)
         }
         return try await withTaskCancellationHandler(operation: { try await task.value }, onCancel: { task.cancel() })
+    }
+
+    /// Whether the light interior of a region (Vision-normalized) is skin
+    /// rather than paper, judged on a small RGBA copy of that region.
+    nonisolated static func isSkinToned(_ image: CGImage, region: CGRect) -> Bool {
+        let W = CGFloat(image.width), H = CGFloat(image.height)
+        let pixel = CGRect(x: region.minX * W, y: (1 - region.maxY) * H, width: region.width * W, height: region.height * H)
+        let area = pixel.integral.intersection(CGRect(x: 0, y: 0, width: W, height: H))
+        return autoreleasepool { () -> Bool in
+            guard area.width >= 4, area.height >= 4, let crop = image.cropping(to: area) else { return false }
+            let factor = min(1, 96 / Double(max(crop.width, crop.height)))
+            let width = max(1, Int(Double(crop.width) * factor)), height = max(1, Int(Double(crop.height) * factor))
+            var pixels = [UInt8](repeating: 255, count: width * height * 4)
+            let drawn = pixels.withUnsafeMutableBytes { buffer -> Bool in
+                guard let context = CGContext(data: buffer.baseAddress, width: width, height: height, bitsPerComponent: 8, bytesPerRow: width * 4,
+                    space: CGColorSpaceCreateDeviceRGB(), bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue) else { return false }
+                context.draw(crop, in: CGRect(x: 0, y: 0, width: width, height: height))
+                return true
+            }
+            guard drawn else { return false }
+            return BackgroundSampling.isSkinTone(pixels: pixels, width: width, height: height, region: CGRect(x: 0, y: 0, width: 1, height: 1))
+        }
     }
 
     /// Up to four vertical columns, each turned into one horizontal row.

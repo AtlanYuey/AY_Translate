@@ -117,10 +117,13 @@ enum ScreenshotRendering {
         let minimum = min(target, anchor * 0.45)
         if block.flow == .vertical && VerticalTextLayout.supports(text) {
             var preferred = target
-            var layout = VerticalTextLayout(text: text, size: area.size, preferred: preferred, scale: 1)
+            // As few, evenly filled columns as the bubble's height allows: a
+            // one-column caption stays one column, and no column is left with
+            // a lone character or only its closing punctuation.
+            var layout = VerticalTextLayout(text: text, size: area.size, preferred: preferred, scale: 1, compact: true)
             while !layout.fits && preferred * 0.9 >= minimum {
                 preferred *= 0.9
-                layout = VerticalTextLayout(text: text, size: area.size, preferred: preferred, scale: 1)
+                layout = VerticalTextLayout(text: text, size: area.size, preferred: preferred, scale: 1, compact: true)
             }
             return TextLayout(sourceRect: rect, textRect: area, fontSize: layout.fontSize, lineLimit: 1,
                               coverPadding: layout.fontSize * 0.06, vertical: layout, canRender: layout.fits, centered: true)
