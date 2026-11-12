@@ -66,7 +66,10 @@ nonisolated enum TextInkRestoration {
         var luminance = [UInt8](repeating: 0, count: width * height)
         for index in luminance.indices {
             let pixel = index * 4
-            luminance[index] = UInt8((Int(pixels[pixel]) * 77 + Int(pixels[pixel + 1]) * 150 + Int(pixels[pixel + 2]) * 29) / 256)
+            let red = Int(pixels[pixel]) * 77
+            let green = Int(pixels[pixel + 1]) * 150
+            let blue = Int(pixels[pixel + 2]) * 29
+            luminance[index] = UInt8((red + green + blue) / 256)
         }
         // Background: the most common tone between the strokes that also
         // surrounds the text box. Checking both sides tells paper from ink
@@ -134,8 +137,10 @@ nonisolated enum TextInkRestoration {
             // Mostly inside the (widened) text box: lettering, not a neighbour.
             let x0 = max(minX + window.x0, reach.x0), x1 = min(maxX + window.x0, reach.x1)
             let y0 = max(minY + window.y0, reach.y0), y1 = min(maxY + window.y0, reach.y1)
-            let extent = (maxX - minX + 1) * (maxY - minY + 1)
-            guard x0 <= x1, y0 <= y1, (x1 - x0 + 1) * (y1 - y0 + 1) * 10 >= extent * 7 else { continue }
+            let extent: Int = (maxX - minX + 1) * (maxY - minY + 1)
+            guard x0 <= x1, y0 <= y1 else { continue }
+            let overlap: Int = (x1 - x0 + 1) * (y1 - y0 + 1)
+            guard overlap * 10 >= extent * 7 else { continue }
             // Strokes leave most of their bounding box empty. A large solid
             // patch is a shape (a whole bubble on a wrongly judged tone).
             let large = Double(maxX - minX + 1) > glyph * 2.5 && Double(maxY - minY + 1) > glyph * 2.5
@@ -143,7 +148,8 @@ nonisolated enum TextInkRestoration {
             for index in component { state[index] = 2; removed += 1 }
         } }
         // Lettering never covers most of its own box.
-        guard removed > 0, removed * 10 <= (box.x1 - box.x0 + 1) * (box.y1 - box.y0 + 1) * 7 else { return unchanged }
+        let boxArea: Int = (box.x1 - box.x0 + 1) * (box.y1 - box.y0 + 1)
+        guard removed > 0, removed * 10 <= boxArea * 7 else { return unchanged }
         // Take the antialiased fringe with the strokes.
         for _ in 0..<2 {
             var grown: [Int] = []

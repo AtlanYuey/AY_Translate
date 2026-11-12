@@ -411,7 +411,11 @@ final class AppState: ObservableObject {
             let layouts = ScreenshotRendering.textLayouts(for: document.blocks, canvasSize: canvas, textScale: settings.overlayTextScale)
             let unchanged = overlay.filter { $0.translation == $0.original }.count
             let undrawn = overlay.filter { $0.translation != $0.original && layouts[$0.id]?.canRender != true }.count
-            diagnostics.recordSummary("regions=\(overlay.count) bubbles=\(overlay.filter { $0.container != nil }.count) unchanged=\(unchanged) undrawn=\(undrawn) textOnly=\(document.blocks.count - overlay.count) scale=\(settings.overlayTextScale)")
+            let bubbleCount = overlay.filter { $0.container != nil }.count
+            let textOnly = document.blocks.count - overlay.count
+            let parts: [String] = ["regions=" + String(overlay.count), "bubbles=" + String(bubbleCount), "unchanged=" + String(unchanged),
+                                   "undrawn=" + String(undrawn), "textOnly=" + String(textOnly), "scale=" + String(settings.overlayTextScale)]
+            diagnostics.recordSummary(parts.joined(separator: " "))
         }
         diagnostics?.end("completed")
         if settings.savesHistory { history.add(document) }

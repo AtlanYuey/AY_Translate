@@ -40,7 +40,11 @@ nonisolated struct SpeechBubble: Sendable, Equatable {
         if c1 < c0 { c1 = c0 }
         if r1 < r0 { r1 = r0 }
         func rect(_ c0: Int, _ c1: Int, _ r0: Int, _ r1: Int) -> CGRect {
-            CGRect(x: bounds.minX + CGFloat(c0) * cw, y: bounds.maxY - CGFloat(r1 + 1) * ch, width: CGFloat(c1 - c0 + 1) * cw, height: CGFloat(r1 - r0 + 1) * ch)
+            let x: CGFloat = bounds.minX + CGFloat(c0) * cw
+            let y: CGFloat = bounds.maxY - CGFloat(r1 + 1) * ch
+            let w: CGFloat = CGFloat(c1 - c0 + 1) * cw
+            let h: CGFloat = CGFloat(r1 - r0 + 1) * ch
+            return CGRect(x: x, y: y, width: w, height: h)
         }
         func inside(_ c0: Int, _ c1: Int, _ r0: Int, _ r1: Int) -> Bool {
             var count = 0
@@ -79,7 +83,9 @@ nonisolated enum BubbleDetector {
             if let index = result.firstIndex(where: { other in
                 let shared = other.bounds.intersection(bubble.bounds)
                 // Nested regions are kept: a line joins its smallest enclosure.
-                return !shared.isNull && area(shared) >= (area(other.bounds) + area(bubble.bounds) - area(shared)) * 0.7
+                guard !shared.isNull else { return false }
+                let union: CGFloat = area(other.bounds) + area(bubble.bounds) - area(shared)
+                return area(shared) >= union * 0.7
             }) {
                 // The same bubble seen twice: prefer the text container, then
                 // the more regular shape.
@@ -176,7 +182,9 @@ nonisolated enum BubbleDetector {
             func enclosed(_ x: Int, _ y: Int) -> Bool {
                 let ry = y - region.minY, rx = x - region.minX
                 guard rowMax[ry] >= 0, colMax[rx] >= 0 else { return false }
-                return x >= rowMin[ry] - reach && x <= rowMax[ry] + reach && y >= colMin[rx] - reach && y <= colMax[rx] + reach
+                let inRow = x >= rowMin[ry] - reach && x <= rowMax[ry] + reach
+                let inColumn = y >= colMin[rx] - reach && y <= colMax[rx] + reach
+                return inRow && inColumn
             }
             // Enclosed non-paper components are the bubble's content.
             var seen = [Bool](repeating: false, count: bw * bh)
@@ -231,8 +239,9 @@ nonisolated enum BubbleDetector {
             let spread = ink.reduce(CGRect.null) { $0.union($1) }
             // Several glyph-sized marks, or one mark in a clean bubble shape;
             // a few specks in a large area are not lettering.
-            let holdsText = glyphSized && (ink.count >= 2 || fill >= 0.6) && Double(inkArea) / Double(span) >= 0.008
-                && spread.width * spread.height >= CGFloat(bw * bh) * 0.02
+            let inkShare: Double = Double(inkArea) / Double(span)
+            let spreadShare: CGFloat = spread.width * spread.height / CGFloat(bw * bh)
+            let holdsText = glyphSized && (ink.count >= 2 || fill >= 0.6) && inkShare >= 0.008 && spreadShare >= 0.02
             let sizes = ink.map { max($0.width, $0.height) }.sorted()
             let glyph = sizes[min(sizes.count - 1, sizes.count * 3 / 4)]
             let isDialogue = holdsText && Double(span).squareRoot() <= Double(glyph) * 12 && ink.count <= 80
