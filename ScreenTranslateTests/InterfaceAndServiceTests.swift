@@ -40,6 +40,34 @@ final class InterfaceAndServiceTests: XCTestCase {
         XCTAssertTrue(AppSettings(defaults: defaults, keyStore: keys).showsUnchangedText)
     }
 
+    func testBubbleTranslationsUseTheBubbleAndAConsistentReadableSize() throws {
+        let canvas = CGSize(width: 390, height: 844)
+        // A short Chinese translation in a roomy bubble whose source column
+        // was measured narrow, next to a bubble with a typical column width.
+        let small = RecognizedBlock(id: UUID(), original: "こちらこそ", translation: "我也一样",
+            boundingBox: CGRect(x: 0.70, y: 0.60, width: 0.03, height: 0.12), confidence: 1, sourceLineHeight: 0.014, flow: .vertical,
+            sourceColumnWidth: 0.03, container: CGRect(x: 0.62, y: 0.56, width: 0.20, height: 0.20))
+        let typical = RecognizedBlock(id: UUID(), original: "無理はしなくて", translation: "不用勉强自己",
+            boundingBox: CGRect(x: 0.20, y: 0.60, width: 0.12, height: 0.16), confidence: 1, sourceLineHeight: 0.022, flow: .vertical,
+            sourceColumnWidth: 0.05, container: CGRect(x: 0.15, y: 0.56, width: 0.22, height: 0.22))
+        let layouts = ScreenshotRendering.textLayouts(for: [small, typical], canvasSize: canvas, textScale: 1)
+        let a = try XCTUnwrap(layouts[small.id]), b = try XCTUnwrap(layouts[typical.id])
+        XCTAssertTrue(a.canRender && b.canRender && a.centered)
+        XCTAssertGreaterThan(a.fontSize, 0.03 * canvas.width * 0.94 * 1.2, "Free bubble space makes a short translation larger")
+        XCTAssertLessThan(max(a.fontSize, b.fontSize) / min(a.fontSize, b.fontSize), 1.6, "Bubbles on one page keep similar sizes")
+        XCTAssertGreaterThanOrEqual(a.textRect.width, 0.20 * canvas.width - 0.5, "The whole bubble is available")
+        XCTAssertEqual(a.vertical?.glyphs.count, 4)
+
+        // Two regions whose sources overlap must never be painted together.
+        let first = RecognizedBlock(id: UUID(), original: "そうですね", translation: "是啊是啊是啊",
+            boundingBox: CGRect(x: 0.40, y: 0.20, width: 0.05, height: 0.20), confidence: 1, flow: .vertical, sourceColumnWidth: 0.05)
+        let second = RecognizedBlock(id: UUID(), original: "そうですね", translation: "没错没错没错",
+            boundingBox: CGRect(x: 0.41, y: 0.22, width: 0.05, height: 0.20), confidence: 1, flow: .vertical, sourceColumnWidth: 0.05)
+        let overlapping = ScreenshotRendering.textLayouts(for: [first, second], canvasSize: canvas, textScale: 1)
+        let drawn = [first, second].compactMap { overlapping[$0.id] }.filter(\.canRender)
+        XCTAssertEqual(drawn.count, 1, "One translation is kept; the other region shows its original")
+    }
+
     func testEnlargedAdjacentVerticalTranslationsDoNotOverlap() throws {
         let blocks = [0.3, 0.335].map { x in
             RecognizedBlock(id: UUID(), original: "これは何ですか", translation: "这是什么东西", boundingBox: CGRect(x: x, y: 0.4, width: 0.03, height: 0.25), confidence: 1,

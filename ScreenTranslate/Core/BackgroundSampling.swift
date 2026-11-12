@@ -37,12 +37,29 @@ nonisolated enum BackgroundSampling {
             if distance > 90 { samples.append((distance, r, g, b)) }
         } }
         guard samples.count >= 6 else { return nil }
-        let strongest = samples.sorted { $0.distance > $1.distance }.prefix(max(3, samples.count / 2))
+        let strongest = samples.sorted { $0.distance > $1.distance }.prefix(max(3, samples.count / 4))
         let n = Double(strongest.count) * 255
         var red = 0.0, green = 0.0, blue = 0.0
         for sample in strongest { red += sample.r; green += sample.g; blue += sample.b }
         let color = [red / n, green / n, blue / n]
         guard let high = color.max(), let low = color.min(), high - low >= 0.16 else { return nil }
+        return color
+    }
+
+    /// Keep the lettering hue but darken it until it reads clearly (WCAG
+    /// contrast ≥ 4.5) on the background it is drawn over.
+    static func readableInk(_ ink: [Double], on background: SampledColor) -> [Double] {
+        func luminance(_ c: [Double]) -> Double {
+            func linear(_ v: Double) -> Double { v <= 0.04045 ? v / 12.92 : pow((v + 0.055) / 1.055, 2.4) }
+            return 0.2126 * linear(c[0]) + 0.7152 * linear(c[1]) + 0.0722 * linear(c[2])
+        }
+        let back = luminance([background.red, background.green, background.blue])
+        var color = ink
+        for _ in 0..<12 {
+            let text = luminance(color)
+            if (max(back, text) + 0.05) / (min(back, text) + 0.05) >= 4.5 { break }
+            color = color.map { $0 * 0.85 }
+        }
         return color
     }
 

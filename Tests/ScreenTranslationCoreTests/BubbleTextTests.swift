@@ -109,3 +109,31 @@ final class BubbleTextTests: XCTestCase {
         XCTAssertNil(assigned[1].container)
     }
 }
+
+final class LetteringColourTests: XCTestCase {
+    func testColouredLetteringIsSampledAndKeptReadable() throws {
+        // 60 × 40 white region with brown strokes and antialiased pink fringes.
+        let width = 60, height = 40
+        var pixels = [UInt8](repeating: 255, count: width * height * 4)
+        for y in 10..<30 { for x in 10..<50 where x % 6 < 2 {
+            let i = (y * width + x) * 4
+            let edge = x % 6 == 1
+            pixels[i] = edge ? 220 : 158; pixels[i + 1] = edge ? 170 : 71; pixels[i + 2] = edge ? 165 : 61
+        } }
+        let region = CGRect(x: 0, y: 0, width: 1, height: 1)
+        let background = BackgroundSampling.sample(pixels: pixels, width: width, height: height, region: CGRect(x: 0.1, y: 0.1, width: 0.8, height: 0.8))
+        let ink = try XCTUnwrap(BackgroundSampling.ink(pixels: pixels, width: width, height: height, region: region, background: background))
+        XCTAssertEqual(ink[0], 158.0 / 255, accuracy: 0.05, "The stroke core, not its washed-out fringe")
+        XCTAssertGreaterThan(ink[0] - ink[2], 0.2)
+        let pale = BackgroundSampling.readableInk([0.85, 0.65, 0.62], on: background)
+        XCTAssertGreaterThan(pale[0], pale[2], "Hue is preserved")
+        XCTAssertLessThan(pale[0], 0.62, "Pale ink is darkened until it reads on white")
+        XCTAssertTrue(BackgroundSampling.inksDiffer([0.62, 0.28, 0.24], [0.22, 0.28, 0.68]))
+        XCTAssertFalse(BackgroundSampling.inksDiffer([0.62, 0.28, 0.24], [0.60, 0.30, 0.25]))
+        XCTAssertFalse(BackgroundSampling.inksDiffer(nil, [0.22, 0.28, 0.68]), "Unknown colour never splits text")
+        // Black or grey lettering keeps the ordinary contrast rule.
+        var black = [UInt8](repeating: 255, count: width * height * 4)
+        for y in 10..<30 { for x in 10..<50 where x % 6 < 2 { let i = (y * width + x) * 4; black[i] = 20; black[i + 1] = 20; black[i + 2] = 20 } }
+        XCTAssertNil(BackgroundSampling.ink(pixels: black, width: width, height: height, region: region, background: background))
+    }
+}

@@ -362,7 +362,8 @@ enum ScreenshotRendering {
     static func textColor(_ background: SampledColor, appearance: TranslationAppearance) -> UIColor {
         if appearance == .readable { return .white }
         if appearance == .natural, background.usesDarkText, let ink = background.ink, ink.count == 3 {
-            return UIColor(red: ink[0], green: ink[1], blue: ink[2], alpha: 1)
+            let color = BackgroundSampling.readableInk(ink, on: background)
+            return UIColor(red: color[0], green: color[1], blue: color[2], alpha: 1)
         }
         return background.usesDarkText ? .black : .white
     }

@@ -251,24 +251,41 @@ nonisolated enum VisionTextRecognizer {
     /// Record each region's lettering colour (when it is not black or grey)
     /// from a small RGBA copy. Speaker colours keep lines apart when grouping.
     nonisolated static func annotatingInk(_ image: CGImage, blocks: [RecognizedBlock]) -> [RecognizedBlock] {
-        autoreleasepool {
-            let factor = min(1, 640 / Double(max(image.width, image.height)))
-            let width = max(1, Int(Double(image.width) * factor)), height = max(1, Int(Double(image.height) * factor))
-            var pixels = [UInt8](repeating: 255, count: width * height * 4)
-            let drawn = pixels.withUnsafeMutableBytes { buffer -> Bool in
-                guard let context = CGContext(data: buffer.baseAddress, width: width, height: height, bitsPerComponent: 8, bytesPerRow: width * 4,
-                    space: CGColorSpaceCreateDeviceRGB(), bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue) else { return false }
-                context.draw(image, in: CGRect(x: 0, y: 0, width: width, height: height))
-                return true
-            }
-            guard drawn else { return blocks }
-            return blocks.map { block in
-                guard block.placement == .overlay, block.inkColor == nil else { return block }
-                var result = block
-                let background = BackgroundSampling.sample(pixels: pixels, width: width, height: height, region: block.boundingBox)
-                result.inkColor = BackgroundSampling.ink(pixels: pixels, width: width, height: height, region: block.boundingBox, background: background)
+        let W = CGFloat(image.width), H = CGFloat(image.height)
+        return blocks.map { block in
+            guard block.placement == .overlay else { return block }
+            var result = block
+            // Punctuation or symbols alone ("…", "!", stray marks) need no
+            // overlay; keep them for Full Text instead of painting them.
+            if !block.original.unicodeScalars.contains(where: { CharacterSet.letters.contains($0) || CharacterSet.decimalDigits.contains($0) }) {
+                result.placement = .textOnly
                 return result
             }
+            guard block.inkColor == nil else { return result }
+            // Sample the region itself at (up to) source resolution: thin
+            // hand-lettered strokes wash out in a downscaled page copy.
+            let pixel = CGRect(x: block.boundingBox.minX * W, y: (1 - block.boundingBox.maxY) * H,
+                               width: block.boundingBox.width * W, height: block.boundingBox.height * H)
+            let margin = max(3, min(pixel.width, pixel.height) * 0.15)
+            let area = pixel.insetBy(dx: -margin, dy: -margin).integral.intersection(CGRect(x: 0, y: 0, width: W, height: H))
+            result.inkColor = autoreleasepool { () -> [Double]? in
+                guard !area.isEmpty, let crop = image.cropping(to: area) else { return nil }
+                let factor = min(1, (160_000 / Double(crop.width * crop.height)).squareRoot())
+                let width = max(1, Int(Double(crop.width) * factor)), height = max(1, Int(Double(crop.height) * factor))
+                var pixels = [UInt8](repeating: 255, count: width * height * 4)
+                let drawn = pixels.withUnsafeMutableBytes { buffer -> Bool in
+                    guard let context = CGContext(data: buffer.baseAddress, width: width, height: height, bitsPerComponent: 8, bytesPerRow: width * 4,
+                        space: CGColorSpaceCreateDeviceRGB(), bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue) else { return false }
+                    context.draw(crop, in: CGRect(x: 0, y: 0, width: width, height: height))
+                    return true
+                }
+                guard drawn else { return nil }
+                let inner = CGRect(x: margin / area.width, y: margin / area.height,
+                                   width: max(0.01, 1 - 2 * margin / area.width), height: max(0.01, 1 - 2 * margin / area.height))
+                let background = BackgroundSampling.sample(pixels: pixels, width: width, height: height, region: inner)
+                return BackgroundSampling.ink(pixels: pixels, width: width, height: height, region: inner, background: background)
+            }
+            return result
         }
     }
 
