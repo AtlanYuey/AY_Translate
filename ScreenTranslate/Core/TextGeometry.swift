@@ -107,8 +107,10 @@ nonisolated enum OCRAlignment {
     /// AI coordinates alone are never trusted for overlays. An ID or a unique
     /// text/geometry match must resolve to a real, local Vision observation.
     static func resolve(_ regions: [AIRecognizedRegion], anchors: [RecognizedBlock], locator: InkLocator? = nil) throws -> OCRResult {
-        guard !regions.isEmpty, regions.count <= 500,
-              regions.allSatisfy({ !$0.text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty && $0.text.count <= 8_000 }) else {
+        // An empty reading answers "nothing is written here" for an unread
+        // anchor; it is not an error.
+        let regions = regions.filter { !$0.text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty }
+        guard !regions.isEmpty, regions.count <= 500, regions.allSatisfy({ $0.text.count <= 8_000 }) else {
             throw AIServiceError.invalidRegions
         }
         let identifiers = regions.compactMap(\.id)
@@ -125,15 +127,24 @@ nonisolated enum OCRAlignment {
                 let anchor = anchors[index].boundingBox
                 let intersection = anchor.intersection(rect)
                 let overlap = intersection.isNull ? 0 : intersection.width * intersection.height / max(anchor.width * anchor.height, rect.width * rect.height)
-                return overlap >= 0.65 && similarity(text, anchors[index].original) >= 0.55
+                return overlap >= 0.65 && !anchors[index].original.isEmpty && similarity(text, anchors[index].original) >= 0.55
             }
             let index = byID ?? (candidates.count == 1 ? candidates.first : nil)
-            if let index, !used.contains(anchors[index].id), similarity(text, anchors[index].original) >= 0.65 {
+            if let index = byID, !used.contains(anchors[index].id), anchors[index].original.isEmpty {
+                // Ink the on-device recognizer located but could not read:
+                // the model's reading takes the verified local position.
+                used.insert(anchors[index].id)
+                let anchor = anchors[index]
+                let vertical = anchor.flow == .vertical && VerticalTextLayout.supports(text)
+                blocks[index] = RecognizedBlock(id: anchor.id, original: text, translation: text, boundingBox: anchor.boundingBox, confidence: 0.5,
+                    sourceLineHeight: anchor.sourceLineHeight, flow: vertical ? .vertical : .horizontal,
+                    sourceColumnWidth: vertical ? anchor.sourceColumnWidth : nil, sourceGlyphBoxes: anchor.sourceGlyphBoxes, container: anchor.container)
+            } else if let index, !used.contains(anchors[index].id), similarity(text, anchors[index].original) >= 0.65 {
                 used.insert(anchors[index].id)
                 let anchor = anchors[index]
                 blocks[index] = RecognizedBlock(id: anchor.id, original: text, translation: text, boundingBox: anchor.boundingBox, confidence: anchor.confidence, sourceLineHeight: anchor.originalLineHeight, flow: anchor.flow, sourceColumnWidth: anchor.sourceColumnWidth, sourceGlyphBoxes: anchor.sourceGlyphBoxes, container: anchor.container, inkColor: anchor.inkColor)
             } else if let locator, let modelBox = visionRect(from: region.box), let box = locator.verifiedBox(modelBox),
-                      !covered(box, by: (anchors + located).filter { $0.placement == .overlay }.map(\.boundingBox)) {
+                      !covered(box, by: (blocks + located).filter { $0.placement == .overlay && !$0.original.isEmpty }.map(\.boundingBox)) {
                 // Text the local recognizer missed (often handwriting). Overlay
                 // it only where local pixels confirm contrasting ink.
                 located.append(locatedBlock(text, box: box, aspect: CGFloat(locator.width) / CGFloat(locator.height)))
@@ -141,6 +152,7 @@ nonisolated enum OCRAlignment {
                 unmatched.append(RecognizedBlock(id: UUID(), original: text, translation: text, boundingBox: .zero, confidence: 0, placement: .textOnly))
             }
         }
+        blocks.removeAll { $0.original.isEmpty }
         blocks.append(contentsOf: located)
         blocks.append(contentsOf: unmatched)
         return OCRResult(blocks: blocks, notice: unmatched.isEmpty ? nil : "Some AI text has no verified local position. It is available in Full Text; only Vision-verified regions are overlaid.")

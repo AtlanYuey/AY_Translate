@@ -21,14 +21,17 @@ struct ProcessingServices {
                 // (often handwriting) be placed where local pixels show ink.
                 let upright = try ScreenshotInput.bounded(image).cgImage
                 let local = await Task.detached(priority: .userInitiated) { () -> (InkLocator?, [SpeechBubble]) in
-                    guard let upright, let raster = VisionTextRecognizer.grayscaleImage(upright) else { return (nil, []) }
+                    guard let upright, let raster = VisionTextRecognizer.grayscaleImage(upright, maximum: 2048) else { return (nil, []) }
                     return (InkLocator(pixels: raster.bytes, width: raster.width, height: raster.height),
                             BubbleDetector.bubbles(grayscale: raster.bytes, width: raster.width, height: raster.height))
                 }.value
-                var result = try await client.recognize(imageData: data, anchors: anchors, configuration: configuration, apiKey: key, locator: local.0)
+                // Bubble text the on-device recognizer could not read is sent
+                // as empty anchors: the model reads it, the position is local.
+                let unread = upright.map { BubbleText.unreadAnchors(bubbles: local.1, blocks: anchors, imageSize: CGSize(width: $0.width, height: $0.height)) } ?? []
+                var result = try await client.recognize(imageData: data, anchors: anchors + unread, configuration: configuration, apiKey: key, locator: local.0)
                 // Text only the model found joins its bubble and keeps its
                 // lettering colour, exactly like locally recognized lines.
-                result.blocks = BubbleText.assignContainers(result.blocks, bubbles: local.1)
+                if let upright { result.blocks = BubbleText.assignContainers(result.blocks, bubbles: local.1, imageSize: CGSize(width: upright.width, height: upright.height)) }
                 if let upright { result.blocks = VisionTextRecognizer.annotatingInk(upright, blocks: result.blocks) }
                 return result
             },

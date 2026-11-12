@@ -114,7 +114,7 @@ nonisolated enum VisionTextRecognizer {
                 let bubbled = try await supplementBubbles(image, blocks: OCRReconciler.merge(result), language: language, cpuOnly: cpuOnly)
                 await checkpoint?("bubbles_end")
                 let reconciled = OCRReconciler.droppingContainedFragments(OCRReconciler.separatingRuby(OCRReconciler.merge(bubbled.blocks)))
-                let final = BubbleText.assignContainers(reconciled, bubbles: bubbled.bubbles)
+                let final = BubbleText.assignContainers(reconciled, bubbles: bubbled.bubbles, imageSize: CGSize(width: image.width, height: image.height))
                 return annotatingInk(image, blocks: final)
             }
             // No document text: stop the overlapping reader before the legacy
@@ -295,12 +295,14 @@ nonisolated enum VisionTextRecognizer {
     static func supplementBubbles(_ image: CGImage, blocks: [RecognizedBlock], language: String?, cpuOnly: Bool = false) async throws -> (blocks: [RecognizedBlock], bubbles: [SpeechBubble]) {
         guard language == nil || language == "ja" || language?.hasPrefix("zh") == true else { return (blocks, []) }
         let task = Task.detached(priority: .userInitiated) { () throws -> ([RecognizedBlock], [SpeechBubble]) in
-            guard let raster = grayscaleImage(image) else { return (blocks, []) }
+            // Thin outlines and small lettering need more pixels than the
+            // column detector: a phone screenshot is kept near full size.
+            guard let raster = grayscaleImage(image, maximum: 2048) else { return (blocks, []) }
             let bubbles = BubbleDetector.bubbles(grayscale: raster.bytes, width: raster.width, height: raster.height)
             try Task.checkCancellation()
             let size = CGSize(width: image.width, height: image.height)
             var pending: [[GlyphCell]] = []
-            for bubble in bubbles where bubble.holdsText && bubble.fill >= 0.5 {
+            for bubble in bubbles where bubble.isDialogue {
                 pending += BubbleText.missingColumns(in: bubble, blocks: blocks, imageSize: size).filter { $0.count <= 20 }
             }
             var result = blocks
@@ -315,7 +317,12 @@ nonisolated enum VisionTextRecognizer {
                     let confidence = recognized.map(\.confidence).min() ?? 0
                     // Kana or kanji must be present; a column is never longer
                     // than about two characters per cell.
-                    guard VerticalTextLayout.supports(text), confidence >= 0.3, text.count <= column.count * 2 + 2 else { continue }
+                    // Art inside an enclosed area (a face, a pattern) can look
+                    // like marks. Accept only confident readings with kana, or
+                    // with at least two characters for Chinese pages.
+                    let kana = text.unicodeScalars.contains { (0x3041...0x30FA).contains($0.value) }
+                    let chinese = language?.hasPrefix("zh") == true && text.unicodeScalars.filter { (0x3400...0x9FFF).contains($0.value) }.count >= 2
+                    guard VerticalTextLayout.supports(text), kana || chinese, confidence >= 0.3, text.count <= column.count * 2 + 2 else { continue }
                     let boxes = column.map(\.box)
                     let upright = column.filter { !$0.rotate }.map(\.box)
                     let widths = (upright.isEmpty ? boxes : upright).map(\.width).sorted()
@@ -600,8 +607,8 @@ nonisolated enum VisionTextRecognizer {
         return context.makeImage()
     }
 
-    static func grayscaleImage(_ image: CGImage) -> (bytes: [UInt8], width: Int, height: Int)? {
-        let factor = min(1, 1600 / Double(max(image.width, image.height)))
+    static func grayscaleImage(_ image: CGImage, maximum: Double = 1600) -> (bytes: [UInt8], width: Int, height: Int)? {
+        let factor = min(1, maximum / Double(max(image.width, image.height)))
         let width = max(1, Int(Double(image.width) * factor)), height = max(1, Int(Double(image.height) * factor))
         var bytes = [UInt8](repeating: 255, count: width * height)
         let rendered = bytes.withUnsafeMutableBytes { buffer -> Bool in

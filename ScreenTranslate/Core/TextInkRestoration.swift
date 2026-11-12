@@ -42,6 +42,160 @@ nonisolated enum TextInkRestoration {
         return result
     }
 
+    /// Remove lettering that stands as islands on a plain background: the
+    /// usual case inside speech bubbles and on flat or softly shaded areas.
+    /// The background is estimated from the band just around the text; every
+    /// connected patch that differs from it (dark fill, white outline and
+    /// antialiased fringe together), lies in the text box and is completely
+    /// surrounded by background is cleared. Anything reaching the edge of
+    /// the search window (bubble outlines, panel borders, artwork) is kept.
+    /// `source` is the text box in pixel coordinates (top-left origin);
+    /// `slack` widens it, in glyph sizes, for marks that belong to the text.
+    /// Returns the input unchanged when the surroundings are not plain.
+    static func removingIslands(pixels: [UInt8], width: Int, height: Int, source: CGRect, glyphSize: Double, slack: Double = 0.3) -> Patch {
+        let unchanged = Patch(pixels: pixels, width: width, height: height, changedPixels: 0)
+        guard width > 4, height > 4, width * height <= 1_000_000, pixels.count == width * height * 4,
+              source.width >= 2, source.height >= 2, glyphSize.isFinite else { return unchanged }
+        let glyph = max(4, glyphSize)
+        func clamped(_ rect: CGRect) -> (x0: Int, y0: Int, x1: Int, y1: Int) {
+            (max(0, Int(rect.minX.rounded(.down))), max(0, Int(rect.minY.rounded(.down))),
+             min(width - 1, Int(rect.maxX.rounded(.up)) - 1), min(height - 1, Int(rect.maxY.rounded(.up)) - 1))
+        }
+        let box = clamped(source)
+        guard box.x0 <= box.x1, box.y0 <= box.y1 else { return unchanged }
+        var luminance = [UInt8](repeating: 0, count: width * height)
+        for index in luminance.indices {
+            let pixel = index * 4
+            luminance[index] = UInt8((Int(pixels[pixel]) * 77 + Int(pixels[pixel + 1]) * 150 + Int(pixels[pixel + 2]) * 29) / 256)
+        }
+        // Background: the most common tone between the strokes that also
+        // surrounds the text box. Checking both sides tells paper from ink
+        // (which stays inside the box) and from artwork beyond a tight bubble.
+        let band = clamped(source.insetBy(dx: -max(3, glyph * 0.25), dy: -max(3, glyph * 0.25)))
+        var inner = [Int](repeating: 0, count: 32), outer = [Int](repeating: 0, count: 32)
+        var innerCount = 0, outerCount = 0
+        for y in band.y0...band.y1 { for x in band.x0...band.x1 {
+            let bin = Int(luminance[y * width + x]) / 8
+            if x < box.x0 || x > box.x1 || y < box.y0 || y > box.y1 { outer[bin] += 1; outerCount += 1 }
+            else { inner[bin] += 1; innerCount += 1 }
+        } }
+        guard innerCount >= 12, outerCount >= 12 else { return unchanged }
+        func share(_ histogram: [Int], _ bin: Int, _ total: Int) -> Double {
+            var sum = 0
+            for b in max(0, bin - 1)...min(31, bin + 1) { sum += histogram[b] }
+            return Double(sum) / Double(total)
+        }
+        var mode: Int?
+        for bin in (0..<32).sorted(by: { share(inner, $0, innerCount) > share(inner, $1, innerCount) }) {
+            guard share(inner, bin, innerCount) >= 0.12 else { break }
+            if share(outer, bin, outerCount) >= 0.2 { mode = bin; break }
+        }
+        guard let mode else { return unchanged }
+        var toneSum = 0, toneCount = 0, red = 0, green = 0, blue = 0
+        for y in band.y0...band.y1 { for x in band.x0...band.x1 {
+            let value = Int(luminance[y * width + x])
+            guard abs(value / 8 - mode) <= 1 else { continue }
+            let pixel = (y * width + x) * 4
+            toneSum += value; toneCount += 1
+            red += Int(pixels[pixel]); green += Int(pixels[pixel + 1]); blue += Int(pixels[pixel + 2])
+        } }
+        guard toneCount > 0 else { return unchanged }
+        let background = toneSum / toneCount
+        let tolerance = 38
+        func differs(_ index: Int) -> Bool { abs(Int(luminance[index]) - background) > tolerance }
+
+        let window = clamped(source.insetBy(dx: -max(6, glyph), dy: -max(6, glyph)))
+        let reach = clamped(source.insetBy(dx: -glyph * slack, dy: -glyph * slack))
+        let ww = window.x1 - window.x0 + 1, wh = window.y1 - window.y0 + 1
+        // 0 unvisited, 1 kept, 2 removable
+        var state = [UInt8](repeating: 0, count: ww * wh)
+        var stack: [Int] = []
+        var component: [Int] = []
+        var removed = 0
+        for wy in 0..<wh { for wx in 0..<ww {
+            let start = wy * ww + wx
+            guard state[start] == 0, differs((wy + window.y0) * width + wx + window.x0) else { continue }
+            component.removeAll(keepingCapacity: true)
+            stack.append(start); state[start] = 1
+            var touches = false, minX = wx, maxX = wx, minY = wy, maxY = wy
+            while let current = stack.popLast() {
+                component.append(current)
+                let cx = current % ww, cy = current / ww
+                minX = min(minX, cx); maxX = max(maxX, cx); minY = min(minY, cy); maxY = max(maxY, cy)
+                if cx == 0 || cy == 0 || cx == ww - 1 || cy == wh - 1 { touches = true }
+                for dy in -1...1 { for dx in -1...1 where dx != 0 || dy != 0 {
+                    let nx = cx + dx, ny = cy + dy
+                    guard nx >= 0, nx < ww, ny >= 0, ny < wh else { continue }
+                    let next = ny * ww + nx
+                    if state[next] == 0, differs((ny + window.y0) * width + nx + window.x0) { state[next] = 1; stack.append(next) }
+                } }
+            }
+            guard !touches else { continue }
+            // Mostly inside the (widened) text box: lettering, not a neighbour.
+            let x0 = max(minX + window.x0, reach.x0), x1 = min(maxX + window.x0, reach.x1)
+            let y0 = max(minY + window.y0, reach.y0), y1 = min(maxY + window.y0, reach.y1)
+            let extent = (maxX - minX + 1) * (maxY - minY + 1)
+            guard x0 <= x1, y0 <= y1, (x1 - x0 + 1) * (y1 - y0 + 1) * 10 >= extent * 7 else { continue }
+            // Strokes leave most of their bounding box empty. A large solid
+            // patch is a shape (a whole bubble on a wrongly judged tone).
+            let large = Double(maxX - minX + 1) > glyph * 2.5 && Double(maxY - minY + 1) > glyph * 2.5
+            guard !(large && component.count * 10 > extent * 6) else { continue }
+            for index in component { state[index] = 2; removed += 1 }
+        } }
+        // Lettering never covers most of its own box.
+        guard removed > 0, removed * 10 <= (box.x1 - box.x0 + 1) * (box.y1 - box.y0 + 1) * 7 else { return unchanged }
+        // Take the antialiased fringe with the strokes.
+        for _ in 0..<2 {
+            var grown: [Int] = []
+            for wy in 0..<wh { for wx in 0..<ww where state[wy * ww + wx] == 0 {
+                var near = false
+                for dy in -1...1 where !near { for dx in -1...1 {
+                    let nx = wx + dx, ny = wy + dy
+                    if nx >= 0, nx < ww, ny >= 0, ny < wh, state[ny * ww + nx] == 2 { near = true; break }
+                } }
+                if near { grown.append(wy * ww + wx) }
+            } }
+            for index in grown { state[index] = 2 }
+        }
+        // A very even background is filled with its exact tone; a shaded one
+        // is interpolated from the nearest background in eight directions.
+        var even = 0, similar = 0
+        for y in band.y0...band.y1 { for x in band.x0...band.x1 where !differs(y * width + x) {
+            similar += 1
+            if abs(Int(luminance[y * width + x]) - background) <= 10 { even += 1 }
+        } }
+        let flat = even * 20 >= similar * 17
+        let tone = [UInt8(red / toneCount), UInt8(green / toneCount), UInt8(blue / toneCount)]
+        let directions = [(-1, 0), (1, 0), (0, -1), (0, 1), (-1, -1), (1, -1), (-1, 1), (1, 1)]
+        let steps = Int(glyph * 2.5) + 8
+        var output = pixels, changed = 0
+        for wy in 0..<wh { for wx in 0..<ww where state[wy * ww + wx] == 2 {
+            let x = wx + window.x0, y = wy + window.y0, target = (y * width + x) * 4
+            changed += 1
+            var weight = 0.0, sums = [0.0, 0.0, 0.0], found = 0
+            if !flat {
+                for (dx, dy) in directions {
+                    for step in 1...steps {
+                        let sx = wx + dx * step, sy = wy + dy * step
+                        guard sx >= 0, sx < ww, sy >= 0, sy < wh else { break }
+                        guard state[sy * ww + sx] == 0 else { continue }
+                        let sample = ((sy + window.y0) * width + sx + window.x0) * 4
+                        let w = 1.0 / Double(step * step)
+                        for c in 0..<3 { sums[c] += Double(pixels[sample + c]) * w }
+                        weight += w; found += 1
+                        break
+                    }
+                }
+            }
+            if found >= 2 {
+                for c in 0..<3 { output[target + c] = UInt8(min(255, max(0, (sums[c] / weight).rounded()))) }
+            } else {
+                for c in 0..<3 { output[target + c] = tone[c] }
+            }
+        } }
+        return Patch(pixels: output, width: width, height: height, changedPixels: changed)
+    }
+
     /// `widerRetry` re-estimates the background once at 1.5× the radius when
     /// the first eight samples disagree, e.g. a bold stroke whose samples land
     /// in the neighbouring letter. Disabled only for the reference comparison.

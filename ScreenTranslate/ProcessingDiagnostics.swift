@@ -30,6 +30,8 @@ final class ProcessingDiagnostics {
         var build: String?
         var processSession: UUID?
         var ocrFallback: String?
+        /// Counts only (regions, bubbles, unchanged, not drawn): no content.
+        var summary: String?
     }
     private let defaults: UserDefaults
     private let keys: any APIKeyStoring
@@ -77,6 +79,7 @@ final class ProcessingDiagnostics {
     func recordOCRFallback(_ code: String) {
         update { $0.ocrFallback = code; $0.event = "ai_ocr_fallback" }
     }
+    func recordSummary(_ value: String) { update { $0.summary = value } }
     func checkpoint(_ point: String, id: UUID?) {
         // A cancelled, late framework return must not annotate the next image.
         guard let id, id == current else { return }
@@ -158,6 +161,7 @@ struct ProcessingDiagnosticsView: View {
                     LabeledContent("Memory Warnings", value: String(entry.memoryWarnings))
                     if let version = entry.version { LabeledContent("Version", value: version + " (" + (entry.build ?? "?") + ")") }
                     if let fallback = entry.ocrFallback { LabeledContent("AI OCR", value: fallback) }
+                    if let summary = entry.summary { Text(verbatim: summary).font(.caption2).foregroundStyle(.secondary) }
                     Text(entry.context == "share" ? "Share Extension" : "AY Translate").font(.caption).foregroundStyle(.secondary)
                 } header: { Text(entry.started, style: .date) + Text(" · ") + Text(entry.started, style: .time) }
             }

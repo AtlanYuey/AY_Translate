@@ -403,6 +403,16 @@ final class AppState: ObservableObject {
         translationSeconds = seconds(since: translationStartedAt)
         Logger(subsystem: "AYTranslate", category: "Performance").info("OCR seconds: \(self.recognitionSeconds); translation seconds: \(self.translationSeconds)")
         phase = .ready
+        if let diagnostics {
+            // Content-free counts that explain a result: how many regions were
+            // found, grouped into bubbles, left unchanged or could not be drawn.
+            let overlay = document.blocks.filter { $0.placement == .overlay }
+            let canvas = ImageViewport.fittedSize(image: document.image.size, container: CGSize(width: 390, height: 844))
+            let layouts = ScreenshotRendering.textLayouts(for: document.blocks, canvasSize: canvas, textScale: settings.overlayTextScale)
+            let unchanged = overlay.filter { $0.translation == $0.original }.count
+            let undrawn = overlay.filter { $0.translation != $0.original && layouts[$0.id]?.canRender != true }.count
+            diagnostics.recordSummary("regions=\(overlay.count) bubbles=\(overlay.filter { $0.container != nil }.count) unchanged=\(unchanged) undrawn=\(undrawn) textOnly=\(document.blocks.count - overlay.count) scale=\(settings.overlayTextScale)")
+        }
         diagnostics?.end("completed")
         if settings.savesHistory { history.add(document) }
     }

@@ -86,3 +86,80 @@ final class RestorationAndSyncTests: XCTestCase {
         XCTAssertLessThanOrEqual((columns.values.map(\.count).max() ?? 0) - (columns.values.map(\.count).min() ?? 0), 1)
     }
 }
+
+final class IslandRemovalTests: XCTestCase {
+    private let width = 160, height = 200
+
+    /// Gray page with a white ellipse bubble (dark outline) and bold strokes.
+    private func bubblePage(paper: UInt8 = 250, outside: UInt8 = 150) -> [UInt8] {
+        var pixels = [UInt8](repeating: 255, count: width * height * 4)
+        func set(_ x: Int, _ y: Int, _ value: UInt8) { let i = (y * width + x) * 4; pixels[i] = value; pixels[i + 1] = value; pixels[i + 2] = value }
+        for y in 0..<height { for x in 0..<width {
+            let dx = Double(x - 80) / 46, dy = Double(y - 100) / 76
+            let r = (dx * dx + dy * dy).squareRoot()
+            set(x, y, r < 1 ? paper : (r < 1.07 ? 15 : outside))
+        } }
+        // Two bold "glyphs" with an antialiased fringe.
+        for (gx, gy) in [(66, 60), (66, 104)] {
+            for y in (gy - 1)...(gy + 30) { for x in (gx - 1)...(gx + 28) {
+                let edge = x < gx || y < gy || x > gx + 27 || y > gy + 29
+                let stroke = (x - gx) % 12 < 7 || (y - gy) % 14 < 6
+                if edge { if stroke { set(x, y, 215) } } else if stroke { set(x, y, 10) }
+            } }
+        }
+        return pixels
+    }
+    private let textBox = CGRect(x: 64, y: 58, width: 33, height: 80)
+
+    func testBubbleLetteringIsClearedToCleanPaperAndTheOutlineSurvives() {
+        let source = bubblePage()
+        let patch = TextInkRestoration.removingIslands(pixels: source, width: width, height: height, source: textBox, glyphSize: 28, slack: 0.8)
+        XCTAssertGreaterThan(patch.changedPixels, 800)
+        for y in 0..<height { for x in 0..<width {
+            let dx = Double(x - 80) / 46, dy = Double(y - 100) / 76
+            let r = (dx * dx + dy * dy).squareRoot(), value = patch.pixels[(y * width + x) * 4]
+            if r < 0.97 { XCTAssertGreaterThanOrEqual(value, 245, "Paper at \(x),\(y) must be clean, including the stroke fringe") }
+            else { XCTAssertEqual(value, source[(y * width + x) * 4], "Outline and artwork at \(x),\(y) are untouched") }
+        } }
+    }
+
+    func testOutlinedLetteringOnShadedBackgroundIsFilledWithTheLocalTone() {
+        // Black strokes with a white outline on a left-to-right gradient.
+        var pixels = [UInt8](repeating: 255, count: width * height * 4)
+        func set(_ x: Int, _ y: Int, _ value: UInt8) { let i = (y * width + x) * 4; pixels[i] = value; pixels[i + 1] = value; pixels[i + 2] = value }
+        for y in 0..<height { for x in 0..<width { set(x, y, UInt8(120 + x / 8)) } }
+        for y in 70..<130 { for x in 50..<110 where (x - 50) % 20 < 14 { set(x, y, (x - 50) % 20 < 3 || (x - 50) % 20 > 10 || y < 73 || y > 126 ? 255 : 5) } }
+        let patch = TextInkRestoration.removingIslands(pixels: pixels, width: width, height: height, source: CGRect(x: 48, y: 68, width: 64, height: 64), glyphSize: 30)
+        XCTAssertGreaterThan(patch.changedPixels, 2000)
+        for y in 70..<130 { for x in 50..<110 {
+            XCTAssertEqual(Int(patch.pixels[(y * width + x) * 4]), 120 + x / 8, accuracy: 6, "Fill follows the shading at \(x),\(y)")
+        } }
+    }
+
+    func testCrossingLinesNeighboursAndTexturedArtAreLeftAlone() {
+        // A table rule through the box and an icon beside it survive.
+        var pixels = [UInt8](repeating: 255, count: width * height * 4)
+        func set(_ x: Int, _ y: Int, _ value: UInt8) { let i = (y * width + x) * 4; pixels[i] = value; pixels[i + 1] = value; pixels[i + 2] = value }
+        for x in 0..<width { set(x, 100, 20); set(x, 101, 20) }
+        for y in 84..<96 { for x in 60..<100 where x % 8 < 5 { set(x, y, 10) } }
+        for y in 80..<96 { for x in 112..<128 { set(x, y, 30) } }
+        let box = CGRect(x: 58, y: 82, width: 44, height: 16)
+        let patch = TextInkRestoration.removingIslands(pixels: pixels, width: width, height: height, source: box, glyphSize: 14)
+        XCTAssertGreaterThan(patch.pixels[(90 * width + 62) * 4], 245, "Lettering is cleared")
+        XCTAssertEqual(patch.pixels[(100 * width + 80) * 4], 20, "A rule crossing the window is not lettering")
+        XCTAssertEqual(patch.pixels[(88 * width + 120) * 4], 30, "A neighbouring icon outside the text box stays")
+        // Noise without a dominant tone: nothing is changed.
+        var noise = [UInt8](repeating: 255, count: width * height * 4)
+        var seed: UInt32 = 7
+        for i in 0..<(width * height) { seed = seed &* 1_664_525 &+ 1_013_904_223; let v = UInt8(seed >> 24); noise[i * 4] = v; noise[i * 4 + 1] = v; noise[i * 4 + 2] = v }
+        XCTAssertEqual(TextInkRestoration.removingIslands(pixels: noise, width: width, height: height, source: box, glyphSize: 14).changedPixels, 0)
+    }
+
+    func testAWholeBubbleIsNeverTreatedAsOneIsland() {
+        // The box is judged from inside: paper is the background even when
+        // the bubble is smaller than the search window around the text.
+        let source = bubblePage()
+        let patch = TextInkRestoration.removingIslands(pixels: source, width: width, height: height, source: CGRect(x: 40, y: 30, width: 80, height: 140), glyphSize: 28)
+        XCTAssertGreaterThan(patch.pixels[(100 * width + 60) * 4], 240, "The bubble's paper is not painted with the outside tone")
+    }
+}

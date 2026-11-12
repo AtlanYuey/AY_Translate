@@ -102,46 +102,45 @@ enum ScreenshotRendering {
         block.flow == .vertical ? block.originalColumnWidth * canvasSize.width * 0.94 : block.originalLineHeight * canvasSize.height * 0.8
     }
 
-    /// Lay a bubble's translation out in the whole bubble, centred. Chinese is
-    /// usually shorter than the Japanese it replaces: use that space for a
-    /// larger, readable size (up to 1.3×), anchored to the page's dialogue
-    /// size, and shrink only when the text would not otherwise fit.
+    /// Lay a bubble's translation out in the free area around its original
+    /// text, centred. Chinese is usually shorter than the Japanese it
+    /// replaces: use that space for a larger, readable size. The text size
+    /// setting moves the target size, but the text always stays inside the
+    /// bubble: it shrinks until it fits rather than spill onto the artwork.
     private static func bubbleLayout(for block: RecognizedBlock, text: String, rect: CGRect, area: CGRect, canvasSize: CGSize,
                                      scale: CGFloat, reference: CGFloat?) -> TextLayout {
         let source = max(0.001, sourceGlyph(block, canvasSize: canvasSize))
-        let anchor = reference.map { min(max(source, $0 * 0.8), $0 * 1.25) } ?? source
-        let upper = anchor * 1.3, lower = anchor * 0.6
+        // A too-small estimate is raised toward the page's dialogue size;
+        // emphasised (large) lettering keeps its own size.
+        let anchor = reference.map { max(source, $0 * 0.8) } ?? source
+        let target = anchor * 1.3 * scale
+        let minimum = min(target, anchor * 0.45)
         if block.flow == .vertical && VerticalTextLayout.supports(text) {
-            var preferred = upper
-            var fitting = VerticalTextLayout(text: text, size: area.size, preferred: preferred, scale: 1)
-            while !fitting.fits && preferred * 0.75 >= lower {
-                preferred *= 0.75
-                fitting = VerticalTextLayout(text: text, size: area.size, preferred: preferred, scale: 1)
+            var preferred = target
+            var layout = VerticalTextLayout(text: text, size: area.size, preferred: preferred, scale: 1)
+            while !layout.fits && preferred * 0.9 >= minimum {
+                preferred *= 0.9
+                layout = VerticalTextLayout(text: text, size: area.size, preferred: preferred, scale: 1)
             }
-            let layout: VerticalTextLayout
-            if scale > 1 { layout = VerticalTextLayout(scaling: fitting, by: scale) }
-            else if scale < 1 { layout = VerticalTextLayout(text: text, size: area.size, preferred: preferred, scale: scale) }
-            else { layout = fitting }
-            let textRect = scale > 1 ? CGRect(x: area.midX - area.width * scale / 2, y: area.midY - area.height * scale / 2,
-                                              width: area.width * scale, height: area.height * scale) : area
-            return TextLayout(sourceRect: rect, textRect: textRect, fontSize: layout.fontSize, lineLimit: 1,
-                              coverPadding: layout.fontSize * 0.06, vertical: layout, canRender: fitting.fits, centered: true)
+            return TextLayout(sourceRect: rect, textRect: area, fontSize: layout.fontSize, lineLimit: 1,
+                              coverPadding: layout.fontSize * 0.06, vertical: layout, canRender: layout.fits, centered: true)
         }
         let metrics = glyphMetrics(for: text)
-        func measured(_ size: CGFloat, width: CGFloat) -> CGRect {
-            (text as NSString).boundingRect(with: CGSize(width: max(0.0001, width), height: .greatestFiniteMagnitude),
+        func measured(_ size: CGFloat) -> CGRect {
+            (text as NSString).boundingRect(with: CGSize(width: max(0.0001, area.width), height: .greatestFiniteMagnitude),
                 options: [.usesLineFragmentOrigin, .usesFontLeading], attributes: [.font: UIFont.systemFont(ofSize: size, weight: .semibold)], context: nil)
         }
-        var size = upper
-        while size > lower && measured(size, width: area.width).height > area.height + size * 0.01 { size *= 0.92 }
-        let fits = measured(size, width: area.width).height <= area.height + size * 0.01
-        let fontSize = size * scale
-        let width = scale > 1 ? area.width * scale : area.width
-        let used = measured(fontSize, width: width).height
-        let textRect = CGRect(x: area.midX - width / 2, y: area.midY - used / 2, width: width, height: used + fontSize * 0.02)
-        let lineHeight = fontSize * metrics.lineHeightRatio
-        return TextLayout(sourceRect: rect, textRect: textRect, fontSize: fontSize, lineLimit: max(1, Int((used + fontSize * 0.001) / lineHeight)),
-                          coverPadding: block.originalLineHeight * canvasSize.height * 0.06, vertical: nil, canRender: fits, centered: true)
+        func fits(_ size: CGFloat) -> Bool {
+            let bounds = measured(size)
+            return bounds.height <= area.height + size * 0.01 && bounds.width <= area.width + size * 0.01
+        }
+        var size = target
+        while !fits(size) && size * 0.92 >= minimum { size *= 0.92 }
+        let used = min(area.height, measured(size).height + size * 0.02)
+        let textRect = CGRect(x: area.minX, y: area.midY - used / 2, width: area.width, height: used)
+        return TextLayout(sourceRect: rect, textRect: textRect, fontSize: size,
+                          lineLimit: max(1, Int((used + size * 0.001) / (size * metrics.lineHeightRatio))),
+                          coverPadding: block.originalLineHeight * canvasSize.height * 0.06, vertical: nil, canRender: fits(size), centered: true)
     }
 
     /// Recover a font size from each OCR line's typographic height, not the
@@ -347,7 +346,16 @@ enum ScreenshotRendering {
             CGRect(x: ($0.minX * width - rect.minX) * sx, y: ((1 - $0.maxY) * height - rect.minY) * sy,
                    width: $0.width * width * sx, height: $0.height * height * sy).insetBy(dx: -1, dy: -1)
         }
-        let patch = TextInkRestoration.restore(pixels: bytes, width: w, height: h, glyphs: glyphs, glyphSize: font * min(sx, sy))
+        // Lettering on a plain background (speech bubbles, flat or softly
+        // shaded areas) is cleared as whole islands, leaving clean paper and
+        // intact outlines. Only textured surroundings use per-pixel repair,
+        // which near a bubble's edge would smear the outside tone inwards.
+        let glyphSize = font * min(sx, sy)
+        let box = CGRect(x: (source.minX - rect.minX) * sx, y: (source.minY - rect.minY) * sy, width: source.width * sx, height: source.height * sy)
+        let cleared = TextInkRestoration.removingIslands(pixels: bytes, width: w, height: h, source: box, glyphSize: glyphSize,
+                                                         slack: block.container == nil ? 0.3 : 0.8)
+        let patch = cleared.changedPixels > 0 ? cleared
+            : TextInkRestoration.restore(pixels: bytes, width: w, height: h, glyphs: glyphs, glyphSize: glyphSize)
         guard patch.changedPixels > 0, !Task.isCancelled else { return nil }
         let transparent = TextInkRestoration.compositingPixels(original: bytes, patch: patch)
         guard let provider = CGDataProvider(data: Data(transparent) as CFData),
