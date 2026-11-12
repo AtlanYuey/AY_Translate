@@ -96,6 +96,9 @@ nonisolated enum BubbleDetector {
         return result
     }
 
+    private static let stepX = [-1, 1, 0, 0, -1, 1, -1, 1]
+    private static let stepY = [0, 0, -1, 1, -1, 1, 1, -1]
+
     private static func detect(grayscale: [UInt8], width: Int, height: Int, reach: Int) -> [SpeechBubble] {
         let count = width * height
         // Paper is light; screentone, art and text are not. JPEG ringing
@@ -104,7 +107,9 @@ nonisolated enum BubbleDetector {
         // Close small gaps in outlines: paper must be clear of line art by
         // `reach` pixels to connect two areas.
         var open = [Bool](repeating: false, count: count)
-        do {
+        if reach == 0 {
+            for index in 0..<count { open[index] = grayscale[index] >= lightLevel }
+        } else {
             // Separable erosion of the paper mask; outside the image counts as paper.
             var horizontal = [Bool](repeating: false, count: count)
             for y in 0..<height {
@@ -145,10 +150,11 @@ nonisolated enum BubbleDetector {
                 region.minY = min(region.minY, y); region.maxY = max(region.maxY, y)
                 if x == 0 { region.left += 1 }; if x == width - 1 { region.right += 1 }
                 if y == 0 { region.top += 1 }; if y == height - 1 { region.bottom += 1 }
-                for next in [x > 0 ? index - 1 : -1, x < width - 1 ? index + 1 : -1, y > 0 ? index - width : -1, y < height - 1 ? index + width : -1]
-                    where next >= 0 && labels[next] < 0 && open[next] {
-                    labels[next] = id; queue.append(next)
-                }
+                // Four explicit neighbours: no temporary array per pixel.
+                if x > 0, labels[index - 1] < 0, open[index - 1] { labels[index - 1] = id; queue.append(index - 1) }
+                if x < width - 1, labels[index + 1] < 0, open[index + 1] { labels[index + 1] = id; queue.append(index + 1) }
+                if y > 0, labels[index - width] < 0, open[index - width] { labels[index - width] = id; queue.append(index - width) }
+                if y < height - 1, labels[index + width] < 0, open[index + width] { labels[index + width] = id; queue.append(index + width) }
                 // Large page backgrounds: keep only the unprocessed frontier.
                 if head >= 8192 && head * 2 >= queue.count { queue.removeFirst(head); head = 0 }
             }
@@ -199,7 +205,8 @@ nonisolated enum BubbleDetector {
                     area += 1
                     if grayscale[cy * width + cx] < 150 { dark += 1 }
                     minX = min(minX, cx); maxX = max(maxX, cx); minY = min(minY, cy); maxY = max(maxY, cy)
-                    for (nx, ny) in [(cx - 1, cy), (cx + 1, cy), (cx, cy - 1), (cx, cy + 1), (cx - 1, cy - 1), (cx + 1, cy + 1), (cx - 1, cy + 1), (cx + 1, cy - 1)] {
+                    for step in 0..<8 {
+                        let nx = cx + Self.stepX[step], ny = cy + Self.stepY[step]
                         guard nx >= region.minX, nx <= region.maxX, ny >= region.minY, ny <= region.maxY else {
                             if nx >= 0, nx < width, ny >= 0, ny < height, grayscale[ny * width + nx] < lightLevel { leaks = true }
                             continue
