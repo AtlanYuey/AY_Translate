@@ -132,3 +132,5 @@ macOS 真实 Vision 基准（中性合成页，不含用户图片）：三列气
 
 仍然存在的限制：只用苹果识别时，手写和艺术字的错读无法在本机纠正，需要把识别引擎改为 AI；带描边、压在画面上的标题艺术字，清除原文后可能留下痕迹；倾斜的文字，译文按水平排版。
 
+1.4.0 验证：应用源码提交 `15f1ab0`，[Apple CI 运行](https://github.com/AtlanYuey/AY_Translate/actions/runs/43275671109)。Linux 159 项（另有 1 项真实服务测试默认跳过）、macOS 173 项核心与真实 Vision 测试通过；Release 构建、iPhone 流程与排版测试、iPad 横竖屏、macOS 15 旧版识别通过；写下这段时真实分享界面的 UI 自动化仍在运行。安装包 `AY-Translate-1.4.0-unsigned.ipa`，版本 1.4.0（5），SHA-256：`fc366366c44882714f4cb68ba4d0803238bde766f3fb1dd69e4d239e9f189477`。
+
