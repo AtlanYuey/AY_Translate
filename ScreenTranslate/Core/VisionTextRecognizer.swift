@@ -113,7 +113,8 @@ nonisolated enum VisionTextRecognizer {
                 await checkpoint?("bubbles_begin")
                 let bubbled = try await supplementBubbles(image, blocks: OCRReconciler.merge(result), language: language, cpuOnly: cpuOnly)
                 await checkpoint?("bubbles_end")
-                let final = BubbleText.assignContainers(OCRReconciler.separatingRuby(OCRReconciler.merge(bubbled.blocks)), bubbles: bubbled.bubbles)
+                let reconciled = OCRReconciler.droppingContainedFragments(OCRReconciler.separatingRuby(OCRReconciler.merge(bubbled.blocks)))
+                let final = BubbleText.assignContainers(reconciled, bubbles: bubbled.bubbles)
                 return annotatingInk(image, blocks: final)
             }
             // No document text: stop the overlapping reader before the legacy

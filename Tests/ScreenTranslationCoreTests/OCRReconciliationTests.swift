@@ -81,4 +81,13 @@ final class OCRReconciliationTests: XCTestCase {
             XCTAssertEqual(OCRReconciler.merge(order).map(\.boundingBox), expected)
         }
     }
+
+    func testSecondReadingOfASmallKanaInsideItsLineIsDropped() {
+        let line = RecognizedBlock(id: UUID(), original: "はぁ…", translation: "はぁ…", boundingBox: CGRect(x: 0.3, y: 0.4, width: 0.04, height: 0.12), confidence: 0.9, flow: .vertical)
+        let fragment = RecognizedBlock(id: UUID(), original: "あ", translation: "あ", boundingBox: CGRect(x: 0.305, y: 0.45, width: 0.03, height: 0.03), confidence: 0.5)
+        let separate = RecognizedBlock(id: UUID(), original: "あ", translation: "あ", boundingBox: CGRect(x: 0.6, y: 0.45, width: 0.03, height: 0.03), confidence: 0.9)
+        let different = RecognizedBlock(id: UUID(), original: "え", translation: "え", boundingBox: CGRect(x: 0.305, y: 0.42, width: 0.03, height: 0.03), confidence: 0.9)
+        let result = OCRReconciler.droppingContainedFragments([line, fragment, separate, different])
+        XCTAssertEqual(result.map(\.id), [line.id, separate.id, different.id], "Only the duplicate inside its line is removed")
+    }
 }

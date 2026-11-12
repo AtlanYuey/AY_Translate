@@ -144,6 +144,7 @@ final class MangaLetteringBenchmarkTests: XCTestCase {
         XCTAssertFalse(planned.contains { $0.original.contains("楽しかった") && $0.original.contains("そうですね") },
                        "Different speakers' colours must not be merged into one utterance")
         XCTAssertTrue(all.contains("そうですね"), all)
+        XCTAssertFalse(planned.contains { $0.placement == .overlay && $0.original == "あ" }, "The small ぁ of はぁ… must not become a second overlay")
     }
 }
 #endif

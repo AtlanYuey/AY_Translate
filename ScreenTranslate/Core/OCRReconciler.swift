@@ -49,6 +49,30 @@ nonisolated enum OCRReconciler {
         }
     }
 
+    /// A one-to-three character reading that lies inside a longer line which
+    /// already contains those characters (e.g. the small ぁ of はぁ… read
+    /// again on its own) is a second reading of the same ink, not new text.
+    static func droppingContainedFragments(_ blocks: [RecognizedBlock]) -> [RecognizedBlock] {
+        let small = Array("ぁぃぅぇぉっゃゅょゎァィゥェォッャュョヮ"), large = Array("あいうえおつやゆよわアイウエオツヤユヨワ")
+        func folded(_ text: String) -> [Character] {
+            text.filter { !$0.isWhitespace && !$0.isPunctuation && !$0.isSymbol }.map { character in
+                small.firstIndex(of: character).map { large[$0] } ?? character
+            }
+        }
+        let positioned = blocks.filter { $0.placement == .overlay }
+        return blocks.filter { fragment in
+            guard fragment.placement == .overlay else { return true }
+            let letters = folded(fragment.original)
+            guard !letters.isEmpty, letters.count <= 3 else { return true }
+            return !positioned.contains { line in
+                guard line.id != fragment.id else { return false }
+                let lineLetters = folded(line.original)
+                guard lineLetters.count > letters.count, letters.allSatisfy(lineLetters.contains) else { return false }
+                return intersection(fragment.boundingBox, line.boundingBox) >= area(fragment.boundingBox) * 0.7
+            }
+        }
+    }
+
     private static func duplicateTranscript(_ a: RecognizedBlock, _ b: RecognizedBlock) -> Bool {
         guard a.flow == b.flow, a.placement == .overlay, b.placement == .overlay,
               normalized(a.original) == normalized(b.original) else { return false }
