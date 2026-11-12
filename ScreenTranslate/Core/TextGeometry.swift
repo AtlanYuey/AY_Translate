@@ -68,7 +68,9 @@ nonisolated struct AIRecognizedRegion: Codable, Sendable {
         // emits integer IDs even when the prompt's example uses strings.
         if let integer = try? values.decode(Int.self, forKey: .id) { id = String(integer) }
         else { id = try? values.decodeIfPresent(String.self, forKey: .id) }
-        text = try values.decode(String.self, forKey: .text)
+        // null or absent text is a model's way of saying "nothing is written
+        // here" for an unread anchor; it must not invalidate the whole reply.
+        text = (try? values.decodeIfPresent(String.self, forKey: .text)) ?? ""
         if let box = try? values.decodeIfPresent([Double].self, forKey: .box) { self.box = box }
         else { box = (try? values.decodeIfPresent([Double].self, forKey: .box_2d)).flatMap(Self.normalizedBox2D) }
     }

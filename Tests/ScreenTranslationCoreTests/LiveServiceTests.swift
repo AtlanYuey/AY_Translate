@@ -14,6 +14,7 @@ import FoundationNetworking
 ///   AY_LIVE_MODEL      model ID
 ///   AY_LIVE_PAGE_JPEG  the page as JPEG
 ///   AY_LIVE_PAGE_GRAY  the same page as raw 8-bit grayscale, named *-<W>x<H>.gray
+///   AY_LIVE_ANCHORS    optional JSON standing in for the on-device reading
 ///   AY_LIVE_EFFORT     optional reasoning_effort to send (none, low, …)
 ///   AY_LIVE_OUTPUT     optional file for the recognized/translated regions (JSON)
 /// No on-device recognizer runs here: the cloud model reads the page with only
@@ -43,7 +44,18 @@ final class LiveServiceTests: XCTestCase {
 
         var clock = Date()
         let bubbles = BubbleDetector.bubbles(grayscale: gray, width: width, height: height)
-        let unread = BubbleText.unreadAnchors(bubbles: bubbles, blocks: [], imageSize: imageSize)
+        // Optional stand-in for the on-device reading: [{"text": …, "box": [x, y, w, h]}], origin top left.
+        struct Stand: Decodable { let text: String; let box: [Double] }
+        var standIn: [RecognizedBlock] = []
+        if let path = environment["AY_LIVE_ANCHORS"] {
+            standIn = try JSONDecoder().decode([Stand].self, from: Data(contentsOf: URL(fileURLWithPath: path))).compactMap { stand in
+                guard let box = OCRAlignment.visionRect(from: stand.box) else { return nil }
+                let vertical = box.height * imageSize.height > box.width * imageSize.width * 1.5
+                return RecognizedBlock(id: UUID(), original: stand.text, translation: stand.text, boundingBox: box, confidence: 0.9,
+                                       sourceLineHeight: vertical ? nil : box.height, flow: vertical ? .vertical : .horizontal, sourceColumnWidth: vertical ? box.width : nil)
+            }
+        }
+        let unread = standIn + BubbleText.unreadAnchors(bubbles: bubbles, blocks: standIn, imageSize: imageSize)
         let local = Date().timeIntervalSince(clock)
         clock = Date()
         var result = try await client.recognize(imageData: jpeg, anchors: unread, configuration: configuration, apiKey: key,
