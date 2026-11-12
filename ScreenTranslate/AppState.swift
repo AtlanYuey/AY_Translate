@@ -179,27 +179,6 @@ final class AppState: ObservableObject {
             guard let self else { return }
             defer { if activeProcessID == processID { processingTask = nil } }
             do {
-                // Local anchors validate AI positions. A failed AI request
-                // falls back to them; the reverse never uploads without consent.
-                func cloudRecognition(_ anchors: [RecognizedBlock], _ configuration: AIServiceConfiguration, _ key: String, service: String) async throws -> OCRResult {
-                    if let cache = cloudCache, cache.image === image, cache.source == source, cache.service == service { return cache.result }
-                    do {
-                        diagnostics?.event("ai_ocr_begin")
-                        let recognized = try await services.aiOCR(image, anchors, configuration, key)
-                        diagnostics?.event("ai_ocr_completed")
-                        cloudCache = (image, source, service, recognized)
-                        return recognized
-                    } catch {
-                        try Task.checkCancellation()
-                        let failure = error as? AIServiceError ?? .invalidResponse
-                        diagnostics?.recordOCRFallback(failure.diagnosticCode)
-                        guard !anchors.isEmpty else { throw error }
-                        let message = AppLocalization.text("AI OCR failed; this result uses local Apple Vision.")
-                            + "\n" + AppLocalization.text(failure.localizedDescription)
-                            + "\n" + failure.diagnosticCode
-                        return OCRResult(blocks: anchors, notice: message)
-                    }
-                }
                 let result: OCRResult
                 if ocrEngine == .appleVision, let plan = assistPlan {
                     var local: [RecognizedBlock] = []
@@ -216,7 +195,7 @@ final class AppState: ObservableObject {
                     }
                     if needed {
                         diagnostics?.event("assist_ai")
-                        result = try await cloudRecognition(local, plan.configuration, plan.key, service: plan.service)
+                        result = try await cloudRecognition(image, source: source, anchors: local, configuration: plan.configuration, key: plan.key, service: plan.service)
                     } else if let localFailure { throw localFailure }
                     else { result = OCRResult(blocks: local) }
                 } else if ocrEngine == .appleVision {
@@ -226,7 +205,7 @@ final class AppState: ObservableObject {
                     do { anchors = try await localRecognition(image, source: source) }
                     catch { try Task.checkCancellation() }
                     try Task.checkCancellation()
-                    result = try await cloudRecognition(anchors, ocrConfiguration, ocrKey, service: ocrService)
+                    result = try await cloudRecognition(image, source: source, anchors: anchors, configuration: ocrConfiguration, key: ocrKey, service: ocrService)
                 }
                 guard isActive(processID) else { return }
                 guard !result.blocks.isEmpty else { throw ScreenReadingError.noText }
@@ -293,6 +272,29 @@ final class AppState: ObservableObject {
             } catch {
                 fail(error, processID: processID)
             }
+        }
+    }
+
+    /// Local anchors validate AI positions. A failed AI request falls back to
+    /// them; a successful reading of this image is kept for later retries.
+    private func cloudRecognition(_ image: UIImage, source: AppLanguage, anchors: [RecognizedBlock],
+                                  configuration: AIServiceConfiguration, key: String, service: String) async throws -> OCRResult {
+        if let cache = cloudCache, cache.image === image, cache.source == source, cache.service == service { return cache.result }
+        do {
+            diagnostics?.event("ai_ocr_begin")
+            let recognized = try await services.aiOCR(image, anchors, configuration, key)
+            diagnostics?.event("ai_ocr_completed")
+            cloudCache = (image, source, service, recognized)
+            return recognized
+        } catch {
+            try Task.checkCancellation()
+            let failure = error as? AIServiceError ?? .invalidResponse
+            diagnostics?.recordOCRFallback(failure.diagnosticCode)
+            guard !anchors.isEmpty else { throw error }
+            let message = AppLocalization.text("AI OCR failed; this result uses local Apple Vision.")
+                + "\n" + AppLocalization.text(failure.localizedDescription)
+                + "\n" + failure.diagnosticCode
+            return OCRResult(blocks: anchors, notice: message)
         }
     }
 
