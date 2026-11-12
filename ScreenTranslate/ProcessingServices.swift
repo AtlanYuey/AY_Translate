@@ -35,6 +35,7 @@ struct ProcessingServices {
                 var result = try await client.recognize(imageData: data, anchors: anchors + unread, configuration: configuration, apiKey: key, locator: local.0)
                 // Text only the model found joins its bubble and keeps its
                 // lettering colour, exactly like locally recognized lines.
+                result.blocks = OCRReconciler.separatingRuby(result.blocks)
                 if let upright { result.blocks = BubbleText.assignContainers(result.blocks, bubbles: local.1, imageSize: CGSize(width: upright.width, height: upright.height)) }
                 result.blocks = OCRNoise.suppress(result.blocks)
                 if let upright { result.blocks = VisionTextRecognizer.annotatingInk(upright, blocks: result.blocks) }

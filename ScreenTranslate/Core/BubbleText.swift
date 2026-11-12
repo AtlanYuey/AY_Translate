@@ -67,12 +67,29 @@ nonisolated enum BubbleText {
         return result
     }
 
+    /// Three or more "columns" of a single character each, side by side: the
+    /// unread ink is one horizontal (or slanted) line, not vertical writing.
+    /// Reading its characters as separate columns would reverse the line.
+    static func isHorizontalRow(_ columns: [[GlyphCell]]) -> Bool {
+        guard columns.count >= 3 else { return false }
+        return columns.filter { $0.count == 1 }.count * 5 >= columns.count * 4
+    }
+
     /// Unread bubble text as empty anchors for a cloud recognizer: the
     /// position is verified locally, the reading is left to the model.
-    static func unreadAnchors(bubbles: [SpeechBubble], blocks: [RecognizedBlock], imageSize: CGSize, limit: Int = 40) -> [RecognizedBlock] {
+    static func unreadAnchors(bubbles: [SpeechBubble], blocks: [RecognizedBlock], imageSize: CGSize, limit: Int = 24) -> [RecognizedBlock] {
         var result: [RecognizedBlock] = []
         for bubble in bubbles where bubble.isDialogue {
-            for column in missingColumns(in: bubble, blocks: blocks, imageSize: imageSize) where result.count < limit {
+            let columns = missingColumns(in: bubble, blocks: blocks, imageSize: imageSize)
+            if isHorizontalRow(columns), result.count < limit {
+                let boxes = columns.flatMap { $0.map(\.box) }
+                let heights = boxes.map(\.height).sorted()
+                result.append(RecognizedBlock(id: UUID(), original: "", translation: "",
+                    boundingBox: boxes.dropFirst().reduce(boxes[0]) { $0.union($1) }, confidence: 0,
+                    sourceLineHeight: heights[heights.count * 3 / 4], flow: .horizontal, sourceGlyphBoxes: boxes))
+                continue
+            }
+            for column in columns where result.count < limit {
                 let boxes = column.map(\.box)
                 guard let first = boxes.first else { continue }
                 let widths = boxes.map(\.width).sorted()

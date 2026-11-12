@@ -97,6 +97,90 @@ final class AIRecognitionPlacementTests: XCTestCase {
         XCTAssertEqual(block.originalColumnWidth * 400, 31, accuracy: 3)
     }
 
+    private func unread(_ box: CGRect, vertical: Bool = true) -> RecognizedBlock {
+        RecognizedBlock(id: UUID(), original: "", translation: "", boundingBox: box, confidence: 0, sourceLineHeight: 0.1,
+                        flow: vertical ? .vertical : .horizontal, sourceColumnWidth: vertical ? box.width : nil, sourceGlyphBoxes: [box])
+    }
+
+    func testUnreadAnchorsAreFilledByPositionNotByTheIDTheModelChose() throws {
+        // Two unread columns; the model swaps their IDs but boxes its readings correctly.
+        let right = unread(vision(300, 40, 20, 100)), left = unread(vision(100, 40, 20, 100))
+        let result = try OCRAlignment.resolve([
+            .init(id: left.id.uuidString, text: "みぎの行", box: [300.0 / 400, 40.0 / 200, 20.0 / 400, 100.0 / 200]),
+            .init(id: right.id.uuidString, text: "ひだりの行", box: [100.0 / 400, 40.0 / 200, 20.0 / 400, 100.0 / 200])
+        ], anchors: [right, left], locator: page([]))
+        XCTAssertEqual(result.blocks.first { $0.id == right.id }?.original, "みぎの行")
+        XCTAssertEqual(result.blocks.first { $0.id == left.id }?.original, "ひだりの行")
+        XCTAssertTrue(result.blocks.allSatisfy { $0.placement == .overlay && $0.flow == .vertical })
+    }
+
+    func testAReadingBoxedElsewhereNeverLandsInAnUnreadAnchor() throws {
+        let anchor = unread(vision(300, 40, 20, 100))
+        // The model names the anchor's ID for text it boxed on the other side
+        // of the page, where there is real ink.
+        let strokes = handwriting()
+        let result = try OCRAlignment.resolve([.init(id: anchor.id.uuidString, text: "ズコー", box: [56.0 / 400, 30.0 / 200, 108.0 / 400, 50.0 / 200])],
+                                              anchors: [anchor], locator: page(strokes))
+        XCTAssertNil(result.blocks.first { $0.id == anchor.id }, "The unread anchor stays unread and is dropped")
+        let placed = try XCTUnwrap(result.blocks.first { $0.original == "ズコー" })
+        XCTAssertEqual(placed.placement, .overlay)
+        XCTAssertLessThan(placed.boundingBox.maxX, 0.5)
+    }
+
+    func testTwoColumnsReadInsideOneUnreadAreaAreJoinedRightToLeft() throws {
+        // Slanted handwriting clustered as one wide unread area.
+        let area = unread(vision(240, 40, 70, 100))
+        let result = try OCRAlignment.resolve([
+            .init(id: nil, text: "だし…", box: [244.0 / 400, 60.0 / 200, 26.0 / 400, 76.0 / 200]),
+            .init(id: nil, text: "もう26", box: [278.0 / 400, 42.0 / 200, 30.0 / 400, 90.0 / 200])
+        ], anchors: [area], locator: page([]))
+        XCTAssertEqual(result.blocks.count, 1)
+        XCTAssertEqual(result.blocks[0].original, "もう26だし…")
+        XCTAssertEqual(result.blocks[0].boundingBox, area.boundingBox)
+    }
+
+    func testABadlyMisreadAnchorIsCorrectedWhenTheModelBoxesTheSamePlace() throws {
+        let anchor = RecognizedBlock(id: UUID(), original: "走う", translation: "走う", boundingBox: vision(280, 40, 30, 90), confidence: 0.4,
+                                     flow: .vertical, sourceColumnWidth: 30.0 / 400)
+        let corrected = try OCRAlignment.resolve([.init(id: anchor.id.uuidString, text: "もう26", box: [278.0 / 400, 42.0 / 200, 30.0 / 400, 86.0 / 200])], anchors: [anchor])
+        XCTAssertEqual(corrected.blocks.map(\.original), ["もう26"])
+        XCTAssertEqual(corrected.blocks[0].boundingBox, anchor.boundingBox)
+        // Without a box (or with a box elsewhere) an unrelated text is not trusted.
+        let unrelated = try OCRAlignment.resolve([.init(id: anchor.id.uuidString, text: "もう26", box: [20.0 / 400, 42.0 / 200, 30.0 / 400, 86.0 / 200])], anchors: [anchor])
+        XCTAssertEqual(unrelated.blocks.first?.original, "走う")
+    }
+
+    func testHorizontalReadingAboveKanjiIsNotTranslatedSeparately() {
+        let name = RecognizedBlock(id: UUID(), original: "室水有(26)", translation: "", boundingBox: CGRect(x: 0.725, y: 0.442, width: 0.146, height: 0.014),
+                                   confidence: 0.9, sourceLineHeight: 0.014)
+        let ruby = RecognizedBlock(id: UUID(), original: "むろみず ある", translation: "", boundingBox: CGRect(x: 0.727, y: 0.456, width: 0.107, height: 0.008),
+                                   confidence: 0.9, sourceLineHeight: 0.008)
+        let caption = RecognizedBlock(id: UUID(), original: "ひらがなだけ", translation: "", boundingBox: CGRect(x: 0.2, y: 0.8, width: 0.107, height: 0.014),
+                                      confidence: 0.9, sourceLineHeight: 0.014)
+        let result = OCRReconciler.separatingRuby([name, ruby, caption])
+        XCTAssertEqual(result.map(\.placement), [.overlay, .textOnly, .overlay])
+    }
+
+    func testAReplyMissingItsFinalBracketsIsStillDecoded() throws {
+        struct Output: Decodable { let regions: [AIRecognizedRegion] }
+        // Exactly what Gemini's JSON mode returned for a page: the last "}" is absent.
+        let dropped = #"{"regions":[{"id":null,"text":"むろさん…","box_2d":[622, 89, 668, 106]},{"id":null,"text":"ですか?","box_2d":[622, 63, 658, 81]}]"#
+        XCTAssertEqual(try OpenAIClient.decodeJSONPayload(Output.self, from: dropped).regions.map(\.text), ["むろさん…", "ですか?"])
+        // A reply that stopped inside an item keeps the finished items.
+        let cut = #"{"regions":[{"id":"0","text":"a } \" ]","box_2d":[1,2,3,4]},{"id":"1","text":"unfinis"#
+        XCTAssertEqual(try OpenAIClient.decodeJSONPayload(Output.self, from: cut).regions.map(\.text), [#"a } " ]"#])
+        XCTAssertTrue(OpenAIClient.closingOpenJSON(#"{"a":[1,2]}"#).isEmpty)
+        XCTAssertThrowsError(try OpenAIClient.decodeJSONPayload(Output.self, from: "{\"regions\":"))
+    }
+
+    func testSlantedOrHorizontalBubbleInkIsOneHorizontalAnchor() {
+        func cell(_ x: CGFloat) -> [GlyphCell] { [GlyphCell(box: CGRect(x: x, y: 0.5, width: 0.02, height: 0.02), rotate: false)] }
+        XCTAssertTrue(BubbleText.isHorizontalRow([cell(0.1), cell(0.13), cell(0.16), cell(0.19)]))
+        let column = (0..<4).map { GlyphCell(box: CGRect(x: 0.1, y: 0.5 - CGFloat($0) * 0.03, width: 0.02, height: 0.02), rotate: false) }
+        XCTAssertFalse(BubbleText.isHorizontalRow([column, column, column]))
+        XCTAssertFalse(BubbleText.isHorizontalRow([cell(0.1), cell(0.13)]))
+    }
+
     func testGeminiRequestSendsAnchorsInItsNativeBoxFormat() async throws {
         let anchor = RecognizedBlock(id: UUID(), original: "Hi", translation: "Hi",
             boundingBox: CGRect(x: 0.1, y: 0.7, width: 0.5, height: 0.1), confidence: 1)

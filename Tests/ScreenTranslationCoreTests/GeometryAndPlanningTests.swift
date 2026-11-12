@@ -144,10 +144,14 @@ final class GeometryAndPlanningTests: XCTestCase {
         XCTAssertEqual(result.blocks.map(\.original), [a.original, b.original])
     }
 
-    func testDuplicateAndEmptyAIRegionsAreRejected() {
+    func testRepeatedIDKeepsTheFirstReadingAndEmptyAIRegionsAreRejected() throws {
         let anchor = block("Original text")
         let region = AIRecognizedRegion(id: anchor.id.uuidString, text: anchor.original, box: nil)
-        XCTAssertThrowsError(try OCRAlignment.resolve([region, region], anchors: [anchor]))
+        // A repeated ID no longer discards the whole page: the anchor keeps
+        // its first reading, the repeat has no position and is not overlaid.
+        let repeated = try OCRAlignment.resolve([region, AIRecognizedRegion(id: anchor.id.uuidString, text: "Another line", box: nil)], anchors: [anchor])
+        XCTAssertEqual(repeated.blocks.filter { $0.placement == .overlay }.map(\.original), [anchor.original])
+        XCTAssertEqual(repeated.blocks.filter { $0.placement == .textOnly }.map(\.original), ["Another line"])
         XCTAssertThrowsError(try OCRAlignment.resolve([], anchors: []))
         XCTAssertThrowsError(try OCRAlignment.resolve([.init(id: nil, text: "  ", box: nil)], anchors: []))
     }

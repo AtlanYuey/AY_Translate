@@ -309,22 +309,39 @@ nonisolated struct OpenAIClient: Sendable {
             // contract fixed even when a model normally answers with prose.
             body["response_format"] = ["type": "json_object"]
         }
+        // Current Gemini models reason before answering unless told otherwise.
+        // On this endpoint that hidden reasoning is charged against max_tokens
+        // (a page transcription was cut off) and multiplies the waiting time,
+        // without improving a transcription or a short translation. Unless the
+        // user chose a reasoning setting, ask for the light level; a model
+        // that rejects the field is asked again without it.
+        let defaultsEffort = Self.usesLightReasoningByDefault(configuration: configuration, modelID: modelID, body: body)
+        if defaultsEffort { body["reasoning_effort"] = "low" }
         request.httpBody = try JSONSerialization.data(withJSONObject: body, options: [.sortedKeys])
         var data = Data()
         var response: URLResponse?
         // Rate limits and overloaded upstreams are usually momentary. Retry
         // exactly once after a short, bounded wait; never retry refusals.
-        for attempt in 0..<2 {
+        var retried = false, withdrewEffort = false
+        while true {
             do {
                 (data, response) = try await session.data(for: request)
             } catch {
                 if Task.isCancelled || (error as? URLError)?.code == .cancelled { throw CancellationError() }
-                if attempt == 0, (error as? URLError)?.code == .networkConnectionLost { continue }
+                if !retried, (error as? URLError)?.code == .networkConnectionLost { retried = true; continue }
                 // Never expose provider response bodies, URLs or headers in logs/UI errors.
                 throw AIServiceError.transport
             }
             try Task.checkCancellation()
-            guard attempt == 0, let http = response as? HTTPURLResponse, [429, 500, 502, 503, 504].contains(http.statusCode) else { break }
+            guard let http = response as? HTTPURLResponse else { break }
+            if defaultsEffort, !withdrewEffort, http.statusCode == 400 {
+                withdrewEffort = true
+                body.removeValue(forKey: "reasoning_effort")
+                request.httpBody = try JSONSerialization.data(withJSONObject: body, options: [.sortedKeys])
+                continue
+            }
+            guard !retried, [429, 500, 502, 503, 504].contains(http.statusCode) else { break }
+            retried = true
             let advised = (http.value(forHTTPHeaderField: "Retry-After")).flatMap(Double.init) ?? 1
             try await Task.sleep(nanoseconds: UInt64(min(4, max(0.3, advised)) * 1_000_000_000))
         }
@@ -347,6 +364,13 @@ nonisolated struct OpenAIClient: Sendable {
 }
 
 extension OpenAIClient {
+    /// Gemini on Google's OpenAI-compatible endpoint, with no reasoning or
+    /// thinking setting chosen by the user (preset or custom JSON).
+    nonisolated static func usesLightReasoningByDefault(configuration: AIServiceConfiguration, modelID: String, body: [String: Any]) -> Bool {
+        guard configuration.isGoogleCompatibilityEndpoint, modelID.hasPrefix("gemini-") else { return false }
+        return !["reasoning_effort", "reasoning", "thinking", "extra_body", "thinking_config"].contains { body[$0] != nil }
+    }
+
     /// Accept a bare JSON object, a fenced code block, or an object surrounded
     /// by a short preamble (common for reasoning or chat-tuned models).
     nonisolated static func decodeJSONPayload<Output: Decodable>(_ type: Output.Type, from message: String) throws -> Output {
@@ -358,7 +382,50 @@ extension OpenAIClient {
         guard let open = json.firstIndex(of: "{"), let close = json.lastIndex(of: "}"), open < close else {
             throw AIServiceError.invalidResponse
         }
-        return try JSONDecoder().decode(Output.self, from: Data(json[open...close].utf8))
+        if let decoded = try? JSONDecoder().decode(Output.self, from: Data(json[open...close].utf8)) { return decoded }
+        // A complete answer whose final brackets were dropped (seen from
+        // Gemini's JSON mode: `…]}]` without the last `}`) is still an answer.
+        for candidate in closingOpenJSON(String(json[open...])) {
+            if let decoded = try? JSONDecoder().decode(Output.self, from: Data(candidate.utf8)) { return decoded }
+        }
+        throw AIServiceError.invalidResponse
+    }
+
+    /// Close the objects and arrays a reply left open: first as written, then
+    /// cut back to the last finished element (a reply that stopped mid-item).
+    /// Returns nothing for balanced text.
+    nonisolated static func closingOpenJSON(_ json: String) -> [String] {
+        var stack: [Character] = []
+        var inString = false, escaped = false
+        var checkpoint: (end: String.Index, stack: [Character])?
+        for index in json.indices {
+            let character = json[index]
+            if inString {
+                if escaped { escaped = false }
+                else if character == "\\" { escaped = true }
+                else if character == "\"" { inString = false }
+                continue
+            }
+            switch character {
+            case "\"": inString = true
+            case "{": stack.append("}")
+            case "[": stack.append("]")
+            case "}", "]":
+                guard stack.last == character else { return [] }
+                stack.removeLast()
+                if !stack.isEmpty { checkpoint = (json.index(after: index), stack) }
+            default: break
+            }
+        }
+        guard !stack.isEmpty else { return [] }
+        var result: [String] = []
+        if !inString {
+            var body = json
+            while let last = body.last, last.isWhitespace || last == "," { body.removeLast() }
+            if let last = body.last, last != ":" { result.append(body + String(stack.reversed())) }
+        }
+        if let checkpoint { result.append(String(json[..<checkpoint.end]) + String(checkpoint.stack.reversed())) }
+        return result
     }
 }
 

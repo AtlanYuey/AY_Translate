@@ -306,7 +306,8 @@ nonisolated enum VisionTextRecognizer {
                 let columns = BubbleText.missingColumns(in: bubble, blocks: blocks, imageSize: size).filter { $0.count <= 20 }
                 // An enclosed face or hand is "paper" with marks in it too;
                 // its skin tone tells it apart from a bubble before any read.
-                if !columns.isEmpty && !isSkinToned(image, region: bubble.bounds) { pending += columns }
+                // A horizontal line cannot be read column by column.
+                if !columns.isEmpty && !BubbleText.isHorizontalRow(columns) && !isSkinToned(image, region: bubble.bounds) { pending += columns }
             }
             var result = blocks
             let columns = Array(pending.prefix(24))

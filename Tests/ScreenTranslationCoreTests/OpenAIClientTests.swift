@@ -121,6 +121,52 @@ final class OpenAIClientTests: XCTestCase {
         XCTAssertThrowsError(try AIRequestOptions(bodyJSON: #"{"max_tokens":100,"max_completion_tokens":200}"#).parameters())
     }
 
+    func testGeminiIsAskedForLightReasoningUnlessTheUserChoseASetting() async throws {
+        let region = block()
+        let gemini = AIServiceConfiguration(baseURL: AIProviderPreset.gemini.baseURL, model: "models/gemini-3.8-flash")
+        // Model defaults: the app asks for the light level itself.
+        var service = client { request in
+            let body = try XCTUnwrap(JSONSerialization.jsonObject(with: XCTUnwrap(request.httpBody)) as? [String: Any])
+            XCTAssertEqual(body["reasoning_effort"] as? String, "low")
+            return (200, try self.response(self.translated(region)))
+        }
+        _ = try await service.translate([region], source: "English", target: "Spanish", preference: .speed, configuration: gemini, apiKey: "")
+        // The user's own choice is sent untouched.
+        var chosen = gemini
+        chosen.requestOptions = AIRequestOptions(preset: .high)
+        service = client { request in
+            let body = try XCTUnwrap(JSONSerialization.jsonObject(with: XCTUnwrap(request.httpBody)) as? [String: Any])
+            XCTAssertEqual(body["reasoning_effort"] as? String, "high")
+            return (200, try self.response(self.translated(region)))
+        }
+        _ = try await service.translate([region], source: "English", target: "Spanish", preference: .speed, configuration: chosen, apiKey: "")
+        // Other providers and other models on other endpoints are not touched.
+        service = client { request in
+            let body = try XCTUnwrap(JSONSerialization.jsonObject(with: XCTUnwrap(request.httpBody)) as? [String: Any])
+            XCTAssertNil(body["reasoning_effort"])
+            return (200, try self.response(self.translated(region)))
+        }
+        _ = try await service.translate([region], source: "English", target: "Spanish", preference: .speed, configuration: configuration, apiKey: "")
+    }
+
+    func testAGeminiModelThatRejectsTheReasoningFieldIsAskedAgainWithoutIt() async throws {
+        let region = block()
+        let attempts = Counter()
+        let service = client { request in
+            let body = try XCTUnwrap(JSONSerialization.jsonObject(with: XCTUnwrap(request.httpBody)) as? [String: Any])
+            if attempts.increment() == 1 {
+                XCTAssertEqual(body["reasoning_effort"] as? String, "low")
+                return (400, Data(#"{"error":{"message":"Thinking level is not supported for this model."}}"#.utf8))
+            }
+            XCTAssertNil(body["reasoning_effort"])
+            return (200, try self.response(self.translated(region)))
+        }
+        let result = try await service.translate([region], source: "English", target: "Spanish", preference: .speed,
+            configuration: AIServiceConfiguration(baseURL: AIProviderPreset.gemini.baseURL, model: "gemini-2.0-flash"), apiKey: "")
+        XCTAssertEqual(result[region.id], "Hola")
+        XCTAssertEqual(attempts.value, 2)
+    }
+
     func testConfiguredBodyOptionsReachOCRAndTranslationRequests() async throws {
         var config = configuration
         config.requestOptions = AIRequestOptions(preset: .deepSeekFast, bodyJSON: #"{"temperature":0.2,"max_completion_tokens":2048}"#)
@@ -469,6 +515,13 @@ final class OpenAIClientTests: XCTestCase {
             XCTFail("Expected input limit")
         } catch { XCTAssertEqual(error as? AIServiceError, .requestTooLarge) }
     }
+}
+
+private final class Counter: @unchecked Sendable {
+    private let lock = NSLock()
+    private var count = 0
+    var value: Int { lock.lock(); defer { lock.unlock() }; return count }
+    @discardableResult func increment() -> Int { lock.lock(); defer { lock.unlock() }; count += 1; return count }
 }
 
 private final class MockURLProtocol: URLProtocol {

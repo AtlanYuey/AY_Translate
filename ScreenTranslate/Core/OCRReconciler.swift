@@ -35,9 +35,18 @@ nonisolated enum OCRReconciler {
                   letters.allSatisfy({ (0x3040...0x30FF).contains($0.value) }) else { return candidate }
             let box = candidate.boundingBox
             let parent = blocks.contains { body in
-                guard body.id != candidate.id, body.flow == .vertical, body.placement == .overlay,
+                guard body.id != candidate.id, body.placement == .overlay,
                       body.original.unicodeScalars.contains(where: { (0x3400...0x9FFF).contains($0.value) }) else { return false }
                 let parent = body.boundingBox
+                if body.flow == .horizontal {
+                    // Horizontal text carries its reading in a small line
+                    // directly above the kanji it annotates.
+                    guard candidate.flow == .horizontal else { return false }
+                    let line = body.originalLineHeight
+                    return candidate.originalLineHeight < line * 0.8 && box.width <= parent.width + line
+                        && box.minX >= parent.minX - line * 0.6 && box.maxX <= parent.maxX + line * 0.6
+                        && box.midY >= parent.maxY - line * 0.25 && box.minY - parent.maxY < line * 0.6
+                }
                 return box.width < body.originalColumnWidth * 0.6 && box.height < parent.height * 0.65
                     && box.midX > parent.midX && box.minX < parent.maxX + body.originalColumnWidth * 0.55
                     && box.maxY <= parent.maxY + body.originalLineHeight * 0.5

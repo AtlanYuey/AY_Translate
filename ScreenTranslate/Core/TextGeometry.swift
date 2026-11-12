@@ -109,48 +109,118 @@ nonisolated enum OCRAlignment {
     static func resolve(_ regions: [AIRecognizedRegion], anchors: [RecognizedBlock], locator: InkLocator? = nil) throws -> OCRResult {
         // An empty reading answers "nothing is written here" for an unread
         // anchor; it is not an error.
-        let regions = regions.filter { !$0.text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty }
-        guard !regions.isEmpty, regions.count <= 500, regions.allSatisfy({ $0.text.count <= 8_000 }) else {
+        let readings = regions.filter { !$0.text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty }
+        guard !readings.isEmpty, readings.count <= 500, readings.allSatisfy({ $0.text.count <= 8_000 }) else {
             throw AIServiceError.invalidRegions
         }
-        let identifiers = regions.compactMap(\.id)
-        guard Set(identifiers).count == identifiers.count else { throw AIServiceError.invalidRegions }
+        // An ID belongs to the first region that claims it. A model that
+        // repeats one (two columns under the same anchor) has still read the
+        // page: the later region is placed by its own box instead.
+        var claimed = Set<String>()
+        let regions = readings.map { region -> AIRecognizedRegion in
+            guard let id = region.id, !claimed.insert(id).inserted else { return region }
+            return AIRecognizedRegion(id: nil, text: region.text, box: region.box)
+        }
         var blocks = anchors
         var used = Set<UUID>()
         var unmatched: [RecognizedBlock] = []
         var located: [RecognizedBlock] = []
+        var parts: [Int: [(text: String, box: CGRect)]] = [:]
+        func area(_ rect: CGRect) -> CGFloat { max(0, rect.width) * max(0, rect.height) }
+        func shared(_ a: CGRect, _ b: CGRect) -> CGFloat {
+            let intersection = a.intersection(b)
+            return intersection.isNull ? 0 : area(intersection)
+        }
+        // image width / height, to compare shapes in pixel proportions.
+        let aspect = locator.map { CGFloat($0.width) / CGFloat(max(1, $0.height)) } ?? 1
         for region in regions {
             let text = region.text.trimmingCharacters(in: .whitespacesAndNewlines)
+            let modelBox = visionRect(from: region.box)
             let byID = region.id.flatMap(UUID.init(uuidString:)).flatMap { id in anchors.firstIndex { $0.id == id } }
             let candidates = anchors.indices.filter { index in
-                guard let rect = visionRect(from: region.box) else { return false }
+                guard let rect = modelBox else { return false }
                 let anchor = anchors[index].boundingBox
-                let intersection = anchor.intersection(rect)
-                let overlap = intersection.isNull ? 0 : intersection.width * intersection.height / max(anchor.width * anchor.height, rect.width * rect.height)
+                let overlap = shared(anchor, rect) / max(area(anchor), area(rect))
                 return overlap >= 0.65 && !anchors[index].original.isEmpty && similarity(text, anchors[index].original) >= 0.55
             }
             let index = byID ?? (candidates.count == 1 ? candidates.first : nil)
-            if let index = byID, !used.contains(anchors[index].id), anchors[index].original.isEmpty {
-                // Ink the on-device recognizer located but could not read:
-                // the model's reading takes the verified local position.
-                used.insert(anchors[index].id)
+            // A recognized anchor is corrected when the model's text resembles
+            // it, or when the model's own box shows it read that very place:
+            // a badly misread line must not keep its misreading.
+            let corrects = index.map { index -> Bool in
                 let anchor = anchors[index]
-                let vertical = anchor.flow == .vertical && VerticalTextLayout.supports(text)
-                blocks[index] = RecognizedBlock(id: anchor.id, original: text, translation: text, boundingBox: anchor.boundingBox, confidence: 0.5,
-                    sourceLineHeight: anchor.sourceLineHeight, flow: vertical ? .vertical : .horizontal,
-                    sourceColumnWidth: vertical ? anchor.sourceColumnWidth : nil, sourceGlyphBoxes: anchor.sourceGlyphBoxes, container: anchor.container)
-            } else if let index, !used.contains(anchors[index].id), similarity(text, anchors[index].original) >= 0.65 {
+                guard !used.contains(anchor.id), !anchor.original.isEmpty else { return false }
+                if similarity(text, anchor.original) >= 0.65 { return true }
+                guard let modelBox, text.count <= max(8, anchor.original.count * 3) else { return false }
+                return shared(anchor.boundingBox, modelBox) >= min(area(anchor.boundingBox), area(modelBox)) * 0.6
+            } ?? false
+            // Ink the on-device recognizer located but could not read is
+            // matched by position: the ID a model picks among several unread
+            // anchors is not reliable, its own box is.
+            var unread: [Int] = []
+            if !corrects {
+                if let modelBox {
+                    // A second line the model read inside an unread area that
+                    // already received text continues that text.
+                    if let index = anchors.indices.first(where: { parts[$0] != nil && shared(anchors[$0].boundingBox, modelBox) >= area(modelBox) * 0.6 }) {
+                        parts[index]?.append((text, modelBox))
+                        continue
+                    }
+                    unread = anchors.indices.filter { index in
+                        let anchor = anchors[index]
+                        guard anchor.original.isEmpty, !used.contains(anchor.id) else { return false }
+                        let common = shared(anchor.boundingBox, modelBox)
+                        return common >= area(anchor.boundingBox) * 0.5 || common >= area(modelBox) * 0.6
+                    }
+                    if let first = unread.first {
+                        let union = unread.dropFirst().reduce(anchors[first].boundingBox) { $0.union(anchors[$1].boundingBox) }
+                        // The anchors must account for what the model read, in
+                        // the same writing direction; otherwise its verified
+                        // box describes the text better than they do.
+                        let upright = modelBox.height > modelBox.width * aspect * 1.2
+                        let flat = modelBox.width * aspect > modelBox.height * 1.2
+                        let agrees = anchors[first].flow == .vertical ? !flat : !upright
+                        if area(union) < area(modelBox) * 0.35 || !agrees { unread = [] }
+                    }
+                } else if let index = byID, anchors[index].original.isEmpty, !used.contains(anchors[index].id) {
+                    unread = [index]
+                }
+            }
+            if corrects, let index {
                 used.insert(anchors[index].id)
                 let anchor = anchors[index]
                 blocks[index] = RecognizedBlock(id: anchor.id, original: text, translation: text, boundingBox: anchor.boundingBox, confidence: anchor.confidence, sourceLineHeight: anchor.originalLineHeight, flow: anchor.flow, sourceColumnWidth: anchor.sourceColumnWidth, sourceGlyphBoxes: anchor.sourceGlyphBoxes, container: anchor.container, inkColor: anchor.inkColor)
-            } else if let locator, let modelBox = visionRect(from: region.box), let box = locator.verifiedBox(modelBox),
+            } else if let first = unread.first {
+                // The model's reading takes the verified local position.
+                for index in unread { used.insert(anchors[index].id) }
+                let anchor = anchors[first]
+                let members = unread.map { anchors[$0] }
+                let box = members.dropFirst().reduce(anchor.boundingBox) { $0.union($1.boundingBox) }
+                let vertical = anchor.flow == .vertical && VerticalTextLayout.supports(text)
+                let widths = members.compactMap(\.sourceColumnWidth).sorted()
+                parts[first] = [(text, modelBox ?? box)]
+                blocks[first] = RecognizedBlock(id: anchor.id, original: text, translation: text, boundingBox: box, confidence: 0.5,
+                    sourceLineHeight: anchor.sourceLineHeight, flow: vertical ? .vertical : .horizontal,
+                    sourceColumnWidth: vertical && !widths.isEmpty ? widths[widths.count / 2] : nil,
+                    sourceGlyphBoxes: members.flatMap { $0.sourceGlyphBoxes ?? [$0.boundingBox] }, container: anchor.container)
+            } else if let locator, let modelBox, let box = locator.verifiedBox(modelBox),
                       !covered(box, by: (blocks + located).filter { $0.placement == .overlay && !$0.original.isEmpty }.map(\.boundingBox)) {
                 // Text the local recognizer missed (often handwriting). Overlay
                 // it only where local pixels confirm contrasting ink.
-                located.append(locatedBlock(text, box: box, aspect: CGFloat(locator.width) / CGFloat(locator.height)))
+                located.append(locatedBlock(text, box: box, aspect: aspect))
             } else {
                 unmatched.append(RecognizedBlock(id: UUID(), original: text, translation: text, boundingBox: .zero, confidence: 0, placement: .textOnly))
             }
+        }
+        // Several lines read inside one unread area: join them in reading
+        // order (columns right to left, rows top to bottom).
+        for (index, lines) in parts where lines.count > 1 {
+            let block = blocks[index]
+            let ordered = lines.sorted { block.flow == .vertical ? $0.box.midX > $1.box.midX : $0.box.midY > $1.box.midY }
+            let text = ordered.map(\.text).joined(separator: block.flow == .vertical ? "" : " ")
+            blocks[index] = RecognizedBlock(id: block.id, original: text, translation: text, boundingBox: block.boundingBox, confidence: block.confidence,
+                sourceLineHeight: block.sourceLineHeight, flow: block.flow, sourceColumnWidth: block.sourceColumnWidth,
+                sourceGlyphBoxes: block.sourceGlyphBoxes, container: block.container)
         }
         blocks.removeAll { $0.original.isEmpty }
         blocks.append(contentsOf: located)
