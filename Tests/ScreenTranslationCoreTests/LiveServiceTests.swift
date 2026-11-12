@@ -50,10 +50,9 @@ final class LiveServiceTests: XCTestCase {
                                                 locator: InkLocator(pixels: gray, width: width, height: height))
         let recognition = Date().timeIntervalSince(clock)
         result.blocks = OCRNoise.suppress(BubbleText.assignContainers(OCRReconciler.separatingRuby(result.blocks), bubbles: bubbles, imageSize: imageSize))
-        let paragraphs = TranslationPlanner.paragraphs(result.blocks, preference: .speed)
+        let paragraphs = TranslationPlanner.paragraphs(result.blocks)
         clock = Date()
-        let translations = try await client.translate(paragraphs, source: "auto-detect", target: "Simplified Chinese (zh-Hans)",
-                                                      preference: .speed, configuration: configuration, apiKey: key)
+        let translations = try await client.translate(paragraphs, source: "auto-detect", target: "Simplified Chinese (zh-Hans)", configuration: configuration, apiKey: key)
         let translation = Date().timeIntervalSince(clock)
 
         struct Region: Encodable { let original: String; let translation: String; let box: [Double]; let overlay: Bool; let vertical: Bool; let bubble: Bool }

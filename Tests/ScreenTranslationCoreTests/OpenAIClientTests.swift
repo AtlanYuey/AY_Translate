@@ -72,7 +72,7 @@ final class OpenAIClientTests: XCTestCase {
             return (200, try self.response(#"{"translations":[{"id":"0","text":"Your mouth is dripping."}]}"#))
         }
         do {
-            _ = try await service.translate([source], source: "Japanese", target: "Chinese (zh-Hans)", preference: .speed, configuration: configuration, apiKey: "")
+            _ = try await service.translate([source], source: "Japanese", target: "Chinese (zh-Hans)", configuration: configuration, apiKey: "")
             XCTFail("A wrong-language sentence must never be published")
         } catch { XCTAssertEqual(error as? AIServiceError, .wrongTargetLanguage) }
         XCTAssertEqual(calls, 2, "Wrong-language output gets exactly one bounded repair request, never a loop")
@@ -112,10 +112,10 @@ final class OpenAIClientTests: XCTestCase {
             let service = client { request in
                 let body = try XCTUnwrap(JSONSerialization.jsonObject(with: XCTUnwrap(request.httpBody)) as? [String: Any])
                 XCTAssertNil(body["max_tokens"])
-                XCTAssertEqual(body["max_completion_tokens"] as? Int, 4096)
+                XCTAssertEqual(body["max_completion_tokens"] as? Int, 8192)
                 return (200, try self.response(self.translated(region)))
             }
-            _ = try await service.translate([region], source: "English", target: "Spanish", preference: .speed,
+            _ = try await service.translate([region], source: "English", target: "Spanish",
                 configuration: AIServiceConfiguration(baseURL: configuration.baseURL, model: model), apiKey: "")
         }
         XCTAssertThrowsError(try AIRequestOptions(bodyJSON: #"{"max_tokens":100,"max_completion_tokens":200}"#).parameters())
@@ -130,7 +130,7 @@ final class OpenAIClientTests: XCTestCase {
             XCTAssertEqual(body["reasoning_effort"] as? String, "low")
             return (200, try self.response(self.translated(region)))
         }
-        _ = try await service.translate([region], source: "English", target: "Spanish", preference: .speed, configuration: gemini, apiKey: "")
+        _ = try await service.translate([region], source: "English", target: "Spanish", configuration: gemini, apiKey: "")
         // The user's own choice is sent untouched.
         var chosen = gemini
         chosen.requestOptions = AIRequestOptions(preset: .high)
@@ -139,14 +139,14 @@ final class OpenAIClientTests: XCTestCase {
             XCTAssertEqual(body["reasoning_effort"] as? String, "high")
             return (200, try self.response(self.translated(region)))
         }
-        _ = try await service.translate([region], source: "English", target: "Spanish", preference: .speed, configuration: chosen, apiKey: "")
+        _ = try await service.translate([region], source: "English", target: "Spanish", configuration: chosen, apiKey: "")
         // Other providers and other models on other endpoints are not touched.
         service = client { request in
             let body = try XCTUnwrap(JSONSerialization.jsonObject(with: XCTUnwrap(request.httpBody)) as? [String: Any])
             XCTAssertNil(body["reasoning_effort"])
             return (200, try self.response(self.translated(region)))
         }
-        _ = try await service.translate([region], source: "English", target: "Spanish", preference: .speed, configuration: configuration, apiKey: "")
+        _ = try await service.translate([region], source: "English", target: "Spanish", configuration: configuration, apiKey: "")
     }
 
     func testAGeminiModelThatRejectsTheReasoningFieldIsAskedAgainWithoutIt() async throws {
@@ -161,7 +161,7 @@ final class OpenAIClientTests: XCTestCase {
             XCTAssertNil(body["reasoning_effort"])
             return (200, try self.response(self.translated(region)))
         }
-        let result = try await service.translate([region], source: "English", target: "Spanish", preference: .speed,
+        let result = try await service.translate([region], source: "English", target: "Spanish",
             configuration: AIServiceConfiguration(baseURL: AIProviderPreset.gemini.baseURL, model: "gemini-2.0-flash"), apiKey: "")
         XCTAssertEqual(result[region.id], "Hola")
         XCTAssertEqual(attempts.value, 2)
@@ -183,7 +183,7 @@ final class OpenAIClientTests: XCTestCase {
             }
             return (200, try self.response(self.translated(region)))
         }
-        _ = try await service.translate([region], source: "English", target: "Spanish", preference: .speed, configuration: config, apiKey: "")
+        _ = try await service.translate([region], source: "English", target: "Spanish", configuration: config, apiKey: "")
         _ = try await service.recognize(imageData: Data([0xff]), anchors: [region], configuration: config, apiKey: "")
     }
 
@@ -199,7 +199,7 @@ final class OpenAIClientTests: XCTestCase {
             XCTAssertTrue(prompt.contains("omitted or untranslated"))
             return (200, try self.response(#"{"translations":[{"id":"1","text":"第二句"}]}"#))
         }
-        let result = try await service.translate([first, second], source: "English", target: "Chinese", preference: .speed, configuration: configuration, apiKey: "")
+        let result = try await service.translate([first, second], source: "English", target: "Chinese", configuration: configuration, apiKey: "")
         XCTAssertEqual(calls, 2)
         XCTAssertEqual(result[first.id], "第一句"); XCTAssertEqual(result[second.id], "第二句")
     }
@@ -218,7 +218,7 @@ final class OpenAIClientTests: XCTestCase {
             XCTAssertFalse(prompt.components(separatedBy: "Regions to translate:").last!.contains(second.original), "Successful regions are not retranslated")
             return (200, try self.response(#"{"translations":[{"id":"0","text":"嘴角沾着奶油。"}]}"#))
         }
-        let result = try await service.translate([first, second], source: "Japanese", target: "Chinese (zh-Hans)", preference: .speed, configuration: configuration, apiKey: "")
+        let result = try await service.translate([first, second], source: "Japanese", target: "Chinese (zh-Hans)", configuration: configuration, apiKey: "")
         XCTAssertEqual(calls, 2)
         XCTAssertEqual(result[first.id], "嘴角沾着奶油。")
         XCTAssertEqual(result[second.id], "明天去图书馆。")
@@ -228,7 +228,7 @@ final class OpenAIClientTests: XCTestCase {
         let first = block("First sentence"), second = block("Second sentence")
         let service = client { _ in (200, try self.response(#"{"translations":[{"id":"0","text":"第一句"},{"id":"7","text":"extra"}]}"#)) }
         do {
-            _ = try await service.translate([first, second], source: "English", target: "Chinese", preference: .speed, configuration: configuration, apiKey: "")
+            _ = try await service.translate([first, second], source: "English", target: "Chinese", configuration: configuration, apiKey: "")
             XCTFail("An omitted region must not be reported as complete")
         } catch let partial as PartialTranslationError {
             XCTAssertEqual(partial.translations, [first.id: "第一句"], "Unknown IDs are discarded; verified text is kept")
@@ -250,7 +250,7 @@ final class OpenAIClientTests: XCTestCase {
             let translations = input.map { ["id": $0["id"]!, "text": "译" + $0["text"]!.suffix(3)] }
             return (200, try self.response(String(decoding: JSONSerialization.data(withJSONObject: ["translations": translations]), as: UTF8.self)))
         }
-        let result = try await service.translate(blocks, source: "Japanese", target: "Chinese", preference: .speed, configuration: configuration, apiKey: "")
+        let result = try await service.translate(blocks, source: "Japanese", target: "Chinese", configuration: configuration, apiKey: "")
         XCTAssertGreaterThan(counter.value, 1)
         XCTAssertEqual(result.count, 30)
         XCTAssertEqual(result[blocks[29].id], "译号29")
@@ -258,10 +258,10 @@ final class OpenAIClientTests: XCTestCase {
 
     func testBatchesAreBoundedForVeryLongPages() {
         let blocks = (0..<200).map { block(String(repeating: "あ", count: 60 + $0 % 7)) }
-        let batches = OpenAIClient.translationBatches(blocks, preference: .speed)
+        let batches = OpenAIClient.translationBatches(blocks)
         XCTAssertEqual(batches.flatMap { $0 }.map(\.id), blocks.map(\.id), "Reading order and coverage are preserved")
         XCTAssertLessThanOrEqual(batches.count, 20)
-        XCTAssertEqual(OpenAIClient.translationBatches([block("Hi")], preference: .quality).count, 1)
+        XCTAssertEqual(OpenAIClient.translationBatches([block("Hi")]).count, 1)
     }
 
     func testTransientRateLimitIsRetriedOnceWithServerAdvice() async throws {
@@ -273,7 +273,7 @@ final class OpenAIClientTests: XCTestCase {
             if calls == 1 { return (429, Data("busy".utf8)) }
             return (200, try self.response(self.translated(region)))
         }
-        let result = try await service.translate([region], source: "English", target: "Spanish", preference: .speed, configuration: configuration, apiKey: "")
+        let result = try await service.translate([region], source: "English", target: "Spanish", configuration: configuration, apiKey: "")
         XCTAssertEqual(calls, 2)
         XCTAssertEqual(result[region.id], "Hola")
     }
@@ -293,7 +293,7 @@ final class OpenAIClientTests: XCTestCase {
                 XCTAssertEqual(body["response_format"] != nil, expected, url)
                 return (200, try self.response(self.translated(region)))
             }
-            _ = try await service.translate([region], source: "English", target: "Spanish", preference: .speed,
+            _ = try await service.translate([region], source: "English", target: "Spanish",
                 configuration: AIServiceConfiguration(baseURL: url, model: "gpt-4.1-mini"), apiKey: "")
         }
     }
@@ -336,7 +336,7 @@ final class OpenAIClientTests: XCTestCase {
         let service = client { _ in XCTFail("Invalid configuration must not make a request"); return (500, Data()) }
         for url in ["http://example.test/v1", "https://user:password@example.test/v1", "https://example.test/v1?key=secret", "https://example.test/#fragment", "not a url"] {
             do {
-                _ = try await service.translate([block()], source: "English", target: "Spanish", preference: .speed, configuration: .init(baseURL: url, model: "m"), apiKey: "")
+                _ = try await service.translate([block()], source: "English", target: "Spanish", configuration: .init(baseURL: url, model: "m"), apiKey: "")
                 XCTFail("Accepted invalid URL")
             } catch { XCTAssertEqual(error as? AIServiceError, .invalidEndpoint) }
         }
@@ -365,7 +365,7 @@ final class OpenAIClientTests: XCTestCase {
             XCTAssertFalse(String(decoding: request.httpBody!, as: UTF8.self).contains("test-credential"))
             return (200, try self.response(self.translated(block)))
         }
-        let result = try await service.translate([block], source: "English", target: "Spanish", preference: .quality, configuration: configuration, apiKey: "test-credential")
+        let result = try await service.translate([block], source: "English", target: "Spanish", configuration: configuration, apiKey: "test-credential")
         XCTAssertEqual(result[block.id], "Hola")
     }
 
@@ -375,14 +375,14 @@ final class OpenAIClientTests: XCTestCase {
             XCTAssertNil(request.value(forHTTPHeaderField: "Authorization"))
             return (200, try self.response("```json\n" + self.translated(block) + "\n```"))
         }
-        let result = try await service.translate([block], source: "auto", target: "Spanish", preference: .speed, configuration: configuration, apiKey: "")
+        let result = try await service.translate([block], source: "auto", target: "Spanish", configuration: configuration, apiKey: "")
         XCTAssertEqual(result[block.id], "Hola")
     }
 
     func testTextPartResponseIsSupported() async throws {
         let block = block()
         let service = client { _ in (200, try self.response([["type": "text", "text": self.translated(block)]])) }
-        let result = try await service.translate([block], source: "auto", target: "Spanish", preference: .speed, configuration: configuration, apiKey: "")
+        let result = try await service.translate([block], source: "auto", target: "Spanish", configuration: configuration, apiKey: "")
         XCTAssertEqual(result[block.id], "Hola")
     }
 
@@ -404,7 +404,7 @@ final class OpenAIClientTests: XCTestCase {
         for status in [302, 401, 403, 429, 500] {
             let service = client { _ in (status, Data("provider-secret-response-body".utf8)) }
             do {
-                _ = try await service.translate([block()], source: "auto", target: "Spanish", preference: .speed, configuration: configuration, apiKey: "")
+                _ = try await service.translate([block()], source: "auto", target: "Spanish", configuration: configuration, apiKey: "")
                 XCTFail("Expected HTTP error")
             } catch {
                 XCTAssertEqual(error as? AIServiceError, .http(status))
@@ -416,7 +416,7 @@ final class OpenAIClientTests: XCTestCase {
     func testTransportErrorsAreSanitized() async {
         let service = client { _ in throw URLError(.cannotConnectToHost, userInfo: [NSLocalizedDescriptionKey: "private endpoint or credential"]) }
         do {
-            _ = try await service.translate([block()], source: "auto", target: "Spanish", preference: .speed, configuration: configuration, apiKey: "")
+            _ = try await service.translate([block()], source: "auto", target: "Spanish", configuration: configuration, apiKey: "")
             XCTFail("Expected transport error")
         } catch { XCTAssertEqual(error as? AIServiceError, .transport) }
     }
@@ -424,7 +424,7 @@ final class OpenAIClientTests: XCTestCase {
     func testCancellationIsNotWrappedAsProviderFailure() async {
         let service = client { _ in throw URLError(.cancelled) }
         do {
-            _ = try await service.translate([block()], source: "auto", target: "Spanish", preference: .speed, configuration: configuration, apiKey: "")
+            _ = try await service.translate([block()], source: "auto", target: "Spanish", configuration: configuration, apiKey: "")
             XCTFail("Expected cancellation")
         } catch { XCTAssertTrue(error is CancellationError) }
     }
@@ -435,7 +435,7 @@ final class OpenAIClientTests: XCTestCase {
         for (data, expected) in cases {
             let service = client { _ in (200, data) }
             do {
-                _ = try await service.translate([block()], source: "auto", target: "Spanish", preference: .speed, configuration: configuration, apiKey: "")
+                _ = try await service.translate([block()], source: "auto", target: "Spanish", configuration: configuration, apiKey: "")
                 XCTFail("Expected invalid response")
             } catch { XCTAssertEqual(error as? AIServiceError, expected) }
         }
@@ -448,7 +448,7 @@ final class OpenAIClientTests: XCTestCase {
             return (200, try JSONSerialization.data(withJSONObject: ["choices": [["finish_reason": "length", "message": ["content": content]]]]))
         }
         do {
-            _ = try await service.translate([block], source: "auto", target: "Spanish", preference: .speed, configuration: configuration, apiKey: "")
+            _ = try await service.translate([block], source: "auto", target: "Spanish", configuration: configuration, apiKey: "")
             XCTFail("Token-limited output must not be marked complete")
         } catch { XCTAssertEqual(error as? AIServiceError, .outputTruncated) }
     }
@@ -502,8 +502,8 @@ final class OpenAIClientTests: XCTestCase {
             let translations = input.map { ["id": $0["id"]!, "text": "Translated " + $0["text"]!] }
             return (200, try self.response(String(decoding: JSONSerialization.data(withJSONObject: ["translations": translations]), as: UTF8.self)))
         }
-        let result = try await service.translate(blocks, source: "auto", target: "Spanish", preference: .quality, configuration: configuration, apiKey: "")
-        XCTAssertEqual(counter.value, 2)
+        let result = try await service.translate(blocks, source: "auto", target: "Spanish", configuration: configuration, apiKey: "")
+        XCTAssertEqual(counter.value, 3)
         XCTAssertEqual(result.count, 45)
         XCTAssertEqual(result[blocks.last!.id], "Translated Region 44")
     }
@@ -511,7 +511,7 @@ final class OpenAIClientTests: XCTestCase {
     func testOversizedInputFailsBeforeSending() async {
         let service = client { _ in XCTFail("Oversized input must not be sent"); return (200, Data()) }
         do {
-            _ = try await service.translate([block(String(repeating: "x", count: 48_001))], source: "auto", target: "Spanish", preference: .quality, configuration: configuration, apiKey: "")
+            _ = try await service.translate([block(String(repeating: "x", count: 48_001))], source: "auto", target: "Spanish", configuration: configuration, apiKey: "")
             XCTFail("Expected input limit")
         } catch { XCTAssertEqual(error as? AIServiceError, .requestTooLarge) }
     }

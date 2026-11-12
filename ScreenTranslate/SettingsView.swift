@@ -27,7 +27,7 @@ struct SettingsView: View {
                     ForEach(AppLanguage.sourceLanguages) { Text($0 == .automatic ? settings.text($0.name) : $0.nativeName).tag($0) }
                 }
             } header: { Text("OCR") } footer: {
-                Text("Apple Vision uses accurate recognition, language correction and automatic detection. AI OCR sends a screenshot only with permission; uncertain positions appear in Full Text.")
+                Text("Apple Vision reads on the device for free. An AI service reads handwriting and stylised lettering better, at your provider’s price.")
             }
             Section {
                 NavigationLink { EngineSelectionView(profile: .translation) } label: {
@@ -36,11 +36,8 @@ struct SettingsView: View {
                 Picker("Target Language", selection: $settings.target) {
                     ForEach(AppLanguage.targetLanguages) { Text(verbatim: $0.nativeName).tag($0) }
                 }
-                Picker("Priority", selection: $settings.preference) {
-                    ForEach(TranslationPreference.allCases) { Text(LocalizedStringKey($0.name)).tag($0) }
-                }.pickerStyle(.segmented)
             } header: { Text("Translation") } footer: {
-                Text("Apple Translation is free and uses downloaded on-device models. Speed favors low latency; Quality keeps longer paragraphs together and gives AI more output space and screen context.")
+                Text("Apple Translation is free and uses downloaded on-device models.")
             }
             Section {
                 NavigationLink { AIServicesView() } label: {
@@ -62,8 +59,7 @@ struct SettingsView: View {
                     .font(.footnote).foregroundStyle(.secondary)
             }
             #endif
-            Section("Information") {
-                NavigationLink { ProcessingDiagnosticsView() } label: { Label("Processing Diagnostics", systemImage: "waveform.path.ecg") }
+            Section {
                 Button { showsAbout = true } label: { Label("About AY Translate", systemImage: "info.circle") }
             }
         }
@@ -146,6 +142,8 @@ private struct AboutView: View {
                     .font(.caption)
                     .foregroundStyle(.tertiary)
                 NavigationLink("Open-source licenses") { LegalNoticesView() }
+                NavigationLink("Processing Diagnostics") { ProcessingDiagnosticsView() }
+                    .font(.footnote).foregroundStyle(.secondary)
                 Spacer()
             }
             .padding(.top, 50)
@@ -228,11 +226,14 @@ private struct ConfigurationSyncView: View {
             Section("iCloud") {
                 Toggle("Sync Settings with iCloud", isOn: $settings.iCloudSyncEnabled)
                 if settings.iCloudSyncEnabled {
-                    Button("Upload This Device’s Settings") { settings.uploadSettingsToCloud() }
-                    Text("Saved settings sync automatically after enabling. Changes are sent after a short pause; opening the app also checks other devices. Manual upload is only a fallback.")
+                    Toggle("Also Save API Keys", isOn: $settings.iCloudIncludesAPIKeys)
+                    Text(LocalizedStringKey(settings.iCloudIncludesAPIKeys
+                        ? "API keys and the cloud permissions you gave are kept in your iCloud, so another device signed in to it works without entering them again. Turning this off removes them from iCloud."
+                        : "Languages, display preferences and AI service details sync. API keys and cloud permissions stay on this device."))
                         .font(.footnote).foregroundStyle(.secondary)
+                    Button("Upload This Device’s Settings") { settings.uploadSettingsToCloud() }
                 }
-                Text("Sync languages, display preferences and AI service details across your devices. API keys, screenshots, history and cloud permissions stay on this device.")
+                Text("Screenshots and history are never synced.")
                     .font(.footnote).foregroundStyle(.secondary)
                 if let message = settings.iCloudSyncMessage { Text(settings.text(message)).font(.footnote).foregroundStyle(.secondary) }
             }

@@ -144,6 +144,16 @@ struct TranslationResultView: View {
                         Label("Translation incomplete · Original preserved", systemImage: "exclamationmark.circle")
                             .font(.footnote).padding(.horizontal, 12).padding(.vertical, 8)
                     }.buttonStyle(.plain).glassEffect(.regular.interactive(), in: Capsule()).padding(.top, 14)
+                case .awaitingAssist:
+                    VStack(spacing: 10) {
+                        Text("On-device recognition may be incomplete here. Use AI to help?")
+                            .font(.footnote.weight(.medium)).multilineTextAlignment(.center)
+                        HStack(spacing: 10) {
+                            Button("Use AI") { appState.resolveAssist(useAI: true) }.buttonStyle(.borderedProminent)
+                            Button("On-Device Only") { appState.resolveAssist(useAI: false) }.buttonStyle(.bordered)
+                        }.controlSize(.small)
+                    }.padding(14).glassEffect(.regular, in: RoundedRectangle(cornerRadius: 18))
+                        .padding(.top, 14).padding(.horizontal, 28)
                 case .loading, .reading, .translating, .preparing:
                     HStack(spacing: 8) {
                         ProgressView().controlSize(.small)

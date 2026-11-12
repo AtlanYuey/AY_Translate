@@ -6,12 +6,12 @@ import CoreGraphics
 nonisolated enum TranslationPlanner {
     /// Join likely wrapped prose before either translator sees it. Keep columns,
     /// short UI labels, unpositioned text, and widely separated rows independent.
-    static func paragraphs(_ blocks: [RecognizedBlock], preference: TranslationPreference) -> [RecognizedBlock] {
+    static func paragraphs(_ blocks: [RecognizedBlock]) -> [RecognizedBlock] {
         // Everything inside one dialogue bubble is one utterance: translate it
         // together and lay it out once. Other text keeps the line heuristics.
         let bubbles = bubbleParagraphs(blocks.filter { $0.placement == .overlay && $0.container != nil })
         let blocks = blocks.filter { $0.placement != .overlay || $0.container == nil }
-        return bubbles + lineParagraphs(blocks, preference: preference)
+        return bubbles + lineParagraphs(blocks)
     }
 
     /// Merge the lines of each bubble in reading order and drop a second
@@ -78,7 +78,7 @@ nonisolated enum TranslationPlanner {
         }
     }
 
-    private static func lineParagraphs(_ blocks: [RecognizedBlock], preference: TranslationPreference) -> [RecognizedBlock] {
+    private static func lineParagraphs(_ blocks: [RecognizedBlock]) -> [RecognizedBlock] {
         let positioned = blocks.filter { $0.placement == .overlay && $0.flow == .horizontal }.sorted {
             if $0.boundingBox.midY == $1.boundingBox.midY {
                 return $0.boundingBox.minX < $1.boundingBox.minX
@@ -90,7 +90,7 @@ nonisolated enum TranslationPlanner {
         var lineCount = 0
         for block in positioned {
             if let previous = lastLine, let group = result.last,
-               lineCount < (preference == .quality ? 8 : 4), canJoin(previous, block) {
+               lineCount < 8, canJoin(previous, block) {
                 let joinsWithoutSpace = previous.original.hasSuffix("-") || (previous.original.unicodeScalars.last.map(isCJK) == true && block.original.unicodeScalars.first.map(isCJK) == true)
                 let joiner = joinsWithoutSpace ? "" : " "
                 let prefix = previous.original.hasSuffix("-") ? String(group.original.dropLast()) : group.original

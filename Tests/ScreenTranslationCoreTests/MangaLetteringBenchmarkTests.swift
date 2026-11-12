@@ -92,7 +92,7 @@ final class MangaLetteringBenchmarkTests: XCTestCase {
         let start = ContinuousClock.now
         let blocks = try await VisionTextRecognizer.recognize(image, language: "ja")
         let elapsed = start.duration(to: .now)
-        let planned = TranslationPlanner.paragraphs(blocks, preference: .speed)
+        let planned = TranslationPlanner.paragraphs(blocks)
         print("BENCH bubbles seconds=\(elapsed) regions=\(blocks.count)")
         for block in planned {
             print("BENCH bubbles block placement=\(block.placement == .overlay ? "overlay" : "textOnly") container=\(block.container != nil) text=\(block.original)")
@@ -135,7 +135,7 @@ final class MangaLetteringBenchmarkTests: XCTestCase {
         column("はぁ︙", x: 320, y: 1500, size: 38, font: "Yomogi-Regular", color: brown, context: context)
         let image = try XCTUnwrap(context.makeImage())
         let blocks = try await VisionTextRecognizer.recognize(image, language: "ja")
-        let planned = TranslationPlanner.paragraphs(blocks, preference: .speed)
+        let planned = TranslationPlanner.paragraphs(blocks)
         for block in planned {
             print("BENCH lettering block ink=\(block.inkColor.map { $0.map { String(format: "%.2f", $0) }.joined(separator: ",") } ?? "none") text=\(block.original)")
         }

@@ -37,6 +37,7 @@ AY Translate 由 AtlanYuey 于 2026 年基于 [Translate Screen](https://github.
 - `ScreenTranslate/Core/EngineConfiguration.swift`
 - `ScreenTranslate/Core/InkLocator.swift`
 - `ScreenTranslate/Core/InterfaceLanguage.swift`
+- `ScreenTranslate/Core/OCRAssist.swift`
 - `ScreenTranslate/Core/OCRCoverage.swift`
 - `ScreenTranslate/Core/OCRNoise.swift`
 - `ScreenTranslate/Core/OCRReconciler.swift`

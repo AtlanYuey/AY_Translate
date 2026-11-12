@@ -2,7 +2,7 @@ import Foundation
 
 nonisolated enum SharedPreferenceKeys {
     static func contains(_ key: String) -> Bool {
-        ["defaultSourceLanguage", "defaultTargetLanguage", "translationAppearance", "saveTranslationHistory", "ocrEngine", "translationEngine", "translationPreference", "overlayTextScale", "showsTextDetailsOnTap", "showsUnchangedText", "defaultResultMode", "interfaceLanguage"].contains(key)
+        ["defaultSourceLanguage", "defaultTargetLanguage", "translationAppearance", "saveTranslationHistory", "ocrEngine", "translationEngine", "aiAssistAutomatic", "aiAssistAsks", "aiAssistService", "overlayTextScale", "showsTextDetailsOnTap", "showsUnchangedText", "defaultResultMode", "interfaceLanguage"].contains(key)
             || key.hasPrefix("ai.") || key.hasPrefix("cloudConsent.")
     }
 }

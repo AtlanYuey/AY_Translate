@@ -41,6 +41,22 @@ nonisolated enum OCRNoise {
         !text.unicodeScalars.contains { script($0) != nil }
     }
 
+    /// Regions set aside by `suppress` because they are written in another
+    /// alphabet than the page: evidence that lettering was misread.
+    static func misreadCount(_ suppressed: [RecognizedBlock]) -> Int {
+        var page = (cjk: 0, latin: 0, other: 0)
+        for block in suppressed where block.placement == .overlay && block.confidence >= 0.3 {
+            let count = counts(block.original)
+            page.cjk += count.cjk; page.latin += count.latin; page.other += count.other
+        }
+        guard page.cjk >= 12, page.cjk * 10 >= (page.cjk + page.latin + page.other) * 6 else { return 0 }
+        return suppressed.filter { block in
+            guard block.placement == .textOnly, block.boundingBox.width > 0 else { return false }
+            let count = counts(block.original)
+            return count.cjk == 0 && count.other > 0
+        }.count
+    }
+
     static func suppress(_ blocks: [RecognizedBlock]) -> [RecognizedBlock] {
         var page = (cjk: 0, latin: 0, other: 0)
         var containers: [CGRect] = []

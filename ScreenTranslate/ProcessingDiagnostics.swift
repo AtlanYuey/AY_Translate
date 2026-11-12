@@ -153,23 +153,38 @@ struct ProcessingDiagnosticsView: View {
                     if let data = try? encoder.encode(entries) { UIPasteboard.general.string = String(decoding: data, as: UTF8.self) }
                 }.disabled(entries.isEmpty)
             }
-            ForEach(entries) { entry in
-                Section {
-                    LabeledContent("Status", value: settings.text(status(entry.outcome)))
-                    LabeledContent("Stage", value: settings.text(entry.stage == "reading" ? "Reading screen…" : ["background", "importing", "presenting"].contains(entry.stage) ? "Preparing image…" : "Translating…"))
-                    LabeledContent("Target Language", value: AppLanguage(rawValue: entry.target)?.nativeName ?? entry.target)
-                    LabeledContent("Memory Warnings", value: String(entry.memoryWarnings))
-                    if let version = entry.version { LabeledContent("Version", value: version + " (" + (entry.build ?? "?") + ")") }
-                    if let fallback = entry.ocrFallback { LabeledContent("AI OCR", value: fallback) }
-                    if let summary = entry.summary { Text(verbatim: summary).font(.caption2).foregroundStyle(.secondary) }
-                    Text(entry.context == "share" ? "Share Extension" : "AY Translate").font(.caption).foregroundStyle(.secondary)
-                } header: { Text(entry.started, style: .date) + Text(" · ") + Text(entry.started, style: .time) }
+            // One compact row per run: when, how it ended, and the details
+            // worth sending along with a problem report.
+            Section {
+                ForEach(entries) { entry in
+                    VStack(alignment: .leading, spacing: 3) {
+                        HStack {
+                            (Text(entry.started, style: .date) + Text(" ") + Text(entry.started, style: .time)).font(.subheadline)
+                            Spacer()
+                            Text(settings.text(status(entry.outcome))).font(.subheadline).foregroundStyle(entry.outcome == "completed" ? Color.secondary : Color.orange)
+                        }
+                        Text(verbatim: details(entry)).font(.caption).foregroundStyle(.secondary)
+                        if let summary = entry.summary { Text(verbatim: summary).font(.caption2).foregroundStyle(.tertiary) }
+                    }.padding(.vertical, 1)
+                }
             }
         }
         .navigationTitle("Processing Diagnostics")
         .onAppear { entries = ProcessingDiagnostics.shared.reports() }
         .refreshable { entries = ProcessingDiagnostics.shared.reports() }
     }
+    private func details(_ entry: ProcessingDiagnostics.Entry) -> String {
+        var parts = [settings.text(entry.context == "share" ? "Share Extension" : "AY Translate"),
+                     "→ " + (AppLanguage(rawValue: entry.target)?.nativeName ?? entry.target)]
+        if entry.outcome != "completed" {
+            parts.append(settings.text(entry.stage == "reading" ? "Reading screen…" : ["background", "importing", "presenting"].contains(entry.stage) ? "Preparing image…" : "Translating…"))
+        }
+        if entry.memoryWarnings > 0 { parts.append(settings.text("Memory Warnings") + " " + String(entry.memoryWarnings)) }
+        if let fallback = entry.ocrFallback { parts.append("AI OCR " + fallback) }
+        if let version = entry.version { parts.append(version + " (" + (entry.build ?? "?") + ")") }
+        return parts.joined(separator: " · ")
+    }
+
     private func status(_ outcome: String) -> String {
         switch outcome {
         case "completed": "Completed"

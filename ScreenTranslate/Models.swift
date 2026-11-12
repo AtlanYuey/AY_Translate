@@ -97,13 +97,6 @@ enum TranslationAppearance: String, CaseIterable, Identifiable {
         switch self { case .natural: "Background Match"; case .readable: "High Contrast"; case .minimal: "Text Only" }
     }
 
-    var detail: String {
-        switch self {
-        case .natural: "Blends into the original screen"
-        case .readable: "Strong backgrounds for clarity"
-        case .minimal: "Subtle, lightweight overlays"
-        }
-    }
 }
 
 struct TranslationDocument: Identifiable {
@@ -139,6 +132,15 @@ final class AppSettings: ObservableObject {
             configureCloudSync()
         }
     }
+    /// Separate opt-in: also keep API keys and the cloud permissions already
+    /// given in iCloud, so a second device needs no re-entry.
+    @Published var iCloudIncludesAPIKeys: Bool = false {
+        didSet {
+            guard iCloudIncludesAPIKeys != oldValue else { return }
+            defaults.set(iCloudIncludesAPIKeys, forKey: "iCloudSyncAPIKeys")
+            if iCloudIncludesAPIKeys { cloudSync?.enableCredentials() } else { cloudSync?.removeCredentials() }
+        }
+    }
     @Published private(set) var iCloudSyncMessage: String?
     private var cloudSync: CloudSettingsSync?
     private var applyingCloudSettings = false
@@ -158,7 +160,8 @@ final class AppSettings: ObservableObject {
         let sync = CloudSettingsSync(defaults: defaults, apply: { [weak self] changes in
             guard let self else { return false }
             // A synced endpoint change must never send the old device's key to
-            // a different host. Credentials and permissions remain device-local.
+            // a different host. With key sync on, the key that belongs to the
+            // new endpoint is applied again right after the services.
             if let data = changes["ai.services.v1"] as? Data,
                let catalog = try? JSONDecoder().decode(AIServiceCatalog.self, from: data) {
                 do {
@@ -179,6 +182,12 @@ final class AppSettings: ObservableObject {
             guard let self else { return }
             iCloudSyncMessage = message
             if iCloudSyncEnabled && !defaults.bool(forKey: "iCloudSyncEnabled") { iCloudSyncEnabled = false }
+        }, credentials: { [weak self] in
+            guard let self, iCloudIncludesAPIKeys else { return nil }
+            return try? JSONEncoder().encode(syncedCredentials())
+        }, applyCredentials: { [weak self] data in
+            guard let self, iCloudIncludesAPIKeys, let incoming = try? JSONDecoder().decode(SyncedCredentials.self, from: data) else { return false }
+            return apply(incoming)
         })
         cloudSync = sync
         sync.start()
@@ -186,6 +195,37 @@ final class AppSettings: ObservableObject {
     }
 
     func uploadSettingsToCloud() { cloudSync?.uploadLocalSettings() }
+
+    /// Every saved service's key and each permission already given.
+    private func syncedCredentials() -> SyncedCredentials {
+        var result = SyncedCredentials()
+        for service in serviceCatalog.services {
+            if let key = try? keyStore.read(.service(service.id)), !key.isEmpty { result.keys[service.id.uuidString] = key }
+            for profile in AIProfile.allCases {
+                let name = profile.rawValue + "." + service.id.uuidString
+                if let consent = defaults.string(forKey: "cloudConsent." + name) { result.consents[name] = consent }
+            }
+        }
+        return result
+    }
+
+    /// Additive: a device that has no key yet must never erase another's.
+    private func apply(_ incoming: SyncedCredentials) -> Bool {
+        do {
+            for service in serviceCatalog.services {
+                if let key = incoming.keys[service.id.uuidString], !key.isEmpty, try keyStore.read(.service(service.id)) != key {
+                    try keyStore.save(key, for: .service(service.id))
+                }
+                for profile in AIProfile.allCases {
+                    let name = profile.rawValue + "." + service.id.uuidString
+                    if let consent = incoming.consents[name] { persist(consent, forKey: "cloudConsent." + name) }
+                }
+            }
+            return true
+        } catch { iCloudSyncMessage = error.localizedDescription; return false }
+    }
+
+    private func credentialsChanged() { if iCloudIncludesAPIKeys { cloudSync?.credentialsChanged() } }
     func resumeSettingsSync() { refreshSharedPreferences(); cloudSync?.resume() }
 
     @Published var source: AppLanguage {
@@ -206,8 +246,17 @@ final class AppSettings: ObservableObject {
     @Published var translationEngine: TranslationEngine {
         didSet { persist(translationEngine.rawValue, forKey: "translationEngine") }
     }
-    @Published var preference: TranslationPreference {
-        didSet { persist(preference.rawValue, forKey: "translationPreference") }
+    /// With Apple Vision selected: use a cloud recognizer by itself when the
+    /// local reading looks unreliable.
+    @Published var aiAssistAutomatic: Bool {
+        didSet { persist(aiAssistAutomatic, forKey: "aiAssistAutomatic") }
+    }
+    /// Otherwise ask first. Both off: recognition always stays on the device.
+    @Published var aiAssistAsks: Bool {
+        didSet { persist(aiAssistAsks, forKey: "aiAssistAsks") }
+    }
+    @Published var aiAssistServiceID: UUID? {
+        didSet { persist(aiAssistServiceID?.uuidString ?? "", forKey: "aiAssistService") }
     }
     @Published var overlayTextScale: Double {
         didSet { persist(overlayTextScale, forKey: "overlayTextScale") }
@@ -256,7 +305,9 @@ final class AppSettings: ObservableObject {
         savesHistory = defaults.bool(forKey: Keys.savesHistory)
         ocrEngine = OCREngine(rawValue: defaults.string(forKey: "ocrEngine") ?? "") ?? .appleVision
         translationEngine = TranslationEngine(rawValue: defaults.string(forKey: "translationEngine") ?? "") ?? .apple
-        preference = TranslationPreference(rawValue: defaults.string(forKey: "translationPreference") ?? "") ?? .speed
+        aiAssistAutomatic = defaults.bool(forKey: "aiAssistAutomatic")
+        aiAssistAsks = defaults.bool(forKey: "aiAssistAsks")
+        aiAssistServiceID = defaults.string(forKey: "aiAssistService").flatMap(UUID.init(uuidString:))
         let textScale = defaults.double(forKey: "overlayTextScale")
         overlayTextScale = textScale == 0 ? 1 : min(1.8, max(0.8, textScale))
         showsUnchangedText = defaults.bool(forKey: "showsUnchangedText")
@@ -266,6 +317,7 @@ final class AppSettings: ObservableObject {
         interfaceLanguage = InterfaceLanguage(rawValue: defaults.string(forKey: "interfaceLanguage") ?? "") ?? .system
         synchronizationError = syncMessage
         migrateLegacyServices()
+        iCloudIncludesAPIKeys = defaults.bool(forKey: "iCloudSyncAPIKeys")
         iCloudSyncEnabled = defaults.bool(forKey: "iCloudSyncEnabled")
         configureCloudSync()
     }
@@ -287,7 +339,8 @@ final class AppSettings: ObservableObject {
         savesHistory = saved.savesHistory; ocrEngine = saved.ocrEngine; translationEngine = saved.translationEngine
         showsUnchangedText = saved.showsUnchangedText
         showsTextDetailsOnTap = saved.showsTextDetailsOnTap
-        preference = saved.preference; overlayTextScale = saved.overlayTextScale; defaultResultMode = saved.defaultResultMode
+        aiAssistAutomatic = saved.aiAssistAutomatic; aiAssistAsks = saved.aiAssistAsks; aiAssistServiceID = saved.aiAssistServiceID
+        overlayTextScale = saved.overlayTextScale; defaultResultMode = saved.defaultResultMode
         interfaceLanguage = saved.interfaceLanguage; serviceCatalog = saved.serviceCatalog; serviceMigrationError = saved.serviceMigrationError
     }
 
@@ -296,6 +349,13 @@ final class AppSettings: ObservableObject {
     }
 
     func selectedService(for profile: AIProfile) -> SavedAIService? { serviceCatalog.selected(for: profile) }
+
+    /// The image-capable service that helps Apple Vision: the chosen one, or
+    /// the first that can read images.
+    var assistService: SavedAIService? {
+        let capable = serviceCatalog.services.filter(\.supportsVision)
+        return capable.first { $0.id == aiAssistServiceID } ?? capable.first
+    }
 
     func readAPIKey(for profile: AIProfile) throws -> String {
         guard let service = selectedService(for: profile) else { throw ServiceCatalogError.serviceMissing }
@@ -330,6 +390,7 @@ final class AppSettings: ObservableObject {
         persist(data, forKey: "ai.services.v1")
         serviceCatalog = updated
         if updated.selected(for: .ocr) == nil { ocrEngine = .appleVision }
+        credentialsChanged()
     }
 
     func selectService(_ id: UUID?, for profile: AIProfile, enableEngine: Bool = true) throws {
@@ -367,18 +428,29 @@ final class AppSettings: ObservableObject {
 
     func hasConsent(for profile: AIProfile) -> Bool {
         guard let service = selectedService(for: profile) else { return false }
-        return defaults.string(forKey: "cloudConsent." + profile.rawValue + "." + service.id.uuidString) == service.consentID
+        return hasConsent(for: profile, service: service)
+    }
+
+    func hasConsent(for profile: AIProfile, service: SavedAIService) -> Bool {
+        defaults.string(forKey: "cloudConsent." + profile.rawValue + "." + service.id.uuidString) == service.consentID
     }
 
     func grantConsent(for profile: AIProfile) {
         guard let service = selectedService(for: profile) else { return }
+        grantConsent(for: profile, service: service)
+    }
+
+    /// Given where a service is chosen, so recognition itself never has to ask.
+    func grantConsent(for profile: AIProfile, service: SavedAIService) {
         persist(service.consentID, forKey: "cloudConsent." + profile.rawValue + "." + service.id.uuidString)
+        credentialsChanged()
     }
 
     func revokeCloudConsent() {
         for service in serviceCatalog.services {
             for profile in AIProfile.allCases { removePreference(forKey: "cloudConsent." + profile.rawValue + "." + service.id.uuidString) }
         }
+        credentialsChanged()
     }
 
     private func migrateLegacyServices() {

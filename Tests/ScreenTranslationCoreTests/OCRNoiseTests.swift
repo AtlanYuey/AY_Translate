@@ -72,6 +72,26 @@ final class OCRNoiseTests: XCTestCase {
     }
 }
 
+final class OCRAssistTests: XCTestCase {
+    private func line(_ text: String, y: CGFloat, confidence: Float = 1) -> RecognizedBlock {
+        RecognizedBlock(id: UUID(), original: text, translation: text, boundingBox: CGRect(x: 0.1, y: y, width: 0.6, height: 0.04), confidence: confidence)
+    }
+
+    func testCloudHelpIsAskedForOnlyWhenLocalReadingLooksUnreliable() {
+        let size = CGSize(width: 1000, height: 2000)
+        let clean = [line("設定を開いてください", y: 0.8), line("アカウント情報の確認", y: 0.7), line("通知の設定を変更できます", y: 0.6)]
+        XCTAssertFalse(OCRAssist.isNeeded(blocks: clean, bubbles: [], imageSize: size), "A cleanly read screen costs nothing")
+        XCTAssertTrue(OCRAssist.isNeeded(blocks: [], bubbles: [], imageSize: size), "Nothing could be read")
+        // Two hesitant lines making up a good share of the text (handwriting).
+        let hesitant = clean + [line("もう26だし", y: 0.5, confidence: 0.3), line("そう簡単に", y: 0.4, confidence: 0.3)]
+        XCTAssertTrue(OCRAssist.isNeeded(blocks: hesitant, bubbles: [], imageSize: size))
+        XCTAssertFalse(OCRAssist.isNeeded(blocks: clean + [line("OK", y: 0.5, confidence: 0.3)], bubbles: [], imageSize: size), "One unsure label is not a reason")
+        // Lettering misread as another alphabet.
+        let misread = OCRNoise.suppress(clean + [line("70كم", y: 0.3)])
+        XCTAssertTrue(OCRAssist.isNeeded(blocks: misread, bubbles: [], imageSize: size))
+    }
+}
+
 final class BubbleParagraphDirectionTests: XCTestCase {
     func testAStrayVerticalFragmentDoesNotTurnAHorizontalTitleOnItsSide() {
         let area = CGRect(x: 0.6, y: 0.7, width: 0.3, height: 0.1)

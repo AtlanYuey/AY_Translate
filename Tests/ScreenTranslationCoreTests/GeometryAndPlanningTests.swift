@@ -24,7 +24,7 @@ final class GeometryAndPlanningTests: XCTestCase {
         let right = RecognizedBlock(id: UUID(), original: "面白い形ね", translation: "面白い形ね", boundingBox: CGRect(x: 0.55, y: 0.5, width: 0.025, height: 0.15), confidence: 1, sourceLineHeight: 0.015, flow: .vertical, sourceColumnWidth: 0.025)
         let left = RecognizedBlock(id: UUID(), original: "一口食べてみる？", translation: "一口食べてみる？", boundingBox: CGRect(x: 0.51, y: 0.47, width: 0.025, height: 0.18), confidence: 1, sourceLineHeight: 0.015, flow: .vertical, sourceColumnWidth: 0.025)
         let other = RecognizedBlock(id: UUID(), original: "別の吹き出し", translation: "別の吹き出し", boundingBox: CGRect(x: 0.2, y: 0.1, width: 0.03, height: 0.15), confidence: 1, flow: .vertical, sourceColumnWidth: 0.03)
-        let result = TranslationPlanner.paragraphs([left, other, right], preference: .quality)
+        let result = TranslationPlanner.paragraphs([left, other, right])
         XCTAssertEqual(result.count, 2)
         XCTAssertEqual(result[0].original, right.original + "\n" + left.original)
         XCTAssertEqual(result[0].originalColumnWidth, 0.025)
@@ -158,7 +158,7 @@ final class GeometryAndPlanningTests: XCTestCase {
 
     func testWrappedSentenceIsTranslatedAsOneRegion() {
         let a = block("This is a long sentence that wraps"), b = block("onto the next line", y: 0.75)
-        let grouped = TranslationPlanner.paragraphs([b, a], preference: .speed)
+        let grouped = TranslationPlanner.paragraphs([b, a])
         XCTAssertEqual(grouped.count, 1)
         XCTAssertEqual(grouped[0].original, a.original + " " + b.original)
         XCTAssertEqual(grouped[0].boundingBox, a.boundingBox.union(b.boundingBox))
@@ -169,7 +169,7 @@ final class GeometryAndPlanningTests: XCTestCase {
 
     func testManyJoinedLinesDoNotTurnTheirParagraphHeightIntoFontSize() {
         let lines = (0..<6).map { block("A continuation of a long sentence", y: 0.85 - Double($0) * 0.05) }
-        let paragraph = TranslationPlanner.paragraphs(lines, preference: .quality)[0]
+        let paragraph = TranslationPlanner.paragraphs(lines)[0]
         XCTAssertEqual(paragraph.originalLineHeight, 0.04, accuracy: 0.00001)
         XCTAssertGreaterThan(paragraph.boundingBox.height, paragraph.originalLineHeight * 6)
     }
@@ -193,19 +193,18 @@ final class GeometryAndPlanningTests: XCTestCase {
             [block("Long text in left column", width: 0.3), block("Long text in right column", x: 0.6, y: 0.75, width: 0.3)],
             [block("A very distant sentence"), block("Not the same paragraph", y: 0.2)]
         ]
-        for input in cases { XCTAssertEqual(TranslationPlanner.paragraphs(input, preference: .quality).count, 2) }
+        for input in cases { XCTAssertEqual(TranslationPlanner.paragraphs(input).count, 2) }
     }
 
-    func testQualityRetainsLongerParagraphContext() {
+    func testLongParagraphIsTranslatedAsOneRegion() {
         let lines = (0..<6).map { block("A continuation of a long sentence", y: 0.85 - Double($0) * 0.05) }
-        XCTAssertEqual(TranslationPlanner.paragraphs(lines, preference: .quality).count, 1)
-        XCTAssertEqual(TranslationPlanner.paragraphs(lines, preference: .speed).count, 2)
+        XCTAssertEqual(TranslationPlanner.paragraphs(lines).count, 1)
     }
 
     func testHyphenatedLineWrapAndTextOnlyRegions() {
         let a = block("This is a hyphenated trans-"), b = block("lation example", y: 0.75)
         let unplaced = RecognizedBlock(id: UUID(), original: "Extra", translation: "Extra", boundingBox: .zero, confidence: 0, placement: .textOnly)
-        let groups = TranslationPlanner.paragraphs([a, b, unplaced], preference: .quality)
+        let groups = TranslationPlanner.paragraphs([a, b, unplaced])
         XCTAssertEqual(groups[0].original, "This is a hyphenated translation example")
         XCTAssertEqual(groups.last?.placement, .textOnly)
     }
@@ -220,14 +219,14 @@ final class GeometryAndPlanningTests: XCTestCase {
 
     func testChineseWrappedProseRetainsSentenceWithoutInsertedSpaces() {
         let a = block("这是一段需要保留上下文的文字"), b = block("接下来的文字属于同一句话", y: 0.75)
-        let result = TranslationPlanner.paragraphs([a, b], preference: .quality)
+        let result = TranslationPlanner.paragraphs([a, b])
         XCTAssertEqual(result.count, 1)
         XCTAssertEqual(result[0].original, a.original + b.original)
     }
 
     func testKoreanWrappedWordsKeepTheirRequiredSpace() {
         let a = block("문장의 의미가 끊기지 않도록"), b = block("다음 줄도 함께 번역합니다", y: 0.75)
-        let result = TranslationPlanner.paragraphs([a, b], preference: .quality)
+        let result = TranslationPlanner.paragraphs([a, b])
         XCTAssertEqual(result.count, 1)
         XCTAssertEqual(result[0].original, a.original + " " + b.original)
     }

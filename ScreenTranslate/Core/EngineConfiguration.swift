@@ -12,12 +12,6 @@ nonisolated enum TranslationEngine: String, CaseIterable, Identifiable, Sendable
     var name: String { self == .apple ? "Apple Translation · Free" : "AI Translation · Cloud" }
 }
 
-nonisolated enum TranslationPreference: String, CaseIterable, Identifiable, Sendable {
-    case speed, quality
-    var id: Self { self }
-    var name: String { self == .speed ? "Speed" : "Quality" }
-}
-
 nonisolated enum AIProfile: String, CaseIterable, Identifiable, Sendable {
     case ocr, translation
     var id: Self { self }

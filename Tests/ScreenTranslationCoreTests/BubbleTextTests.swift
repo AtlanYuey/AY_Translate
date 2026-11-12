@@ -91,7 +91,7 @@ final class BubbleTextTests: XCTestCase {
         var ruby = column("としょかん", x: 0.56); ruby.placement = .textOnly
         let other = RecognizedBlock(id: UUID(), original: "わっ", translation: "わっ", boundingBox: CGRect(x: 0.8, y: 0.1, width: 0.03, height: 0.06),
                                     confidence: 0.9, flow: .vertical, container: CGRect(x: 0.78, y: 0.08, width: 0.07, height: 0.1))
-        let result = TranslationPlanner.paragraphs([left, duplicate, right, middle, ruby, other], preference: .speed)
+        let result = TranslationPlanner.paragraphs([left, duplicate, right, middle, ruby, other])
         let bubble = result.first { $0.container == container }
         XCTAssertEqual(bubble?.original, "無理はしなくて…だから", "Right-to-left columns, no repeated column")
         XCTAssertEqual(bubble?.flow, .vertical)
@@ -178,7 +178,7 @@ final class BubbleShapeTests: XCTestCase {
                 XCTAssertTrue(inside(x, y, 1.15), "Corner \(x),\(y) left the bubble")
             }
         }
-        let planned = TranslationPlanner.paragraphs(assigned, preference: .speed)
+        let planned = TranslationPlanner.paragraphs(assigned)
         XCTAssertEqual(planned.filter { $0.container != nil }.count, 2, "One utterance per group")
     }
 

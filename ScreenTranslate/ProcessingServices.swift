@@ -7,7 +7,10 @@ import UIKit
 struct ProcessingServices {
     var vision: (UIImage, AppLanguage) async throws -> [RecognizedBlock]
     var aiOCR: (UIImage, [RecognizedBlock], AIServiceConfiguration, String) async throws -> OCRResult
-    var aiTranslation: ([RecognizedBlock], AppLanguage, AppLanguage, TranslationPreference, AIServiceConfiguration, String) async throws -> [UUID: String]
+    var aiTranslation: ([RecognizedBlock], AppLanguage, AppLanguage, AIServiceConfiguration, String) async throws -> [UUID: String]
+    /// Local-only judgement: does this on-device reading look unreliable
+    /// enough for a cloud recognizer to be worth asking?
+    var needsAssist: (UIImage, [RecognizedBlock]) async -> Bool = { _, _ in false }
 
     static var live: ProcessingServices {
         // Reuse the ephemeral connection pool for OCR, translation and retries;
@@ -41,8 +44,20 @@ struct ProcessingServices {
                 if let upright { result.blocks = VisionTextRecognizer.annotatingInk(upright, blocks: result.blocks) }
                 return result
             },
-            aiTranslation: { blocks, source, target, preference, configuration, key in
-                try await client.translate(blocks, source: source == .automatic ? "auto-detect" : source.name, target: target.name + " (" + target.rawValue + ")", preference: preference, configuration: configuration, apiKey: key)
+            aiTranslation: { blocks, source, target, configuration, key in
+                try await client.translate(blocks, source: source == .automatic ? "auto-detect" : source.name, target: target.name + " (" + target.rawValue + ")", configuration: configuration, apiKey: key)
+            },
+            needsAssist: { image, blocks in
+                // The cheap evidence (nothing read, hesitant or misread lines)
+                // needs no pixels; unread bubble text needs the bubbles.
+                if OCRAssist.isNeeded(blocks: blocks, bubbles: [], imageSize: .zero) { return true }
+                guard let upright = try? ScreenshotInput.bounded(image).cgImage else { return false }
+                return await Task.detached(priority: .userInitiated) { () -> Bool in
+                    guard let raster = VisionTextRecognizer.grayscaleImage(upright, maximum: 2048) else { return false }
+                    let bubbles = BubbleDetector.bubbles(grayscale: raster.bytes, width: raster.width, height: raster.height)
+                        .filter { !$0.isDialogue || !VisionTextRecognizer.isSkinToned(upright, region: $0.bounds) }
+                    return OCRAssist.isNeeded(blocks: blocks, bubbles: bubbles, imageSize: CGSize(width: upright.width, height: upright.height))
+                }.value
             }
         )
     }

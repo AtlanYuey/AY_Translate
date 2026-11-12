@@ -120,7 +120,7 @@ final class InterfaceAndServiceTests: XCTestCase {
     }
 
     private func services(_ regions: [RecognizedBlock]) -> ProcessingServices {
-        ProcessingServices(vision: { _, _ in regions }, aiOCR: { _, _, _, _ in XCTFail("Unexpected cloud OCR"); throw AIServiceError.transport }, aiTranslation: { _, _, _, _, _, _ in XCTFail("Unexpected cloud translation"); throw AIServiceError.transport })
+        ProcessingServices(vision: { _, _ in regions }, aiOCR: { _, _, _, _ in XCTFail("Unexpected cloud OCR"); throw AIServiceError.transport }, aiTranslation: { _, _, _, _, _ in XCTFail("Unexpected cloud translation"); throw AIServiceError.transport })
     }
 
     func testActivityBorderSurvivesRoundedDisplayMasksInBothOrientations() throws {
@@ -339,6 +339,33 @@ final class InterfaceAndServiceTests: XCTestCase {
         XCTAssertNil(cloud.data(forKey: "ay.settings.v1.saveTranslationHistory"))
     }
 
+    func testAPIKeysSyncOnlyAfterOptInAndANewDeviceAddsToThemInsteadOfReplacing() throws {
+        let cloud = MemoryCloudSettings()
+        let payload = try JSONEncoder().encode(SyncedCredentials(keys: ["service": "secret"], consents: [:]))
+        let first = CloudSettingsSync(defaults: defaults, store: cloud, apply: { _ in true }, status: { _ in },
+                                      credentials: { payload }, applyCredentials: { _ in true })
+        first.start()
+        defer { first.stop() }
+        let otherSuite = "ScreenTranslate.tests." + UUID().uuidString
+        let other = try XCTUnwrap(UserDefaults(suiteName: otherSuite))
+        defer { other.removePersistentDomain(forName: otherSuite) }
+        var enabled = false
+        var received: [Data] = []
+        let second = CloudSettingsSync(defaults: other, store: cloud, apply: { _ in true }, status: { _ in },
+                                       credentials: { enabled ? try? JSONEncoder().encode(SyncedCredentials()) : nil },
+                                       applyCredentials: { received.append($0); return true })
+        second.start()
+        defer { second.stop() }
+        second.merge()
+        XCTAssertTrue(received.isEmpty, "Keys stay out of reach until this device opts in")
+        enabled = true
+        second.enableCredentials()
+        let incoming = try JSONDecoder().decode(SyncedCredentials.self, from: XCTUnwrap(received.last))
+        XCTAssertEqual(incoming.keys["service"], "secret", "The other device's key is taken before this device uploads its own, empty set")
+        second.removeCredentials()
+        XCTAssertFalse(cloud.values.keys.contains { $0.hasSuffix(CloudSettingsRecord.credentialsKey) }, "Turning the option off removes every copy")
+    }
+
     func testCloudSyncAutomaticallyFlushesEditsAndResumesExtensionChanges() async throws {
         let cloud = MemoryCloudSettings()
         let sync = CloudSettingsSync(defaults: defaults, store: cloud, apply: { _ in true }, status: { _ in })
@@ -384,7 +411,7 @@ final class InterfaceAndServiceTests: XCTestCase {
         var calls = 0
         let state = AppState(settings: settings, history: HistoryStore(fileURL: FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)),
             services: ProcessingServices(vision: { _, _ in calls += 1; return [self.region()] },
-                aiOCR: { _, _, _, _ in throw AIServiceError.transport }, aiTranslation: { _, _, _, _, _, _ in throw AIServiceError.transport }))
+                aiOCR: { _, _, _, _ in throw AIServiceError.transport }, aiTranslation: { _, _, _, _, _ in throw AIServiceError.transport }))
         let original = image()
         state.process(original)
         for _ in 0..<100 where state.phase != .ready { try await Task.sleep(for: .milliseconds(10)) }
@@ -400,7 +427,7 @@ final class InterfaceAndServiceTests: XCTestCase {
 
     func testOCRFailureStillDisplaysTheOriginalScreenshotInDarkMode() async throws {
         let state = AppState(settings: settings, history: HistoryStore(fileURL: FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)),
-            services: ProcessingServices(vision: { _, _ in throw ScreenReadingError.noText }, aiOCR: { _, _, _, _ in throw AIServiceError.transport }, aiTranslation: { _, _, _, _, _, _ in throw AIServiceError.transport }))
+            services: ProcessingServices(vision: { _, _ in throw ScreenReadingError.noText }, aiOCR: { _, _, _, _ in throw AIServiceError.transport }, aiTranslation: { _, _, _, _, _ in throw AIServiceError.transport }))
         state.process(image())
         for _ in 0..<100 { if case .failed = state.phase { break }; try await Task.sleep(for: .milliseconds(10)) }
         guard case .failed = state.phase else { return XCTFail("Expected OCR failure") }
@@ -535,7 +562,7 @@ final class InterfaceAndServiceTests: XCTestCase {
         XCTAssertTrue(text.contains("ケーキ"), text)
         XCTAssertTrue(text.contains("おいしい"), text)
         XCTAssertTrue(blocks.contains { $0.flow == .vertical }, text)
-        let paragraphs = TranslationPlanner.paragraphs(blocks, preference: .quality)
+        let paragraphs = TranslationPlanner.paragraphs(blocks)
         var translated = paragraphs
         for index in translated.indices where translated[index].flow == .vertical { translated[index].translation = "这块蛋糕真好吃" }
         let document = TranslationDocument(id: UUID(), image: image, blocks: translated, source: .japanese, target: .chinese, createdAt: Date())
@@ -742,7 +769,7 @@ final class InterfaceAndServiceTests: XCTestCase {
                                     boundingBox: CGRect(x: 0.1, y: 0.8, width: 0.7, height: 0.02), confidence: 1)
         let second = RecognizedBlock(id: UUID(), original: "onto the next line", translation: "内容",
                                      boundingBox: CGRect(x: 0.1, y: 0.775, width: 0.7, height: 0.02), confidence: 1)
-        var paragraph = TranslationPlanner.paragraphs([first, second], preference: .quality)[0]
+        var paragraph = TranslationPlanner.paragraphs([first, second])[0]
         paragraph.translation = "内容"
         let canvas = CGSize(width: 390, height: 844)
         let line = ScreenshotRendering.textLayout(for: first, canvasSize: canvas, textScale: 1)
@@ -846,7 +873,7 @@ final class InterfaceAndServiceTests: XCTestCase {
         try settings.selectService(provider.id, for: .translation)
         settings.grantConsent(for: .translation)
         var injected = services(fixture.blocks)
-        injected.aiTranslation = { blocks, _, _, _, _, _ in
+        injected.aiTranslation = { blocks, _, _, _, _ in
             Dictionary(uniqueKeysWithValues: blocks.map { ($0.id, fixture.translations[$0.id]!) })
         }
         let state = AppState(settings: settings, history: HistoryStore(), services: injected)

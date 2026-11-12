@@ -18,6 +18,10 @@ final class CloudSettingsSync {
     private let store: any CloudKeyValueStoring
     private let apply: ([String: Any]) -> Bool
     private let status: (String) -> Void
+    /// Current keys and permissions to upload, or nil while the option is off.
+    private let credentials: () -> Data?
+    private let applyCredentials: (Data) -> Bool
+    private let credentialsKey = CloudSettingsRecord.credentialsKey
     private var observer: NSObjectProtocol?
     private var uploadTask: Task<Void, Never>?
     private let device: String
@@ -28,8 +32,10 @@ final class CloudSettingsSync {
     private func remoteKey(_ key: String) -> String { remotePrefix + device + "." + key }
 
     init(defaults: UserDefaults, store: any CloudKeyValueStoring = NSUbiquitousKeyValueStore.default,
-         apply: @escaping ([String: Any]) -> Bool, status: @escaping (String) -> Void) {
+         apply: @escaping ([String: Any]) -> Bool, status: @escaping (String) -> Void,
+         credentials: @escaping () -> Data? = { nil }, applyCredentials: @escaping (Data) -> Bool = { _ in false }) {
         self.defaults = defaults; self.store = store; self.apply = apply; self.status = status
+        self.credentials = credentials; self.applyCredentials = applyCredentials
         device = defaults.string(forKey: "icloud.device") ?? UUID().uuidString
         defaults.set(device, forKey: "icloud.device")
     }
@@ -65,6 +71,7 @@ final class CloudSettingsSync {
             }
         }
         resume()
+        if credentials() != nil { enableCredentials() }
         scheduleUpload()
     }
 
@@ -118,6 +125,7 @@ final class CloudSettingsSync {
         for key in CloudSettingsRecord.allowedKeys {
             if let value = defaults.object(forKey: key) { changed(value, key: key) }
         }
+        credentialsChanged()
         requestSynchronization()
     }
 
@@ -148,5 +156,55 @@ final class CloudSettingsSync {
         if !changes.isEmpty && apply(changes) {
             for (key, data) in accepted { defaults.set(data, forKey: prefix + key) }
         }
+        // After the services themselves: a changed service list must pick up
+        // the keys that belong to it, even if they arrived earlier.
+        mergeCredentials(force: changes["ai.services.v1"] != nil)
+    }
+
+    // MARK: API keys (separate opt-in)
+
+    /// The newest record any other device wrote. Only its timestamp and device
+    /// are remembered locally; keys live in the Keychain, never in preferences.
+    private func mergeCredentials(force: Bool) {
+        guard active, credentials() != nil else { return }
+        let records = store.dictionaryRepresentation.compactMap { entry -> CloudSettingsRecord? in
+            guard entry.key.hasPrefix(remotePrefix), entry.key.hasSuffix("." + credentialsKey), entry.key != remoteKey(credentialsKey),
+                  let data = entry.value as? Data, let record = try? JSONDecoder().decode(CloudSettingsRecord.self, from: data),
+                  record.decodedValue(for: credentialsKey) != nil else { return nil }
+            return record
+        }
+        guard let remote = records.reduce(nil as CloudSettingsRecord?, { latest, record in record.isNewer(than: latest) ? record : latest }),
+              let payload = remote.decodedValue(for: credentialsKey) as? Data else { return }
+        let seen = defaults.data(forKey: prefix + credentialsKey).flatMap { try? JSONDecoder().decode(CloudSettingsRecord.self, from: $0) }
+        guard force || remote.isNewer(than: seen) else { return }
+        if applyCredentials(payload), let stamp = try? CloudSettingsRecord(value: Data(), timestamp: remote.timestamp, device: remote.device) {
+            defaults.set(try? JSONEncoder().encode(stamp), forKey: prefix + credentialsKey)
+        }
+    }
+
+    /// Upload this device's keys and permissions (after any of them changed).
+    func credentialsChanged() {
+        guard active, let payload = credentials(),
+              let record = try? CloudSettingsRecord(value: payload, timestamp: Date().timeIntervalSince1970, device: device),
+              let data = try? JSONEncoder().encode(record) else { return }
+        store.set(data, forKey: remoteKey(credentialsKey))
+        scheduleUpload()
+    }
+
+    /// Turning the option on: take what other devices already saved first, so
+    /// an empty new device adds to the shared set instead of replacing it.
+    func enableCredentials() {
+        guard active else { return }
+        mergeCredentials(force: true)
+        credentialsChanged()
+    }
+
+    /// Turning the option off removes every device's copy from iCloud.
+    func removeCredentials() {
+        for key in store.dictionaryRepresentation.keys where key.hasPrefix(remotePrefix) && key.hasSuffix("." + credentialsKey) {
+            store.set(nil, forKey: key)
+        }
+        defaults.removeObject(forKey: prefix + credentialsKey)
+        if active { scheduleUpload() }
     }
 }

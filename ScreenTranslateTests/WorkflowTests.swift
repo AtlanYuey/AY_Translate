@@ -36,7 +36,7 @@ final class WorkflowTests: XCTestCase {
     }
 
     private func services(vision: @escaping (UIImage, AppLanguage) async throws -> [RecognizedBlock]) -> ProcessingServices {
-        ProcessingServices(vision: vision, aiOCR: { _, _, _, _ in XCTFail("Cloud OCR must not run"); throw AIServiceError.transport }, aiTranslation: { _, _, _, _, _, _ in XCTFail("Cloud translation must not run"); throw AIServiceError.transport })
+        ProcessingServices(vision: vision, aiOCR: { _, _, _, _ in XCTFail("Cloud OCR must not run"); throw AIServiceError.transport }, aiTranslation: { _, _, _, _, _ in XCTFail("Cloud translation must not run"); throw AIServiceError.transport })
     }
 
     private func waitUntil(_ condition: () -> Bool) async throws {
@@ -182,6 +182,37 @@ final class WorkflowTests: XCTestCase {
         state.closeResult()
     }
 
+    func testAIAssistRunsOnlyForUnreliableReadingsWithAnApprovedServiceAndAsksWhenToldTo() async throws {
+        try settings.saveConfiguration(.init(baseURL: "https://example.test/v1", model: "vision"), keyReplacement: nil, for: .ocr)
+        let service = try XCTUnwrap(settings.assistService)
+        settings.ocrEngine = .appleVision
+        settings.aiAssistAsks = true
+        var uploads = 0
+        let region = block()
+        var injected = services { _, _ in [region] }
+        injected.aiOCR = { _, anchors, _, _ in uploads += 1; return OCRResult(blocks: anchors) }
+        injected.needsAssist = { _, _ in true }
+        let state = AppState(settings: settings, history: HistoryStore(fileURL: historyURL), services: injected)
+        let picture = image()
+        // Not approved where the service was chosen: no question, no upload.
+        state.process(picture)
+        try await waitUntil { state.phase == .translating }
+        XCTAssertEqual(uploads, 0)
+        settings.grantConsent(for: .ocr, service: service)
+        state.process(picture)
+        try await waitUntil { state.phase == .awaitingAssist }
+        XCTAssertEqual(uploads, 0)
+        state.resolveAssist(useAI: false)
+        try await waitUntil { state.phase == .translating }
+        XCTAssertEqual(uploads, 0)
+        state.closeResult()
+        settings.aiAssistAutomatic = true
+        state.process(picture)
+        try await waitUntil { state.phase == .translating }
+        XCTAssertEqual(uploads, 1)
+        state.closeResult()
+    }
+
     func testChangedEndpointCannotReceiveConsentForPreviouslyDisplayedHost() throws {
         try settings.saveConfiguration(.init(baseURL: "https://first.test/v1", model: "vision"), keyReplacement: nil, for: .ocr)
         settings.ocrEngine = .ai
@@ -231,7 +262,7 @@ final class WorkflowTests: XCTestCase {
         let region = block()
         var continuation: CheckedContinuation<[UUID: String], Never>?
         var injected = services { _, _ in [region] }
-        injected.aiTranslation = { _, _, _, _, _, _ in await withCheckedContinuation { continuation = $0 } }
+        injected.aiTranslation = { _, _, _, _, _ in await withCheckedContinuation { continuation = $0 } }
         let state = AppState(settings: settings, history: HistoryStore(fileURL: historyURL), services: injected)
         state.process(image())
         try await waitUntil { continuation != nil }
@@ -251,7 +282,7 @@ final class WorkflowTests: XCTestCase {
         let region = block("これは何ですか")
         var continuation: CheckedContinuation<[UUID: String], Never>?
         var injected = services { _, _ in [region] }
-        injected.aiTranslation = { _, _, target, _, _, _ in
+        injected.aiTranslation = { _, _, target, _, _ in
             XCTAssertEqual(target, .chinese)
             return await withCheckedContinuation { continuation = $0 }
         }
@@ -276,7 +307,7 @@ final class WorkflowTests: XCTestCase {
         settings.translationEngine = .ai; settings.grantConsent(for: .translation)
         let secretText = "PRIVATE_SCREEN_TEXT"
         var injected = services { _, _ in [self.block(secretText)] }
-        injected.aiTranslation = { _, _, _, _, _, _ in throw CancellationError() }
+        injected.aiTranslation = { _, _, _, _, _ in throw CancellationError() }
         let diagnostics = ProcessingDiagnostics(defaults: defaults, keys: keys, context: "share")
         let state = AppState(settings: settings, history: HistoryStore(fileURL: historyURL), services: injected, diagnostics: diagnostics)
         state.process(image())
@@ -328,7 +359,7 @@ final class WorkflowTests: XCTestCase {
         let region = block()
         var continuation: CheckedContinuation<[RecognizedBlock], Never>?
         var injected = services { _, _ in await withCheckedContinuation { continuation = $0 } }
-        injected.aiTranslation = { _, _, _, _, configuration, key in
+        injected.aiTranslation = { _, _, _, configuration, key in
             XCTAssertEqual(configuration.baseURL, "https://first.test/v1")
             XCTAssertEqual(key, "original-test-credential")
             return [region.id: "Hola"]

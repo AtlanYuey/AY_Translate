@@ -114,6 +114,7 @@ struct AIServiceEditor: View {
     @State private var testingImage = false
     @State private var imageTestTask: Task<Void, Never>?
     @State private var error: String?
+    @State private var consent: CloudConsentRequest?
 
     private var discoveryIdentity: String { service.configuration.baseURL + "\n" + key + "\n" + String(discoveryRevision) }
     private var probes: [TranslationProbe] { TranslationProbe.samples(excluding: settings.target.rawValue) }
@@ -244,6 +245,7 @@ struct AIServiceEditor: View {
         .alert("Could Not Save", isPresented: Binding(get: { error != nil }, set: { if !$0 { error = nil } })) {
             Button("OK", role: .cancel) { error = nil }
         } message: { Text(settings.text(error ?? "")) }
+        .cloudConsentAlert($consent, settings: settings)
     }
 
     private func cancelTest() {
@@ -277,7 +279,7 @@ struct AIServiceEditor: View {
         testTask = Task {
             do {
                 let result = try await OpenAIClient().translate([block], source: sample.languageName, target: target.name,
-                    preference: settings.preference, configuration: configuration, apiKey: apiKey)
+                    configuration: configuration, apiKey: apiKey)
                 guard !Task.isCancelled else { return }
                 probeResult = result[block.id]
             } catch {
@@ -289,6 +291,20 @@ struct AIServiceEditor: View {
     }
 
     private func save() {
+        // A service already approved for recognition or translation that now
+        // points somewhere else (endpoint or model) is approved again here,
+        // while it is being edited, instead of interrupting the next translation.
+        let previous = settings.serviceCatalog.services.first { $0.id == service.id }
+        let approved = AIProfile.allCases.filter { profile in previous.map { settings.hasConsent(for: profile, service: $0) } ?? false }
+        if let profile = approved.first, previous?.consentID != service.consentID, (try? service.validate()) != nil {
+            consent = CloudConsentRequest(profile: profile, service: service) {
+                for other in approved where other != profile { settings.grantConsent(for: other, service: service) }
+                commit()
+            }
+        } else { commit() }
+    }
+
+    private func commit() {
         do {
             service.name = service.name.trimmingCharacters(in: .whitespacesAndNewlines)
             try settings.saveService(service, keyReplacement: key == loadedKey ? nil : key)
@@ -299,10 +315,37 @@ struct AIServiceEditor: View {
     }
 }
 
+/// Shown where a service is chosen: this is the moment to decide whether
+/// screenshots or text may leave the device, not the middle of a translation.
+struct CloudConsentRequest: Identifiable {
+    let id = UUID()
+    let profile: AIProfile
+    let service: SavedAIService
+    let proceed: () -> Void
+}
+
+extension View {
+    func cloudConsentAlert(_ request: Binding<CloudConsentRequest?>, settings: AppSettings) -> some View {
+        alert("Send data to this AI service?", isPresented: Binding(get: { request.wrappedValue != nil }, set: { if !$0 { request.wrappedValue = nil } }), presenting: request.wrappedValue) { pending in
+            Button("Allow") {
+                settings.grantConsent(for: pending.profile, service: pending.service)
+                pending.proceed()
+            }
+            Button("Cancel", role: .cancel) {}
+        } message: { pending in
+            let host = (try? pending.service.configuration.endpoint().host) ?? pending.service.name
+            Text(verbatim: pending.service.name + " · " + host + "\n"
+                + settings.text(pending.profile == .ocr ? "Screenshots you translate are sent to this service for recognition." : "Recognized text is sent to this service for translation.")
+                + " " + settings.text("Your provider may charge for requests and apply its own retention policy. You can revoke this in Privacy settings."))
+        }
+    }
+}
+
 struct EngineSelectionView: View {
     @EnvironmentObject private var settings: AppSettings
     let profile: AIProfile
     @State private var error: String?
+    @State private var consent: CloudConsentRequest?
 
     private var localSelected: Bool {
         profile == .ocr ? settings.ocrEngine == .appleVision : settings.translationEngine == .apple
@@ -319,6 +362,7 @@ struct EngineSelectionView: View {
                     }.foregroundStyle(.primary)
                 }
             } header: { Text("On-Device Engine") } footer: { Text("Free, private and available without an API key.") }
+            if profile == .ocr && localSelected { assistSection }
             Section {
                 ForEach(settings.serviceCatalog.services.filter { profile != .ocr || $0.supportsVision }) { service in
                     Button { select(service.id) } label: {
@@ -340,9 +384,53 @@ struct EngineSelectionView: View {
         .alert("Could Not Save", isPresented: Binding(get: { error != nil }, set: { if !$0 { error = nil } })) {
             Button("OK", role: .cancel) { error = nil }
         } message: { Text(settings.text(error ?? "")) }
+        .cloudConsentAlert($consent, settings: settings)
+    }
+
+    /// Apple Vision stays the engine; a cloud recognizer steps in only for
+    /// images the device could not read reliably.
+    @ViewBuilder private var assistSection: some View {
+        let capable = settings.serviceCatalog.services.filter(\.supportsVision)
+        Section {
+            Toggle("Use AI automatically when needed", isOn: assistBinding(\.aiAssistAutomatic))
+            if !settings.aiAssistAutomatic {
+                Toggle("Ask before using AI", isOn: assistBinding(\.aiAssistAsks))
+            }
+            if (settings.aiAssistAutomatic || settings.aiAssistAsks) && capable.count > 1 {
+                Picker("Assisting Service", selection: Binding(get: { settings.assistService?.id }, set: { chooseAssist($0) })) {
+                    ForEach(capable) { Text(verbatim: $0.name).tag(Optional($0.id)) }
+                }
+            }
+        } header: { Text("AI Assistance") } footer: {
+            Text(LocalizedStringKey(capable.isEmpty
+                ? "Add an AI service with image input to use this."
+                : "When the on-device reading looks unreliable (handwriting, stylised lettering, unread speech bubbles), the screenshot is also read by your AI service. With both off, recognition always stays on the device."))
+        }.disabled(capable.isEmpty)
+    }
+
+    private func assistBinding(_ option: ReferenceWritableKeyPath<AppSettings, Bool>) -> Binding<Bool> {
+        Binding(get: { settings[keyPath: option] }, set: { enabled in
+            guard enabled, let service = settings.assistService, !settings.hasConsent(for: .ocr, service: service) else {
+                settings[keyPath: option] = enabled
+                return
+            }
+            consent = CloudConsentRequest(profile: .ocr, service: service) { settings[keyPath: option] = true }
+        })
+    }
+
+    private func chooseAssist(_ id: UUID?) {
+        guard let service = settings.serviceCatalog.services.first(where: { $0.id == id }) else { return }
+        if settings.hasConsent(for: .ocr, service: service) { settings.aiAssistServiceID = id }
+        else { consent = CloudConsentRequest(profile: .ocr, service: service) { settings.aiAssistServiceID = id } }
     }
 
     private func select(_ id: UUID?) {
+        if let service = settings.serviceCatalog.services.first(where: { $0.id == id }), !settings.hasConsent(for: profile, service: service) {
+            consent = CloudConsentRequest(profile: profile, service: service) { apply(id) }
+        } else { apply(id) }
+    }
+
+    private func apply(_ id: UUID?) {
         do { try settings.selectService(id, for: profile) }
         catch { self.error = error.localizedDescription }
     }

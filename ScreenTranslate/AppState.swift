@@ -10,7 +10,7 @@ import os
 @MainActor
 final class AppState: ObservableObject {
     enum Phase: Equatable {
-        case idle, loading, awaitingConsent, reading, translating, preparing, ready
+        case idle, loading, awaitingConsent, awaitingAssist, reading, translating, preparing, ready
         case failed(String)
     }
 
@@ -47,6 +47,11 @@ final class AppState: ObservableObject {
     private var pendingAppleIDs = Set<UUID>()
     private var appleResolvedSource: Locale.Language?
     private var visionCache: (image: UIImage, source: AppLanguage, blocks: [RecognizedBlock])?
+    /// A cloud reading of the current image is paid for once: changing the
+    /// target language or translator afterwards reuses it.
+    private var cloudCache: (image: UIImage, source: AppLanguage, service: String, result: OCRResult)?
+    /// The answer to "use AI for this image?", kept while the image is open.
+    private var assistDecision: (image: UIImage, useAI: Bool)?
     private var startedAt = ContinuousClock.now
     private var translationStartedAt = ContinuousClock.now
     @Published private(set) var recognitionSeconds: Double = 0
@@ -75,7 +80,7 @@ final class AppState: ObservableObject {
     func beginImport() {
         diagnostics?.end("replaced")
         cancelCurrentWork()
-        document = nil; sourceImage = nil; visionCache = nil
+        document = nil; sourceImage = nil; visionCache = nil; cloudCache = nil; assistDecision = nil
         let id = UUID()
         activeProcessID = id; previewID = id
         notice = nil
@@ -91,18 +96,22 @@ final class AppState: ObservableObject {
     }
 
     func releaseOptionalResources() {
-        visionCache = nil
+        visionCache = nil; cloudCache = nil
         if ProcessingMemory.isExtension { history.releaseCache() }
     }
 
-    func process(_ image: UIImage) {
-        let importedID = phase == .loading ? activeProcessID : nil
+    /// `assist` carries the user's answer when recognition paused to ask
+    /// whether a cloud recognizer may help with this image.
+    func process(_ image: UIImage, assist answer: Bool? = nil) {
+        let importedID = phase == .loading || (phase == .awaitingAssist && answer != nil) ? activeProcessID : nil
         if importedID == nil { diagnostics?.end("replaced") }
         cancelCurrentWork()
         let processID = importedID ?? UUID()
         previewID = processID
         activeProcessID = processID
-        if sourceImage !== image { visionCache = nil }
+        if sourceImage !== image { visionCache = nil; cloudCache = nil; assistDecision = nil }
+        if let answer { assistDecision = (image, answer) }
+        let decision = assistDecision?.useAI
         startedAt = .now
         recognitionSeconds = 0; translationSeconds = 0
         sourceImage = image // Retain for OCR failure/retry; released on Close.
@@ -118,7 +127,6 @@ final class AppState: ObservableObject {
         let target = settings.target
         if importedID == nil { diagnostics?.begin(id: processID, target: target.rawValue) }
         else { diagnostics?.stage("reading") }
-        let preference = settings.preference
         let ocrConfiguration = settings.aiOCR
         let translationConfiguration = settings.aiTranslation
         let profiles: [AIProfile] = (ocrEngine == .ai ? [.ocr] : []) + (translator == .ai ? [.translation] : [])
@@ -155,25 +163,32 @@ final class AppState: ObservableObject {
             phase = .failed(error.localizedDescription)
             return
         }
+        // Apple Vision with AI assistance: a cloud recognizer is used only when
+        // the local reading looks unreliable, and only with a service whose
+        // use was approved where it was chosen. Otherwise nothing is uploaded.
+        var assist: (configuration: AIServiceConfiguration, key: String, service: String, asks: Bool)?
+        if ocrEngine == .appleVision, decision != false, settings.aiAssistAutomatic || settings.aiAssistAsks || decision == true,
+           let service = settings.assistService, settings.hasConsent(for: .ocr, service: service),
+           (try? service.configuration.validate()) != nil, let key = try? settings.readAPIKey(forService: service.id) {
+            assist = (service.configuration, key, service.consentID, decision == nil && !settings.aiAssistAutomatic)
+        }
+        let assistPlan = assist
+        let ocrService = settings.consentIdentity(for: .ocr)
         phase = .reading
         processingTask = Task { [weak self] in
             guard let self else { return }
             defer { if activeProcessID == processID { processingTask = nil } }
             do {
-                let result: OCRResult
-                if ocrEngine == .appleVision {
-                    result = OCRResult(blocks: try await localRecognition(image, source: source))
-                } else {
-                    // Local anchors validate AI positions. A failed AI request can
-                    // fall back locally; the reverse never uploads without consent.
-                    var anchors: [RecognizedBlock] = []
-                    do { anchors = try await localRecognition(image, source: source) }
-                    catch { try Task.checkCancellation() }
-                    try Task.checkCancellation()
+                // Local anchors validate AI positions. A failed AI request
+                // falls back to them; the reverse never uploads without consent.
+                func cloudRecognition(_ anchors: [RecognizedBlock], _ configuration: AIServiceConfiguration, _ key: String, service: String) async throws -> OCRResult {
+                    if let cache = cloudCache, cache.image === image, cache.source == source, cache.service == service { return cache.result }
                     do {
                         diagnostics?.event("ai_ocr_begin")
-                        result = try await services.aiOCR(image, anchors, ocrConfiguration, ocrKey)
+                        let recognized = try await services.aiOCR(image, anchors, configuration, key)
                         diagnostics?.event("ai_ocr_completed")
+                        cloudCache = (image, source, service, recognized)
+                        return recognized
                     } catch {
                         try Task.checkCancellation()
                         let failure = error as? AIServiceError ?? .invalidResponse
@@ -182,15 +197,43 @@ final class AppState: ObservableObject {
                         let message = AppLocalization.text("AI OCR failed; this result uses local Apple Vision.")
                             + "\n" + AppLocalization.text(failure.localizedDescription)
                             + "\n" + failure.diagnosticCode
-                        result = OCRResult(blocks: anchors, notice: message)
+                        return OCRResult(blocks: anchors, notice: message)
                     }
+                }
+                let result: OCRResult
+                if ocrEngine == .appleVision, let plan = assistPlan {
+                    var local: [RecognizedBlock] = []
+                    var localFailure: Error?
+                    do { local = try await localRecognition(image, source: source) }
+                    catch { try Task.checkCancellation(); localFailure = error }
+                    let needed: Bool
+                    if decision == true { needed = true } else { needed = await services.needsAssist(image, local) }
+                    guard isActive(processID) else { return }
+                    if needed && plan.asks {
+                        diagnostics?.event("assist_asked")
+                        phase = .awaitingAssist
+                        return
+                    }
+                    if needed {
+                        diagnostics?.event("assist_ai")
+                        result = try await cloudRecognition(local, plan.configuration, plan.key, service: plan.service)
+                    } else if let localFailure { throw localFailure }
+                    else { result = OCRResult(blocks: local) }
+                } else if ocrEngine == .appleVision {
+                    result = OCRResult(blocks: try await localRecognition(image, source: source))
+                } else {
+                    var anchors: [RecognizedBlock] = []
+                    do { anchors = try await localRecognition(image, source: source) }
+                    catch { try Task.checkCancellation() }
+                    try Task.checkCancellation()
+                    result = try await cloudRecognition(anchors, ocrConfiguration, ocrKey, service: ocrService)
                 }
                 guard isActive(processID) else { return }
                 guard !result.blocks.isEmpty else { throw ScreenReadingError.noText }
                 recognitionSeconds = seconds(since: startedAt)
                 translationStartedAt = .now
                 diagnostics?.stage("translating")
-                let blocks = TranslationPlanner.paragraphs(result.blocks, preference: preference)
+                let blocks = TranslationPlanner.paragraphs(result.blocks)
                 notice = result.notice
                 document = TranslationDocument(id: processID, image: image, blocks: blocks, source: source, target: target, createdAt: Date())
                 totalBlockCount = blocks.count
@@ -212,12 +255,10 @@ final class AppState: ObservableObject {
                     }
                     phase = .translating
                     appleRequestID = processID
-                    let signature = (resolvedSource?.minimalIdentifier ?? source.rawValue) + ":" + target.rawValue + ":" + preference.rawValue
+                    let signature = (resolvedSource?.minimalIdentifier ?? source.rawValue) + ":" + target.rawValue
                     if signature != cachedAppleLanguages || cachedAppleConfiguration == nil {
                         cachedAppleLanguages = signature
-                        cachedAppleConfiguration = preference == .speed
-                            ? TranslationSession.Configuration(source: resolvedSource, target: target.localeLanguage, preferredStrategy: .lowLatency)
-                            : TranslationSession.Configuration(source: resolvedSource, target: target.localeLanguage)
+                        cachedAppleConfiguration = TranslationSession.Configuration(source: resolvedSource, target: target.localeLanguage, preferredStrategy: .lowLatency)
                     }
                     // Repeated screenshots with the same languages must restart
                     // the view-bound session even if SwiftUI coalesces updates.
@@ -228,7 +269,7 @@ final class AppState: ObservableObject {
                     let translations: [UUID: String]
                     var incomplete = false
                     do {
-                        translations = try await services.aiTranslation(blocks, source, target, preference, translationConfiguration, translationKey)
+                        translations = try await services.aiTranslation(blocks, source, target, translationConfiguration, translationKey)
                     } catch let partial as PartialTranslationError {
                         // Keep every verified region; only the failed ones show
                         // their original text. One bad region must not blank the page.
@@ -265,6 +306,13 @@ final class AppState: ObservableObject {
         if settings.ocrEngine == .ai { settings.grantConsent(for: .ocr) }
         if settings.translationEngine == .ai { settings.grantConsent(for: .translation) }
         process(image)
+    }
+
+    /// The answer to the "use AI for this image?" question.
+    func resolveAssist(useAI: Bool) {
+        guard phase == .awaitingAssist, let image = sourceImage else { return }
+        diagnostics?.event(useAI ? "assist_accepted" : "assist_declined")
+        process(image, assist: useAI)
     }
 
     func useAppleEngines() {
@@ -362,14 +410,6 @@ final class AppState: ObservableObject {
         phase = .failed(error.localizedDescription)
     }
 
-    /// The background shortcut can avoid an unsupported same-language session
-    /// after local language detection. No cloud request is needed in this case.
-    func completeIdentityTranslation(processID: UUID) {
-        guard isActive(processID), phase == .translating, let document else { return }
-        translatedBlockCount = document.blocks.count
-        finish(processID)
-    }
-
     func viewRecognizedText() {
         guard document != nil else { return }
         cancelCurrentWork()
@@ -386,7 +426,7 @@ final class AppState: ObservableObject {
         presentsResult = false
         document = nil
         sourceImage = nil
-        visionCache = nil
+        visionCache = nil; cloudCache = nil; assistDecision = nil
         if ProcessingMemory.isExtension { history.releaseCache() }
         notice = nil
         consentDestinations = []

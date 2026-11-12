@@ -3312,391 +3312,6 @@
         }
       }
     },
-    "Priority": {
-      "extractionState": "manual",
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Priority"
-          }
-        },
-        "zh-Hans": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "翻译偏好"
-          }
-        },
-        "zh-Hant": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "翻譯偏好"
-          }
-        },
-        "ja": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "優先設定"
-          }
-        },
-        "fr": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Priorité"
-          }
-        },
-        "es": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Prioridad"
-          }
-        },
-        "ko": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "우선순위"
-          }
-        },
-        "pt": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Prioridade"
-          }
-        },
-        "it": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Priorità"
-          }
-        },
-        "de": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Priorität"
-          }
-        },
-        "ar": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "الأولوية"
-          }
-        },
-        "ru": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Приоритет"
-          }
-        }
-      }
-    },
-    "Speed": {
-      "extractionState": "manual",
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Speed"
-          }
-        },
-        "zh-Hans": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "速度优先"
-          }
-        },
-        "zh-Hant": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "速度優先"
-          }
-        },
-        "ja": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "速度優先"
-          }
-        },
-        "fr": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Vitesse"
-          }
-        },
-        "es": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Velocidad"
-          }
-        },
-        "ko": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "속도 우선"
-          }
-        },
-        "pt": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Velocidade"
-          }
-        },
-        "it": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Velocità"
-          }
-        },
-        "de": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Geschwindigkeit"
-          }
-        },
-        "ar": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "السرعة"
-          }
-        },
-        "ru": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Скорость"
-          }
-        }
-      }
-    },
-    "Quality": {
-      "extractionState": "manual",
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Quality"
-          }
-        },
-        "zh-Hans": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "质量优先"
-          }
-        },
-        "zh-Hant": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "質量優先"
-          }
-        },
-        "ja": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "品質優先"
-          }
-        },
-        "fr": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Qualité"
-          }
-        },
-        "es": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Calidad"
-          }
-        },
-        "ko": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "품질 우선"
-          }
-        },
-        "pt": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Qualidade"
-          }
-        },
-        "it": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Qualità"
-          }
-        },
-        "de": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Qualität"
-          }
-        },
-        "ar": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "الجودة"
-          }
-        },
-        "ru": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Качество"
-          }
-        }
-      }
-    },
-    "Apple Vision uses accurate recognition, language correction and automatic detection. AI OCR sends a screenshot only with permission; uncertain positions appear in Full Text.": {
-      "extractionState": "manual",
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Apple Vision uses accurate recognition, language correction and automatic detection. AI OCR sends a screenshot only with permission; uncertain positions appear in Full Text."
-          }
-        },
-        "zh-Hans": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Apple Vision 使用高精度识别、语言校正和自动检测。AI 识别仅在许可后发送截图；无法可靠定位的文字会放入全文阅读。"
-          }
-        },
-        "zh-Hant": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Apple Vision 使用高精度識別、語言校正和自動檢測。AI 識別僅在許可後傳送截圖；無法可靠定位的文字會放入全文閱讀。"
-          }
-        },
-        "ja": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Apple Visionは端末内で高精度に文字を認識します。AIへの画像送信には許可が必要です。位置を確認できない文字は全文表示に回します。"
-          }
-        },
-        "fr": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Apple Vision reconnaît le texte sur l’appareil. L’IA n’envoie l’image qu’avec votre accord ; le texte sans position vérifiée reste en lecture intégrale."
-          }
-        },
-        "es": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Apple Vision reconoce texto con precisión en el dispositivo. La IA envía la imagen solo con permiso; el texto sin posición verificada se muestra en Texto completo."
-          }
-        },
-        "ko": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Apple Vision은 기기에서 텍스트를 정확하게 인식합니다. AI로 이미지를 보내려면 동의가 필요하며, 위치가 확인되지 않은 텍스트는 전체 보기로 표시합니다."
-          }
-        },
-        "pt": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "O Apple Vision reconhece texto no dispositivo. A IA só envia a imagem com permissão; texto sem posição confirmada aparece na leitura completa."
-          }
-        },
-        "it": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Apple Vision riconosce il testo sul dispositivo. L’IA invia l’immagine solo con consenso; il testo senza posizione verificata resta nel testo completo."
-          }
-        },
-        "de": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Apple Vision erkennt Text lokal. KI-OCR sendet das Bild nur mit Zustimmung. Text ohne bestätigte Position erscheint im Volltext."
-          }
-        },
-        "ar": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "يتعرف Apple Vision على النص على الجهاز. لا تُرسل الصورة للذكاء الاصطناعي إلا بإذنك، ويُعرض النص غير المحدد الموقع في النص الكامل."
-          }
-        },
-        "ru": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Apple Vision распознаёт текст на устройстве. ИИ отправляет изображение только с согласия; текст без проверенного положения доступен в полном виде."
-          }
-        }
-      }
-    },
-    "Apple Translation is free and uses downloaded on-device models. Speed favors low latency; Quality keeps longer paragraphs together and gives AI more output space and screen context.": {
-      "extractionState": "manual",
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Apple Translation is free and uses downloaded on-device models. Speed favors low latency; Quality keeps longer paragraphs together and gives AI more output space and screen context."
-          }
-        },
-        "zh-Hans": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "苹果翻译免费使用本机语言模型。速度优先减少等待；质量优先保留更完整的段落，并为 AI 提供更多输出空间与画面上下文。"
-          }
-        },
-        "zh-Hant": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "蘋果翻譯免費使用本機語言模型。速度優先減少等待；質量優先保留更完整的段落，併為 AI 提供更多輸出空間與畫面上下文。"
-          }
-        },
-        "ja": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Apple翻訳はダウンロード済みのモデルを使う無料の端末内翻訳です。速度優先は待ち時間を減らし、品質優先は長い文脈を保ちます。"
-          }
-        },
-        "fr": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Apple traduit gratuitement avec des modèles locaux téléchargés. Vitesse réduit l’attente ; Qualité utilise davantage de contexte."
-          }
-        },
-        "es": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Apple traduce gratis con modelos locales descargados. Velocidad reduce la espera; Calidad utiliza más contexto."
-          }
-        },
-        "ko": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Apple 번역은 다운로드한 기기 내 모델로 무료로 작동합니다. 속도 우선은 대기 시간을 줄이고, 품질 우선은 더 많은 문맥을 활용합니다."
-          }
-        },
-        "pt": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "A Apple traduz grátis com modelos locais baixados. Velocidade reduz a espera; Qualidade usa mais contexto."
-          }
-        },
-        "it": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Apple traduce gratis con modelli locali scaricati. Velocità riduce l’attesa; Qualità usa più contesto."
-          }
-        },
-        "de": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Apple übersetzt kostenlos mit heruntergeladenen lokalen Modellen. Geschwindigkeit verkürzt die Wartezeit, Qualität nutzt mehr Kontext."
-          }
-        },
-        "ar": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "تترجم Apple مجاناً بنماذج محلية محمّلة. تقلل أولوية السرعة الانتظار، وتستخدم أولوية الجودة سياقاً أوسع."
-          }
-        },
-        "ru": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Apple бесплатно переводит локальными моделями. Скорость сокращает ожидание, качество использует больше контекста."
-          }
-        }
-      }
-    },
     "AI Services": {
       "extractionState": "manual",
       "localizations": {
@@ -8929,83 +8544,6 @@
           "stringUnit": {
             "state": "translated",
             "value": "История по умолчанию отключена. Отключение удаляет сохранённые результаты. Без аккаунта и рекламы. ИИ может быть платным; ключи остаются в связке ключей."
-          }
-        }
-      }
-    },
-    "Information": {
-      "extractionState": "manual",
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Information"
-          }
-        },
-        "zh-Hans": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "关于"
-          }
-        },
-        "zh-Hant": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "關於"
-          }
-        },
-        "ja": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "情報"
-          }
-        },
-        "fr": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Informations"
-          }
-        },
-        "es": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Información"
-          }
-        },
-        "ko": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "정보"
-          }
-        },
-        "pt": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Informações"
-          }
-        },
-        "it": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Informazioni"
-          }
-        },
-        "de": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Informationen"
-          }
-        },
-        "ar": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "معلومات"
-          }
-        },
-        "ru": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Информация"
           }
         }
       }
@@ -20188,23 +19726,6 @@
         }
       }
     },
-    "Sync languages, display preferences and AI service details across your devices. API keys, screenshots, history and cloud permissions stay on this device.": {
-      "extractionState": "manual",
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Sync languages, display preferences and AI service details across your devices. API keys, screenshots, history and cloud permissions stay on this device."
-          }
-        },
-        "zh-Hans": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "在你的设备间同步语言、显示偏好和 AI 服务配置。API Key、截图、历史和云端授权保留在本机。"
-          }
-        }
-      }
-    },
     "iCloud settings sync requested. Other devices update when the app opens.": {
       "extractionState": "manual",
       "localizations": {
@@ -20694,22 +20215,6 @@
         }
       }
     },
-    "Saved settings sync automatically after enabling. Changes are sent after a short pause; opening the app also checks other devices. Manual upload is only a fallback.": {
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Saved settings sync automatically after enabling. Changes are sent after a short pause; opening the app also checks other devices. Manual upload is only a fallback."
-          }
-        },
-        "zh-Hans": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "开启后自动同步已保存的设置。修改会稍作合并后自动发送，打开 App 时也会检查其他设备的更新；手动上传仅作为备用。"
-          }
-        }
-      }
-    },
     "This signing profile does not permit iCloud settings sync. Re-sign with an iCloud Key-Value Store enabled profile and keep the same app identity on every device.": {
       "localizations": {
         "en": {
@@ -20802,38 +20307,6 @@
           "stringUnit": {
             "state": "translated",
             "value": "仅记录处理阶段和结束状态，不含图片内容或 API 密钥。“未记录结束”可能仍在处理，也可能已被中断，不能直接判定为崩溃或内存不足。"
-          }
-        }
-      }
-    },
-    "Status": {
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Status"
-          }
-        },
-        "zh-Hans": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "状态"
-          }
-        }
-      }
-    },
-    "Stage": {
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Stage"
-          }
-        },
-        "zh-Hans": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "阶段"
           }
         }
       }
@@ -21307,6 +20780,706 @@
           "stringUnit": {
             "state": "translated",
             "value": "服务商图标 · MIT"
+          }
+        }
+      }
+    },
+    "Apple Translation is free and uses downloaded on-device models.": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Apple Translation is free and uses downloaded on-device models."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Apple 翻译免费，使用下载到本机的模型。"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Apple 翻譯免費，使用下載到本機的模型。"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Apple翻訳は無料で、デバイスにダウンロードしたモデルを使います。"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Apple 번역은 무료이며 기기에 내려받은 모델을 사용합니다."
+          }
+        }
+      }
+    },
+    "Apple Vision reads on the device for free. An AI service reads handwriting and stylised lettering better, at your provider’s price.": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Apple Vision reads on the device for free. An AI service reads handwriting and stylised lettering better, at your provider’s price."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Apple Vision 在本机免费识别。AI 服务对手写和艺术字识别更准，费用由你的服务商收取。"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Apple Vision 在本機免費辨識。AI 服務對手寫和藝術字辨識更準，費用由你的服務商收取。"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Apple Visionはデバイス上で無料で認識します。AIサービスは手書きや装飾文字に強く、料金はプロバイダによります。"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Apple Vision은 기기에서 무료로 인식합니다. AI 서비스는 손글씨와 장식 글자를 더 잘 읽으며 요금은 제공업체가 부과합니다."
+          }
+        }
+      }
+    },
+    "Also Save API Keys": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Also Save API Keys"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "同时保存 API 密钥"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "同時儲存 API 金鑰"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "APIキーも保存"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "API 키도 저장"
+          }
+        }
+      }
+    },
+    "API keys and the cloud permissions you gave are kept in your iCloud, so another device signed in to it works without entering them again. Turning this off removes them from iCloud.": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "API keys and the cloud permissions you gave are kept in your iCloud, so another device signed in to it works without entering them again. Turning this off removes them from iCloud."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "API 密钥和你已给出的云端许可会保存在你的 iCloud 中，登录同一 iCloud 的其他设备无需重新填写。关闭后会从 iCloud 中删除。"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "API 金鑰和你已給出的雲端許可會儲存在你的 iCloud 中，登入同一 iCloud 的其他裝置無需重新填寫。關閉後會從 iCloud 中刪除。"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "APIキーと許可済みのクラウド送信設定をiCloudに保存し、同じiCloudのほかのデバイスでも再入力なしで使えます。オフにするとiCloudから削除されます。"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "API 키와 이미 허용한 클라우드 권한을 iCloud에 저장하여 같은 iCloud의 다른 기기에서 다시 입력하지 않아도 됩니다. 끄면 iCloud에서 삭제됩니다."
+          }
+        }
+      }
+    },
+    "Languages, display preferences and AI service details sync. API keys and cloud permissions stay on this device.": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Languages, display preferences and AI service details sync. API keys and cloud permissions stay on this device."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "同步语言、显示偏好和 AI 服务信息。API 密钥和云端许可只保存在本机。"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "同步語言、顯示偏好和 AI 服務資訊。API 金鑰和雲端許可只儲存在本機。"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "言語、表示設定、AIサービス情報を同期します。APIキーとクラウド送信の許可はこのデバイスに残ります。"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "언어, 표시 설정, AI 서비스 정보를 동기화합니다. API 키와 클라우드 권한은 이 기기에만 남습니다."
+          }
+        }
+      }
+    },
+    "Screenshots and history are never synced.": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Screenshots and history are never synced."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "截图和历史记录不会同步。"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "截圖和歷史記錄不會同步。"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "スクリーンショットと履歴は同期されません。"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "스크린샷과 기록은 동기화되지 않습니다."
+          }
+        }
+      }
+    },
+    "Send data to this AI service?": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Send data to this AI service?"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "允许把数据发送到这个 AI 服务？"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "允許把資料傳送到這個 AI 服務？"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "このAIサービスにデータを送信しますか？"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "이 AI 서비스로 데이터를 보낼까요?"
+          }
+        }
+      }
+    },
+    "Allow": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Allow"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "允许"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "允許"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "許可"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "허용"
+          }
+        }
+      }
+    },
+    "Screenshots you translate are sent to this service for recognition.": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Screenshots you translate are sent to this service for recognition."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "你翻译的截图会发送到该服务进行识别。"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "你翻譯的截圖會傳送到該服務進行辨識。"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "翻訳するスクリーンショットは認識のためこのサービスに送信されます。"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "번역하는 스크린샷이 인식을 위해 이 서비스로 전송됩니다."
+          }
+        }
+      }
+    },
+    "Recognized text is sent to this service for translation.": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Recognized text is sent to this service for translation."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "识别出的文字会发送到该服务进行翻译。"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "辨識出的文字會傳送到該服務進行翻譯。"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "認識したテキストは翻訳のためこのサービスに送信されます。"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "인식된 텍스트가 번역을 위해 이 서비스로 전송됩니다."
+          }
+        }
+      }
+    },
+    "Your provider may charge for requests and apply its own retention policy. You can revoke this in Privacy settings.": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Your provider may charge for requests and apply its own retention policy. You can revoke this in Privacy settings."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "服务商可能按请求收费，并适用其自己的数据保留政策。可在“隐私”设置中撤销。"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "服務商可能按請求收費，並適用其自己的資料保留政策。可在「隱私」設定中撤銷。"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "プロバイダがリクエストに課金し、独自の保持ポリシーを適用する場合があります。「プライバシー」設定で取り消せます。"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "제공업체가 요청에 요금을 부과하고 자체 보존 정책을 적용할 수 있습니다. 개인정보 설정에서 철회할 수 있습니다."
+          }
+        }
+      }
+    },
+    "Use AI automatically when needed": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Use AI automatically when needed"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "需要时自动使用 AI"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "需要時自動使用 AI"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "必要なときは自動でAIを使う"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "필요할 때 자동으로 AI 사용"
+          }
+        }
+      }
+    },
+    "Ask before using AI": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ask before using AI"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "需要 AI 时先询问"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "需要 AI 時先詢問"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "AIを使う前に確認する"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "AI 사용 전에 묻기"
+          }
+        }
+      }
+    },
+    "Assisting Service": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Assisting Service"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "辅助识别服务"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "輔助辨識服務"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "補助に使うサービス"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "보조 서비스"
+          }
+        }
+      }
+    },
+    "AI Assistance": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "AI Assistance"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "AI 辅助识别"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "AI 輔助辨識"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "AIによる補助"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "AI 보조"
+          }
+        }
+      }
+    },
+    "Add an AI service with image input to use this.": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Add an AI service with image input to use this."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "请先添加支持图像输入的 AI 服务。"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "請先新增支援圖像輸入的 AI 服務。"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "画像入力に対応したAIサービスを追加すると使えます。"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "이미지 입력을 지원하는 AI 서비스를 추가하면 사용할 수 있습니다."
+          }
+        }
+      }
+    },
+    "When the on-device reading looks unreliable (handwriting, stylised lettering, unread speech bubbles), the screenshot is also read by your AI service. With both off, recognition always stays on the device.": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "When the on-device reading looks unreliable (handwriting, stylised lettering, unread speech bubbles), the screenshot is also read by your AI service. With both off, recognition always stays on the device."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "当本机识别看起来不可靠时（手写、艺术字、气泡里有没读出的字），截图会再交给你的 AI 服务识别。两项都关闭时，识别始终只在本机进行。"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "當本機辨識看起來不可靠時（手寫、藝術字、對話框裡有沒讀出的字），截圖會再交給你的 AI 服務辨識。兩項都關閉時，辨識始終只在本機進行。"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "デバイス上の認識が不確かな場合（手書き、装飾文字、吹き出しの読み残し）、スクリーンショットをAIサービスでも読み取ります。両方オフなら認識は常にデバイス上で行われます。"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "기기 인식이 불확실해 보일 때(손글씨, 장식 글자, 말풍선의 읽지 못한 글자) 스크린샷을 AI 서비스로도 읽습니다. 둘 다 끄면 인식은 항상 기기에서만 이루어집니다."
+          }
+        }
+      }
+    },
+    "On-device recognition may be incomplete here. Use AI to help?": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "On-device recognition may be incomplete here. Use AI to help?"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "这张图本机识别可能不完整，是否使用 AI 辅助识别？"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "這張圖本機辨識可能不完整，是否使用 AI 輔助辨識？"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "この画像はデバイス上の認識が不完全かもしれません。AIで補助しますか？"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "이 이미지는 기기 인식이 불완전할 수 있습니다. AI의 도움을 받을까요?"
+          }
+        }
+      }
+    },
+    "Use AI": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Use AI"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "使用 AI"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "使用 AI"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "AIを使う"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "AI 사용"
+          }
+        }
+      }
+    },
+    "On-Device Only": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "On-Device Only"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "仅用本机"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "僅用本機"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "デバイスのみ"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "기기만 사용"
           }
         }
       }
