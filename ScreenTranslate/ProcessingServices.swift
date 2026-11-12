@@ -27,7 +27,7 @@ struct ProcessingServices {
                 }.value
                 // Bubble text the on-device recognizer could not read is sent
                 // as empty anchors: the model reads it, the position is local.
-                let unread = upright.map { page in
+                let unread: [RecognizedBlock] = upright.map { page -> [RecognizedBlock] in
                     // Enclosed skin (a face, a hand) is not a bubble to read.
                     let paper = local.1.filter { !$0.isDialogue || !VisionTextRecognizer.isSkinToned(page, region: $0.bounds) }
                     return BubbleText.unreadAnchors(bubbles: paper, blocks: anchors, imageSize: CGSize(width: page.width, height: page.height))
