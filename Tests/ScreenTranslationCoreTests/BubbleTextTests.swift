@@ -209,6 +209,28 @@ final class BubbleShapeTests: XCTestCase {
     }
 }
 
+final class BubbleDetectorTimingTests: XCTestCase {
+    /// Prints the detector's own cost on a phone-sized page so recognition
+    /// benchmarks can be read with and without it. Debug builds are several
+    /// times slower than the Release build that ships.
+    func testDetectorCostOnAPhoneSizedPage() {
+        let width = 945, height = 2048
+        var pixels = [UInt8](repeating: 250, count: width * height)
+        for bubble in 0..<12 {
+            let cx = 150 + (bubble % 3) * 320, cy = 250 + (bubble / 3) * 480
+            for y in (cy - 190)...(cy + 190) { for x in (cx - 120)...(cx + 120) {
+                let dx = Double(x - cx) / 110, dy = Double(y - cy) / 180, r = (dx * dx + dy * dy).squareRoot()
+                if r >= 1 && r < 1.05 { pixels[y * width + x] = 10 }
+                else if r < 0.6, (x / 9 + y / 11) % 3 == 0 { pixels[y * width + x] = 15 }
+            } }
+        }
+        let start = Date()
+        let bubbles = BubbleDetector.bubbles(grayscale: pixels, width: width, height: height)
+        print("BENCH detector seconds=\(Date().timeIntervalSince(start)) bubbles=\(bubbles.count)")
+        XCTAssertGreaterThanOrEqual(bubbles.count, 12)
+    }
+}
+
 final class LetteringColourTests: XCTestCase {
     func testColouredLetteringIsSampledAndKeptReadable() throws {
         // 60 × 40 white region with brown strokes and antialiased pink fringes.
