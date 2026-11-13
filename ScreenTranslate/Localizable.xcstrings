@@ -21807,41 +21807,6 @@
         }
       }
     },
-    "OCR %.1f s · Translation %.1f s": {
-      "extractionState": "manual",
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "OCR %.1f s · Translation %.1f s"
-          }
-        },
-        "zh-Hans": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "识别 %.1f 秒 · 翻译 %.1f 秒"
-          }
-        },
-        "zh-Hant": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "辨識 %.1f 秒 · 翻譯 %.1f 秒"
-          }
-        },
-        "ja": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "認識 %.1f 秒 · 翻訳 %.1f 秒"
-          }
-        },
-        "ko": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "인식 %.1f초 · 번역 %.1f초"
-          }
-        }
-      }
-    },
     "Copy": {
       "extractionState": "manual",
       "localizations": {

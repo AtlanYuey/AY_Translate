@@ -165,7 +165,7 @@ struct TranslationResultView: View {
     private var infoLines: [String] {
         var lines: [String] = []
         if appState.recognitionSeconds > 0 {
-            lines.append(AppLocalization.formatted("OCR %.1f s · Translation %.1f s", appState.recognitionSeconds, appState.translationSeconds, language: settings.interfaceLanguage))
+            lines.append(AppLocalization.formatted("OCR %.2f s · Translation %.2f s", appState.recognitionSeconds, appState.translationSeconds, language: settings.interfaceLanguage))
         }
         func line(_ label: String, _ entry: UsageReport.Line) -> String? {
             guard !entry.usage.isEmpty else { return nil }
