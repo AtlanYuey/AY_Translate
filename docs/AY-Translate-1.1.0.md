@@ -165,3 +165,5 @@ macOS 真实 Vision 基准（中性合成页，不含用户图片）：三列气
 - **重复触发**：分享扩展收到新请求时，如果上一个请求开始不到 12 秒、仍在导入/识别/AI 翻译（Apple 翻译会话绑定在原视图上，不接手），新请求直接显示上一个请求的处理状态，上一个请求的界面释放；关闭时两个请求一起结束。
 - **签名**：用户重新生成的两个描述文件都包含 `group.com.atlanyuey.translate`，签名时把它写入两边的权限；共享设置、历史与诊断改走 App Group 容器。
 
+1.7.0 验证：应用源码提交 `e4f3ee3`，[Apple CI 运行](https://github.com/AtlanYuey/AY_Translate/actions/runs/43414484033)。Linux 165 项（另有 1 项真实服务测试默认跳过）；macOS 核心与真实 Vision 测试、Release 构建、iPhone 流程测试、iPad 横竖屏、macOS 15 旧版识别通过；写下这段时分享界面 UI 自动化仍在运行。重复触发的接手流程只能在真机上走通，没有自动化测试。安装包 `AY-Translate-1.7.0-unsigned.ipa`，版本 1.7.0（8），SHA-256：`5a07ed9d951bd55c79c059fad16df7e179240815193eb1254e6233d2286300c4`。签名版使用 2026-11-13 重新生成、带 App Group 的两个描述文件。
+
