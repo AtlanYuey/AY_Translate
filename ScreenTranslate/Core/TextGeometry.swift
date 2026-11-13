@@ -49,6 +49,8 @@ nonisolated struct RecognizedBlock: Identifiable, Hashable, Sendable {
 nonisolated struct OCRResult: Sendable {
     var blocks: [RecognizedBlock]
     var notice: String?
+    /// Tokens a cloud recognizer consumed for this result, when it reported them.
+    var usage: AIUsage? = nil
 }
 
 nonisolated struct AIRecognizedRegion: Codable, Sendable {

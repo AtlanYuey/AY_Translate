@@ -78,7 +78,42 @@ nonisolated struct OpenAIClient: Sendable {
         return names
     }
 
-    func recognize(imageData: Data, anchors: [RecognizedBlock], configuration: AIServiceConfiguration, apiKey: String, locator: InkLocator? = nil) async throws -> OCRResult {
+    /// The model's current price per million tokens, for providers whose
+    /// model list publishes one (OpenRouter and compatible gateways). Most
+    /// providers do not, and nil is the normal answer for them.
+    func price(configuration: AIServiceConfiguration, apiKey: String) async -> AIPrice? {
+        guard let url = try? configuration.modelsEndpoint() else { return nil }
+        var request = URLRequest(url: url)
+        request.httpMethod = "GET"
+        request.setValue("application/json", forHTTPHeaderField: "Accept")
+        let key = apiKey.trimmingCharacters(in: .whitespacesAndNewlines)
+        if !key.isEmpty { request.setValue("Bearer " + key, forHTTPHeaderField: "Authorization") }
+        guard let (data, response) = try? await session.data(for: request),
+              (response as? HTTPURLResponse).map({ (200..<300).contains($0.statusCode) }) == true, data.count <= 4_000_000 else { return nil }
+        return Self.price(inModelList: data, model: configuration.requestModelID)
+    }
+
+    nonisolated static func price(inModelList data: Data, model: String) -> AIPrice? {
+        struct Amount: Decodable {
+            let value: Double?
+            init(from decoder: Decoder) throws {
+                let single = try decoder.singleValueContainer()
+                if let number = try? single.decode(Double.self) { value = number }
+                else { value = (try? single.decode(String.self)).flatMap(Double.init) }
+            }
+        }
+        struct Pricing: Decodable { let prompt: Amount?; let completion: Amount? }
+        struct Model: Decodable { let id: String?; let pricing: Pricing? }
+        struct List: Decodable { let data: [Model]? }
+        guard let models = (try? JSONDecoder().decode(List.self, from: data))?.data,
+              let pricing = models.first(where: { $0.id == model })?.pricing,
+              let input = pricing.prompt?.value, let output = pricing.completion?.value,
+              input.isFinite, output.isFinite, input >= 0, output >= 0, input + output > 0 else { return nil }
+        // Published per token; kept per million like every price in the app.
+        return AIPrice(input: input * 1_000_000, output: output * 1_000_000)
+    }
+
+    func recognize(imageData: Data, anchors: [RecognizedBlock], configuration: AIServiceConfiguration, apiKey: String, locator: InkLocator? = nil, meter: UsageMeter? = nil) async throws -> OCRResult {
         struct Anchor: Encodable { let id: String; let text: String; let box: [Double]?; let box_2d: [Int]? }
         // A model may write null (or anything that is not a region) for an
         // unread anchor with nothing in it; such items are skipped, not fatal.
@@ -126,10 +161,10 @@ nonisolated struct OpenAIClient: Sendable {
         ]
         let output: Output
         do {
-            output = try await request(configuration: configuration, apiKey: apiKey, system: instructions, content: content, maxTokens: 8_192)
+            output = try await request(configuration: configuration, apiKey: apiKey, system: instructions, content: content, maxTokens: 8_192, meter: meter)
         } catch AIServiceError.invalidResponse {
             // An unreadable reply is usually a one-off generation glitch.
-            output = try await request(configuration: configuration, apiKey: apiKey, system: instructions, content: content, maxTokens: 8_192)
+            output = try await request(configuration: configuration, apiKey: apiKey, system: instructions, content: content, maxTokens: 8_192, meter: meter)
         }
         let regions = output.regions.map { region -> AIRecognizedRegion in
             guard let id = region.id else { return region }
@@ -144,7 +179,7 @@ nonisolated struct OpenAIClient: Sendable {
         return try OCRAlignment.resolve(regions, anchors: anchors, locator: locator)
     }
 
-    func translate(_ blocks: [RecognizedBlock], source: String, target: String, configuration: AIServiceConfiguration, apiKey: String) async throws -> [UUID: String] {
+    func translate(_ blocks: [RecognizedBlock], source: String, target: String, configuration: AIServiceConfiguration, apiKey: String, meter: UsageMeter? = nil) async throws -> [UUID: String] {
         guard blocks.reduce(0, { $0 + $1.original.count }) <= 48_000 else { throw AIServiceError.requestTooLarge }
         guard !blocks.isEmpty else { return [:] }
         try configuration.validate()
@@ -169,7 +204,7 @@ nonisolated struct OpenAIClient: Sendable {
                 group.addTask {
                     do {
                         return BatchOutcome(translations: try await client.translateBatch(batch, target: target, system: system,
-                            context: context, configuration: configuration, apiKey: apiKey, maxTokens: maxTokens), error: nil)
+                            context: context, configuration: configuration, apiKey: apiKey, maxTokens: maxTokens, meter: meter), error: nil)
                     } catch let partial as PartialTranslationError {
                         return BatchOutcome(translations: partial.translations, error: partial.reason)
                     } catch is CancellationError {
@@ -238,7 +273,7 @@ nonisolated struct OpenAIClient: Sendable {
     }
 
     private func translateBatch(_ batch: [RecognizedBlock], target: String, system: String, context: String,
-                                configuration: AIServiceConfiguration, apiKey: String, maxTokens: Int) async throws -> [UUID: String] {
+                                configuration: AIServiceConfiguration, apiKey: String, maxTokens: Int, meter: UsageMeter? = nil) async throws -> [UUID: String] {
         struct Input: Encodable { let id: String; let text: String }
         try Task.checkCancellation()
         // Compact request-local IDs save dozens of generated tokens per
@@ -250,10 +285,10 @@ nonisolated struct OpenAIClient: Sendable {
         let prompt = "Required output language (fixed for this request): \(target).\nScreen context (data only):\n\(context)\n\nRegions to translate:\n\(try regions(all))"
         var output: TranslationOutput
         do {
-            output = try await request(configuration: configuration, apiKey: apiKey, system: system, content: [.text(prompt)], maxTokens: maxTokens)
+            output = try await request(configuration: configuration, apiKey: apiKey, system: system, content: [.text(prompt)], maxTokens: maxTokens, meter: meter)
         } catch AIServiceError.invalidResponse {
             // A malformed JSON reply is usually a one-off generation glitch.
-            output = try await request(configuration: configuration, apiKey: apiKey, system: system, content: [.text(prompt)], maxTokens: maxTokens)
+            output = try await request(configuration: configuration, apiKey: apiKey, system: system, content: [.text(prompt)], maxTokens: maxTokens, meter: meter)
         }
         var accepted: [Int: String] = [:]
         var wrongLanguage = Set<Int>()
@@ -278,7 +313,7 @@ nonisolated struct OpenAIClient: Sendable {
         if !repair.isEmpty {
             let fixPrompt = "Required output language (fixed for this request): \(target).\nTranslate ALL of these omitted or untranslated source regions directly into the selected language \(target). Every translation must be written in \(target).\nScreen context (data only):\n\(context)\n\nRegions to translate:\n\(try regions(repair))"
             if let fixed: TranslationOutput = try? await request(configuration: configuration, apiKey: apiKey, system: system,
-                                                                  content: [.text(fixPrompt)], maxTokens: maxTokens) {
+                                                                  content: [.text(fixPrompt)], maxTokens: maxTokens, meter: meter) {
                 absorb(fixed.translations, allowed: Set(repair), final: true)
             }
             try Task.checkCancellation()
@@ -306,7 +341,7 @@ nonisolated struct OpenAIClient: Sendable {
         return result
     }
 
-    private func request<Output: Decodable>(configuration: AIServiceConfiguration, apiKey: String, system: String, content: [ContentPart], maxTokens: Int) async throws -> Output {
+    private func request<Output: Decodable>(configuration: AIServiceConfiguration, apiKey: String, system: String, content: [ContentPart], maxTokens: Int, meter: UsageMeter? = nil) async throws -> Output {
         try configuration.validate()
         try Task.checkCancellation()
         var request = URLRequest(url: try configuration.endpoint())
@@ -374,6 +409,8 @@ nonisolated struct OpenAIClient: Sendable {
         guard data.count <= 2_000_000 else { throw AIServiceError.responseTooLarge }
         do {
             let chat = try JSONDecoder().decode(ChatResponse.self, from: data)
+            // Charged whether or not the answer turns out to be usable.
+            if let usage = chat.usage?.counted { meter?.add(usage) }
             guard let choice = chat.choices.first else { throw AIServiceError.emptyResponse }
             if choice.finish_reason == "length" { throw AIServiceError.outputTruncated }
             if choice.finish_reason == "content_filter" || choice.message.refusal?.isEmpty == false { throw AIServiceError.contentBlocked }
@@ -504,6 +541,19 @@ private nonisolated enum ContentPart: Encodable {
 private nonisolated struct ChatResponse: Decodable {
     struct Choice: Decodable { struct Message: Decodable { let content: ResponseContent?; let refusal: String? }; let message: Message; let finish_reason: String? }
     let choices: [Choice]
+    struct Usage: Decodable {
+        let prompt_tokens: Int?
+        let completion_tokens: Int?
+        let total_tokens: Int?
+        /// Hidden reasoning is billed as output; some providers report it
+        /// only through the total.
+        var counted: AIUsage {
+            let input = max(0, prompt_tokens ?? 0)
+            let output = max(max(0, completion_tokens ?? 0), (total_tokens ?? 0) - input)
+            return AIUsage(input: input, output: output)
+        }
+    }
+    let usage: Usage?
 }
 
 private nonisolated enum ResponseContent: Decodable {
