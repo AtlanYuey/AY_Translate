@@ -302,6 +302,9 @@ nonisolated struct OpenAIClient: Sendable {
                     wrongLanguage.insert(index); continue
                 }
                 if !final && TranslationCoverage.needsRetry(original: batch[index].original, translation: text, target: target) { continue }
+                // Still Japanese after the repair request: not accepted, so the
+                // next service in the order (or the device) translates it.
+                if TranslationCoverage.isUntranslatedJapanese(text, target: target) { continue }
                 wrongLanguage.remove(index)
                 accepted[index] = text
             }

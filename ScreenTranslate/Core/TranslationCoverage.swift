@@ -14,6 +14,17 @@ nonisolated enum TranslationCoverage {
             && source.unicodeScalars.contains { (0x3041...0x3096).contains($0.value) }
     }
 
+    /// A Chinese "translation" that is still Japanese: hiragana never occurs
+    /// in Chinese text, while a kept katakana name or kanji does. Kanji alone
+    /// cannot tell the two languages apart, so they are not counted.
+    static func isUntranslatedJapanese(_ translation: String, target: String) -> Bool {
+        guard isChinese(target) else { return false }
+        let scalars = translation.unicodeScalars
+        let hiragana = scalars.filter { (0x3041...0x3096).contains($0.value) }.count
+        let letters = scalars.filter { CharacterSet.letters.contains($0) }.count
+        return hiragana >= 3 && hiragana * 4 >= letters
+    }
+
     static func isChinese(_ target: String) -> Bool {
         target.localizedCaseInsensitiveContains("Chinese") || target.contains("中文") || target.hasPrefix("zh")
     }

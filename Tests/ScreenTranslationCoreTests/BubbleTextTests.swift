@@ -258,3 +258,52 @@ final class LetteringColourTests: XCTestCase {
         XCTAssertNil(BackgroundSampling.ink(pixels: black, width: width, height: height, region: region, background: background))
     }
 }
+
+final class ConjoinedBubbleTests: XCTestCase {
+    /// A mask drawn from ellipses (centre, radii in grid cells) plus an
+    /// optional tail, over a bubble whose bounds are the unit square.
+    private func bubble(_ ellipses: [(cx: Double, cy: Double, rx: Double, ry: Double)], tail: Bool = false, columns: Int = 48, rows: Int = 62) -> SpeechBubble {
+        var mask = [Bool](repeating: false, count: columns * rows)
+        for r in 0..<rows { for c in 0..<columns {
+            let inEllipse = ellipses.contains { e in
+                let x = (Double(c) - e.cx) / e.rx, y = (Double(r) - e.cy) / e.ry
+                return x * x + y * y <= 1
+            }
+            // A tail: a wedge narrowing downwards below the shape.
+            let inTail = tail && r >= 50 && abs(Double(c) - 24) <= Double(61 - r) * 0.3
+            mask[r * columns + c] = inEllipse || inTail
+        } }
+        return SpeechBubble(bounds: CGRect(x: 0, y: 0, width: 1, height: 1), textArea: CGRect(x: 0, y: 0, width: 1, height: 1), ink: [],
+                            fill: 0.7, holdsText: true, isDialogue: true, maskColumns: columns, maskRows: rows, mask: mask)
+    }
+
+    /// A vertical line at grid column `c`, rows `r0..<r1` (Vision coordinates).
+    private func line(_ text: String, column c: Double, rows: (Double, Double), grid: (Double, Double) = (48, 62)) -> RecognizedBlock {
+        let box = CGRect(x: (c - 1.5) / grid.0, y: 1 - rows.1 / grid.1, width: 3 / grid.0, height: (rows.1 - rows.0) / grid.1)
+        return RecognizedBlock(id: UUID(), original: text, translation: text, boundingBox: box, confidence: 0.9, flow: .vertical, sourceColumnWidth: 3 / grid.0)
+    }
+
+    func testTwoOverlappingBubblesAreTranslatedAndLaidOutSeparately() {
+        // Two tall bubbles drawn overlapping, as in a manga page.
+        let joined = bubble([(13, 33, 12, 28), (35, 27, 12, 26)])
+        let lines = [line("蝶子は", column: 38, rows: (10, 30)), line("キャラ作りすぎw", column: 33, rows: (8, 44)),
+                     line("洛中出いうても", column: 18, rows: (14, 50)), line("あんな言葉年寄り", column: 13, rows: (12, 54))]
+        let assigned = BubbleText.assignContainers(lines, bubbles: [joined], imageSize: CGSize(width: 480, height: 620))
+        XCTAssertEqual(assigned[0].container, assigned[1].container)
+        XCTAssertEqual(assigned[2].container, assigned[3].container)
+        XCTAssertNotEqual(assigned[0].container, assigned[2].container, "Each bubble is its own utterance")
+        // Neither side's layout area reaches across the seam.
+        if let right = assigned[0].container, let left = assigned[2].container {
+            XCTAssertGreaterThan(right.minX, 20.0 / 48)
+            XCTAssertLessThan(left.maxX, 28.0 / 48)
+        }
+        XCTAssertEqual(TranslationPlanner.paragraphs(assigned).count, 2)
+
+        // An ordinary bubble with a tail is one bubble, whatever its text.
+        let single = bubble([(24, 28, 20, 22)], tail: true)
+        XCTAssertTrue(single.lobes().isEmpty)
+        let together = BubbleText.assignContainers([line("あ～蝶子ちゃん", column: 28, rows: (10, 40)), line("ランキング第一位", column: 23, rows: (12, 46))],
+                                                   bubbles: [single], imageSize: CGSize(width: 480, height: 620))
+        XCTAssertEqual(TranslationPlanner.paragraphs(together).count, 1)
+    }
+}

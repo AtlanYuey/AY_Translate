@@ -176,10 +176,17 @@ nonisolated enum BubbleText {
         }
         for (b, bubble) in candidates.enumerated() where !members[b].isEmpty {
             let lines = members[b]
+            // Two bubbles drawn overlapping form one outline. When text sits on
+            // both sides of the seam, each side is its own utterance: lines are
+            // grouped only within their side and laid out inside it.
+            let lobes = lines.count >= 2 ? bubble.lobes() : []
+            let side = lines.map { bubble.lobe(of: blocks[$0].boundingBox, in: lobes) }
+            let split = Set(side.compactMap { $0 }).count >= 2
             // Union-find over lines that sit next to each other.
             var parent = Array(lines.indices)
             func root(_ i: Int) -> Int { var i = i; while parent[i] != i { i = parent[i] }; return i }
             for i in lines.indices { for j in lines.indices where j > i {
+                if split && side[i] != side[j] { continue }
                 let a = pixels(blocks[lines[i]].boundingBox), c = pixels(blocks[lines[j]].boundingBox)
                 let size = max(glyph(blocks[lines[i]]), glyph(blocks[lines[j]]))
                 let dx = max(0, max(a.minX - c.maxX, c.minX - a.maxX)), dy = max(0, max(a.minY - c.maxY, c.minY - a.maxY))
@@ -193,7 +200,8 @@ nonisolated enum BubbleText {
                 let sizes = group.map { glyph(blocks[$0]) }.sorted()
                 let size = sizes[sizes.count / 2]
                 let others = sources.filter { $0.key != key }.map(\.value)
-                let free = bubble.freeArea(around: source, growX: size / W, growY: size / H, avoiding: others)
+                let shape = split ? side[lines.firstIndex(of: group[0])!].map { bubble.restricted(to: lobes[$0]) } ?? bubble : bubble
+                let free = shape.freeArea(around: source, growX: size / W, growY: size / H, avoiding: others)
                 for index in group { result[index].container = free }
             }
         }

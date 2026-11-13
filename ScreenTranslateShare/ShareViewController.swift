@@ -17,6 +17,12 @@ final class ShareViewController: UIViewController {
     private var presentationReady = false
     private var waitingForPresentation = false
     private var completed = false
+    private let createdAt = Date()
+    /// The earlier request whose work this one shows (a repeated trigger).
+    private var borrowed: ShareViewController?
+    /// The settings singleton was built by this process's first request; only
+    /// later requests need to re-read what the app changed in the meantime.
+    private static var servedBefore = false
 
     override init(nibName nibNameOrNil: String?, bundle nibBundleOrNil: Bundle?) {
         super.init(nibName: nibNameOrNil, bundle: nibBundleOrNil)
@@ -33,21 +39,35 @@ final class ShareViewController: UIViewController {
 
     override func viewDidLoad() {
         super.viewDidLoad()
-        // Shortcuts can end its presentation without invoking our Close button.
-        // A new request is definitive replacement evidence: release any old
-        // retained SwiftUI host/session before allocating the next screenshot.
-        Self.activeController?.releaseResources(outcome: "replaced")
-        Self.activeController = self
         // Configure presentation in init, before the system presents the
         // principal controller. viewDidLoad can run after adaptation to a sheet.
         view.backgroundColor = .clear
         view.isOpaque = false
         isModalInPresentation = true
         let settings = AppSettings.shared
-        settings.refreshSharedPreferences()
-        let state = AppState(settings: settings, history: .shared)
+        let state: AppState
+        if let earlier = Self.activeController, let running = earlier.adoptableState {
+            // Triggered again while the first request is still working (a
+            // double tap that seemed to do nothing): keep that work and show
+            // it here instead of starting over and paying twice. This second
+            // screenshot only pictures the first one's loading screen.
+            state = running
+            borrowed = earlier
+            didStartLoading = true
+            earlier.lendWork()
+            ProcessingDiagnostics.shared.event("repeated_trigger")
+        } else {
+            // Shortcuts can end its presentation without invoking our Close
+            // button. A new request is definitive replacement evidence: release
+            // any old SwiftUI host/session before allocating the next screenshot.
+            Self.activeController?.releaseResources(outcome: "replaced")
+            if Self.servedBefore { settings.refreshSharedPreferences() }
+            state = AppState(settings: settings, history: .shared)
+            state.beginImport()
+        }
+        Self.servedBefore = true
+        Self.activeController = self
         self.state = state
-        state.beginImport()
         let host = ResultHostingController(rootView: AnyView(TranslationResultView(onClose: { [weak self] in self?.finish() }, onOpenApp: { [weak self] in self?.openContainingApp() })
             .environmentObject(state).environmentObject(settings).environmentObject(state.history)
             .environment(\.locale, settings.interfaceLocale).environment(\.layoutDirection, settings.interfaceLayoutDirection)))
@@ -160,6 +180,35 @@ final class ShareViewController: UIViewController {
         }
     }
 
+    /// Work a repeated trigger may take over: recent, unfinished, and not in
+    /// the middle of the view-bound Apple translation session.
+    private var adoptableState: AppState? {
+        guard !completed, let state, Date().timeIntervalSince(createdAt) < 12, state.appleRequestID == nil else { return nil }
+        switch state.phase {
+        case .loading, .reading, .translating, .preparing, .awaitingAssist, .awaitingConsent: return state
+        case .idle, .ready, .failed: return nil
+        }
+    }
+
+    /// Hand this request's screen to the newer one. Its image may still be
+    /// loading: that continues here, and recognition starts as soon as it is in.
+    private func lendWork() {
+        host?.releaseResult()
+        host = nil
+        presentationReady = true
+        startWhenPresented()
+    }
+
+    /// The newer request closed (or was replaced): end this one with it.
+    private func endLent() {
+        guard !completed else { return }
+        completed = true
+        loading?.cancel(); starting?.cancel()
+        loading = nil; starting = nil; pendingImage = nil; state = nil
+        borrowed?.endLent(); borrowed = nil
+        extensionContext?.completeRequest(returningItems: nil)
+    }
+
     private func finish() {
         guard !completed else { return }
         releaseResources(outcome: "closed")
@@ -175,6 +224,7 @@ final class ShareViewController: UIViewController {
         state?.closeResult(outcome: outcome)
         host?.releaseResult()
         host = nil; state = nil
+        borrowed?.endLent(); borrowed = nil
         if Self.activeController === self { Self.activeController = nil }
     }
 }

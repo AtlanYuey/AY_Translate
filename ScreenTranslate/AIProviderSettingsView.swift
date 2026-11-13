@@ -287,12 +287,8 @@ struct AIServiceEditor: View {
                 TextField("0", value: $service.outputPrice, format: .number).keyboardType(.decimalPad).multilineTextAlignment(.trailing)
             }
             if let priceNote { Text(LocalizedStringKey(priceNote)).font(.footnote).foregroundStyle(.secondary) }
-            LabeledContent("This month") {
-                Text(verbatim: usageText(entry.monthUsage, cost: entry.monthCost, symbol: symbol))
-            }
-            LabeledContent("Total") {
-                Text(verbatim: usageText(entry.totalUsage, cost: entry.totalCost, symbol: symbol))
-            }
+            LabeledContent("This month") { usageFigures(entry.monthUsage, cost: entry.monthCost, symbol: symbol) }
+            LabeledContent("Total") { usageFigures(entry.totalUsage, cost: entry.totalCost, symbol: symbol) }
             Toggle("Monthly Spending Limit", isOn: Binding(get: { service.spendLimit != nil }, set: { service.spendLimit = $0 ? (service.spendLimit ?? 1) : nil }))
             if service.spendLimit != nil {
                 LabeledContent(LocalizedStringKey("Limit")) {
@@ -310,11 +306,17 @@ struct AIServiceEditor: View {
         }
     }
 
-    private func usageText(_ usage: AIUsage, cost: Double, symbol: String) -> String {
-        let tokens: String = usage.total.formatted() + " tokens"
-        if service.price == nil && cost == 0 { return tokens }
-        let amount: String = cost.formatted(.number.precision(.fractionLength(0...4)))
-        return tokens + " · " + symbol + amount
+    /// Input and output tokens on their own lines, the amount below them.
+    private func usageFigures(_ usage: AIUsage, cost: Double, symbol: String) -> some View {
+        let language = settings.interfaceLanguage
+        let input: String = AppLocalization.formatted("Input %@ tokens", usage.input.formatted(), language: language)
+        let output: String = AppLocalization.formatted("Output %@ tokens", usage.output.formatted(), language: language)
+        let amount: String = symbol + cost.formatted(.number.precision(.fractionLength(0...4)))
+        return VStack(alignment: .trailing, spacing: 2) {
+            Text(verbatim: input)
+            Text(verbatim: output)
+            if service.price != nil || cost > 0 { Text(verbatim: amount).foregroundStyle(.primary) }
+        }.font(.callout.monospacedDigit())
     }
 
     private func cancelTest() {

@@ -67,6 +67,162 @@ nonisolated struct SpeechBubble: Sendable, Equatable {
     }
 }
 
+extension SpeechBubble {
+    /// The separate bubbles inside one outline. Two speech bubbles drawn
+    /// overlapping share a single enclosed area; where their outlines cross,
+    /// the shape has a notch on each side. A short cut between two deep
+    /// notches that leaves two large parts separates the bubbles. Returns one
+    /// mask per part (same grid as `mask`), or nothing for an ordinary bubble:
+    /// a tail, a cloud's bumps or a clipped edge leave no such cut.
+    func lobes() -> [[Bool]] { lobeCut()?.parts ?? [] }
+
+    /// A cut longer than this many times its two notch depths together is a
+    /// slice through a single shape, not the seam of two bubbles.
+    private var cutRatio: Double { 1.6 }
+
+    /// The cut `lobes()` uses, with its measurements.
+    func lobeCut() -> (parts: [[Bool]], length: Double, depths: (Double, Double), ends: ((Int, Int), (Int, Int)))? {
+        let columns = maskColumns, rows = maskRows, count = columns * rows
+        guard columns >= 6, rows >= 6, mask.count == count else { return nil }
+        func inside(_ c: Int, _ r: Int) -> Bool { c >= 0 && r >= 0 && c < columns && r < rows && mask[r * columns + c] }
+        var cells: [(c: Int, r: Int)] = []
+        for r in 0..<rows { for c in 0..<columns where mask[r * columns + c] { cells.append((c, r)) } }
+        guard cells.count >= 60 else { return nil }
+
+        // Convex hull of the cell centres (monotone chain).
+        typealias Point = (x: Double, y: Double)
+        // Cells are generated row by row; order them by column, then row.
+        let points: [Point] = cells.sorted { a, b in a.c != b.c ? a.c < b.c : a.r < b.r }.map { cell -> Point in (Double(cell.c), Double(cell.r)) }
+        func cross(_ o: Point, _ a: Point, _ b: Point) -> Double {
+            let first: Double = (a.x - o.x) * (b.y - o.y)
+            let second: Double = (a.y - o.y) * (b.x - o.x)
+            return first - second
+        }
+        var lower: [Point] = [], upper: [Point] = []
+        for p in points {
+            while lower.count >= 2 && cross(lower[lower.count - 2], lower[lower.count - 1], p) <= 0 { lower.removeLast() }
+            lower.append(p)
+        }
+        for p in points.reversed() {
+            while upper.count >= 2 && cross(upper[upper.count - 2], upper[upper.count - 1], p) <= 0 { upper.removeLast() }
+            upper.append(p)
+        }
+        let hull = Array(lower.dropLast() + upper.dropLast())
+        guard hull.count >= 3 else { return nil }
+        func depth(_ x: Double, _ y: Double) -> Double {
+            var best = Double.greatestFiniteMagnitude
+            for i in hull.indices {
+                let a = hull[i], b = hull[(i + 1) % hull.count]
+                let dx: Double = b.x - a.x, dy: Double = b.y - a.y
+                let squared: Double = dx * dx + dy * dy
+                guard squared > 0 else { continue }
+                let along: Double = (x - a.x) * dx + (y - a.y) * dy
+                let t: Double = max(0, min(1, along / squared))
+                let px: Double = a.x + t * dx - x, py: Double = a.y + t * dy - y
+                best = min(best, (px * px + py * py).squareRoot())
+            }
+            return best
+        }
+
+        // Notches: boundary cells far inside the hull, at least 4 cells apart.
+        let smallSide = Double(min(columns, rows))
+        var candidates: [(c: Int, r: Int, depth: Double)] = []
+        for cell in cells {
+            let boundary = !inside(cell.c - 1, cell.r) || !inside(cell.c + 1, cell.r) || !inside(cell.c, cell.r - 1) || !inside(cell.c, cell.r + 1)
+            guard boundary else { continue }
+            let d = depth(Double(cell.c), Double(cell.r))
+            if d >= max(2, smallSide * 0.08) { candidates.append((cell.c, cell.r, d)) }
+        }
+        candidates.sort { $0.depth > $1.depth }
+        var notches: [(c: Int, r: Int, depth: Double)] = []
+        for candidate in candidates where notches.count < 8 {
+            if !notches.contains(where: { max(abs($0.c - candidate.c), abs($0.r - candidate.r)) < 4 }) { notches.append(candidate) }
+        }
+        guard notches.count >= 2 else { return nil }
+
+        // The best cut: across the shape, yet short compared with how deep
+        // its two notches are. Two walls of one notch are not a cut.
+        var best: (ratio: Double, parts: [[Bool]], length: Double, depths: (Double, Double), ends: ((Int, Int), (Int, Int)))?
+        for i in notches.indices { for j in notches.indices where j > i {
+            let a = notches[i], b = notches[j]
+            let dx = Double(b.c - a.c), dy = Double(b.r - a.r)
+            let length: Double = (dx * dx + dy * dy).squareRoot()
+            guard length >= smallSide * 0.25, a.depth >= length * 0.15, b.depth >= length * 0.15 else { continue }
+            let ratio: Double = length / (a.depth + b.depth)
+            guard ratio <= cutRatio, best.map({ ratio < $0.ratio }) ?? true else { continue }
+            // The cut is a wall of cells along the segment, through the interior.
+            let steps = Int(length * 3) + 1
+            var wall = Set<Int>()
+            var outside = 0
+            for k in 0...steps {
+                let t = Double(k) / Double(steps)
+                let x: Double = Double(a.c) + dx * t, y: Double = Double(a.r) + dy * t
+                let c = Int(x.rounded()), r = Int(y.rounded())
+                if inside(c, r) { wall.insert(r * columns + c) } else { outside += 1 }
+                // Close diagonal gaps so a four-way fill cannot slip through.
+                let c2 = Int(x.rounded(.down)), r2 = Int(y.rounded(.down))
+                for (wc, wr) in [(c2, r2), (c2 + 1, r2), (c2, r2 + 1)] where inside(wc, wr) { wall.insert(wr * columns + wc) }
+            }
+            guard Double(outside) <= Double(steps + 1) * 0.08 else { continue }
+            // Flood each side of the wall. A real cut leaves exactly two large
+            // pieces, each most of its side.
+            var piece = [Int](repeating: -1, count: count)
+            var sizes: [Int] = []
+            for cell in cells {
+                let start = cell.r * columns + cell.c
+                guard piece[start] < 0, !wall.contains(start) else { continue }
+                let id = sizes.count
+                piece[start] = id
+                var stack = [start], size = 0
+                while let index = stack.popLast() {
+                    size += 1
+                    let c = index % columns, r = index / columns
+                    for (nc, nr) in [(c - 1, r), (c + 1, r), (c, r - 1), (c, r + 1)] where inside(nc, nr) {
+                        let next = nr * columns + nc
+                        if piece[next] < 0 && !wall.contains(next) { piece[next] = id; stack.append(next) }
+                    }
+                }
+                sizes.append(size)
+            }
+            let large = sizes.indices.filter { sizes[$0] * 5 >= cells.count }.sorted { sizes[$0] > sizes[$1] }
+            guard large.count == 2, sizes.reduce(0, +) - sizes[large[0]] - sizes[large[1]] <= cells.count / 20 else { continue }
+            // Wall cells and crumbs join the nearer large piece.
+            var parts = [[Bool]](repeating: [Bool](repeating: false, count: count), count: 2)
+            for cell in cells {
+                let index = cell.r * columns + cell.c
+                if let p = large.firstIndex(of: piece[index]) { parts[p][index] = true; continue }
+                let across: Double = Double(cell.c - a.c) * dy - Double(cell.r - a.r) * dx
+                let reference = cells.first { piece[$0.r * columns + $0.c] == large[0] }!
+                let referenceSide: Double = Double(reference.c - a.c) * dy - Double(reference.r - a.r) * dx
+                parts[(across >= 0) == (referenceSide >= 0) ? 0 : 1][index] = true
+            }
+            best = (ratio, parts, length, (a.depth, b.depth), ((a.c, a.r), (b.c, b.r)))
+        } }
+        return best.map { ($0.parts, $0.length, $0.depths, $0.ends) }
+    }
+
+    /// The same bubble limited to one of its lobes.
+    func restricted(to lobe: [Bool]) -> SpeechBubble {
+        SpeechBubble(bounds: bounds, textArea: textArea, ink: ink, fill: fill, holdsText: holdsText, isDialogue: isDialogue,
+                     maskColumns: maskColumns, maskRows: maskRows, mask: lobe)
+    }
+
+    /// Index of the lobe that holds most of `box` (Vision-normalized), if any.
+    func lobe(of box: CGRect, in lobes: [[Bool]]) -> Int? {
+        guard !lobes.isEmpty, bounds.width > 0, bounds.height > 0 else { return nil }
+        let cw = bounds.width / CGFloat(maskColumns), ch = bounds.height / CGFloat(maskRows)
+        let c0 = max(0, Int(((box.minX - bounds.minX) / cw).rounded(.down))), c1 = min(maskColumns - 1, Int(((box.maxX - bounds.minX) / cw).rounded(.up)) - 1)
+        let r0 = max(0, Int(((bounds.maxY - box.maxY) / ch).rounded(.down))), r1 = min(maskRows - 1, Int(((bounds.maxY - box.minY) / ch).rounded(.up)) - 1)
+        guard c0 <= c1, r0 <= r1 else { return nil }
+        var counts = [Int](repeating: 0, count: lobes.count)
+        for r in r0...r1 { for c in c0...c1 {
+            for (index, lobe) in lobes.enumerated() where lobe[r * maskColumns + c] { counts[index] += 1 }
+        } }
+        guard let best = counts.indices.max(by: { counts[$0] < counts[$1] }), counts[best] > 0 else { return nil }
+        return best
+    }
+}
+
 nonisolated enum BubbleDetector {
     /// `grayscale` rows use a top-left origin. Two passes are merged: plain
     /// connectivity keeps tightly lettered and small bubbles whole, and a

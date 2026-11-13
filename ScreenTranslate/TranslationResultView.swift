@@ -161,26 +161,39 @@ struct TranslationResultView: View {
         .glassEffect(.regular, in: RoundedRectangle(cornerRadius: 22))
     }
 
-    /// Timing and token use of this result, shown directly in the menu.
-    private var infoLines: [String] {
-        var lines: [String] = []
+    /// One block of figures in the menu: a heading and its rows.
+    private struct InfoGroup: Identifiable {
+        let id: String
+        let title: String
+        let rows: [String]
+    }
+
+    /// Timing and token use of this result, listed directly in the menu:
+    /// input and output tokens on their own rows, cost in the heading.
+    private var infoGroups: [InfoGroup] {
+        var groups: [InfoGroup] = []
+        let language = settings.interfaceLanguage
         if appState.recognitionSeconds > 0 {
-            lines.append(AppLocalization.formatted("OCR %.2f s · Translation %.2f s", appState.recognitionSeconds, appState.translationSeconds, language: settings.interfaceLanguage))
+            groups.append(InfoGroup(id: "time", title: settings.text("Time"), rows: [
+                AppLocalization.formatted("Recognition %.2f s", appState.recognitionSeconds, language: language),
+                AppLocalization.formatted("Translation %.2f s", appState.translationSeconds, language: language)
+            ]))
         }
-        func line(_ label: String, _ entry: UsageReport.Line) -> String? {
-            guard !entry.usage.isEmpty else { return nil }
-            let name: String = entry.services.joined(separator: " → ")
-            let tokens: String = entry.usage.input.formatted() + " + " + entry.usage.output.formatted()
-            var parts: [String] = [settings.text(label) + " " + name, tokens + " tokens"]
+        func usage(_ id: String, _ label: String, _ entry: UsageReport.Line) {
+            guard !entry.usage.isEmpty else { return }
+            var title: String = settings.text(label) + " · " + entry.services.joined(separator: " → ")
             if entry.priced {
                 let amount: String = entry.cost.formatted(.number.precision(.fractionLength(0...4)))
-                parts.append(entry.symbol + amount)
+                title += " · " + entry.symbol + amount
             }
-            return parts.joined(separator: " · ")
+            groups.append(InfoGroup(id: id, title: title, rows: [
+                AppLocalization.formatted("Input %@ tokens", entry.usage.input.formatted(), language: language),
+                AppLocalization.formatted("Output %@ tokens", entry.usage.output.formatted(), language: language)
+            ]))
         }
-        if let text = line("Usage · OCR", appState.usageReport.recognition) { lines.append(text) }
-        if let text = line("Usage · Translation", appState.usageReport.translation) { lines.append(text) }
-        return lines
+        usage("ocr", "Usage · OCR", appState.usageReport.recognition)
+        usage("translation", "Usage · Translation", appState.usageReport.translation)
+        return groups
     }
 
     @ViewBuilder private func resultContent(top: CGFloat) -> some View {
@@ -233,11 +246,13 @@ struct TranslationResultView: View {
                 } primaryAction: {
                     mode = mode == .original ? .overlay : .original
                 }
+                .menuOrder(.fixed)
                 .accessibilityLabel(LocalizedStringKey(mode == .original ? "Show Translation" : "Show Original"))
                 .accessibilityHint("Touch and hold for copy, engines and settings")
                 .accessibilityIdentifier("result.original")
             } else {
                 Menu { resultMenu } label: { Image(systemName: "ellipsis").floatingResultIcon() }
+                    .menuOrder(.fixed)
                     .accessibilityLabel("More Actions").accessibilityIdentifier("result.more")
             }
             Button(action: close) { Image(systemName: "xmark").floatingResultIcon() }
@@ -248,31 +263,33 @@ struct TranslationResultView: View {
         .glassEffect(.regular.interactive(), in: Capsule())
     }
 
-    /// Listed last-first on screen: copy sits nearest the finger, the figures
-    /// for this result at the top.
+    /// Top to bottom as written (the menus keep this order): the figures for
+    /// this result first, copy last, nearest the finger.
     @ViewBuilder private var resultMenu: some View {
-        if let document = appState.document {
-            Menu {
-                Button("Copy Translation") { UIPasteboard.general.string = document.translatedText }
-                Button("Copy Original") { UIPasteboard.general.string = document.originalText }
-            } label: { Label("Copy", systemImage: "doc.on.doc") }
-            Button(LocalizedStringKey(mode == .text ? "Translated" : "Full Text"), systemImage: "text.alignleft") { mode = mode == .text ? .overlay : .text }
+        ForEach(infoGroups) { group in
+            Section(group.title) { ForEach(group.rows, id: \.self) { Text(verbatim: $0) } }
         }
-        Menu {
-            ForEach(AppLanguage.targetLanguages) { language in
-                Button(language.nativeName) { settings.target = language; appState.retry() }
+        Section {
+            if let onOpenApp { Button("Open AY Translate", systemImage: "arrow.up.forward.app") { onOpenApp() } }
+            if appState.notice != nil { Button("Recognition Note", systemImage: "info.circle") { showsNotice = true } }
+            if case .failed = appState.phase {
+                Button("Translation Details", systemImage: "exclamationmark.circle") { showsRecovery = true }
+                Button("Try Again", systemImage: "arrow.clockwise") { appState.retry() }
             }
-        } label: { Label("Target Language", systemImage: "globe") }
-        if case .failed = appState.phase {
-            Button("Translation Details", systemImage: "exclamationmark.circle") { showsRecovery = true }
-            Button("Try Again", systemImage: "arrow.clockwise") { appState.retry() }
         }
-        if appState.notice != nil { Button("Recognition Note", systemImage: "info.circle") { showsNotice = true } }
-        if let onOpenApp {
-            Section { Button("Open AY Translate", systemImage: "arrow.up.forward.app") { onOpenApp() } }
-        }
-        if !infoLines.isEmpty {
-            Section { ForEach(infoLines, id: \.self) { Text(verbatim: $0) } }
+        Section {
+            Menu {
+                ForEach(AppLanguage.targetLanguages) { language in
+                    Button(language.nativeName) { settings.target = language; appState.retry() }
+                }
+            } label: { Label("Target Language", systemImage: "globe") }
+            if let document = appState.document {
+                Button(LocalizedStringKey(mode == .text ? "Translated" : "Full Text"), systemImage: "text.alignleft") { mode = mode == .text ? .overlay : .text }
+                Menu {
+                    Button("Copy Translation") { UIPasteboard.general.string = document.translatedText }
+                    Button("Copy Original") { UIPasteboard.general.string = document.originalText }
+                } label: { Label("Copy", systemImage: "doc.on.doc") }
+            }
         }
     }
 

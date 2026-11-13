@@ -72,6 +72,17 @@ final class OCRNoiseTests: XCTestCase {
     }
 }
 
+final class TranslationLanguageCheckTests: XCTestCase {
+    func testJapaneseLeftInAChineseTranslationIsCaughtButKanjiAndNamesAreNot() {
+        let target = "Simplified Chinese (zh-Hans)"
+        XCTAssertTrue(TranslationCoverage.isUntranslatedJapanese("あ～蝶子ちゃん ええわ～ 彼女にしたいランキング第一位", target: target))
+        XCTAssertTrue(TranslationCoverage.isUntranslatedJapanese("彼女にしたいランキング第一位", target: target))
+        XCTAssertFalse(TranslationCoverage.isUntranslatedJapanese("想交往的女生排行第一名", target: target))
+        XCTAssertFalse(TranslationCoverage.isUntranslatedJapanese("我是サクラ，请多关照", target: target), "A kept katakana name is fine")
+        XCTAssertFalse(TranslationCoverage.isUntranslatedJapanese("彼女にしたい", target: "English"))
+    }
+}
+
 final class OCRAssistTests: XCTestCase {
     private func line(_ text: String, y: CGFloat, confidence: Float = 1) -> RecognizedBlock {
         RecognizedBlock(id: UUID(), original: text, translation: text, boundingBox: CGRect(x: 0.1, y: y, width: 0.6, height: 0.04), confidence: confidence)

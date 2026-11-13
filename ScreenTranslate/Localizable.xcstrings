@@ -19486,23 +19486,6 @@
         }
       }
     },
-    "OCR %.2f s · Translation %.2f s": {
-      "extractionState": "manual",
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "OCR %.2f s · Translation %.2f s"
-          }
-        },
-        "zh-Hans": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "识别 %.2f 秒 · 翻译 %.2f 秒"
-          }
-        }
-      }
-    },
     "Upload This Device’s Settings": {
       "extractionState": "manual",
       "localizations": {
@@ -21883,31 +21866,31 @@
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "OCR"
+            "value": "AI OCR"
           }
         },
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "识别"
+            "value": "AI 识别"
           }
         },
         "zh-Hant": {
           "stringUnit": {
             "state": "translated",
-            "value": "辨識"
+            "value": "AI 辨識"
           }
         },
         "ja": {
           "stringUnit": {
             "state": "translated",
-            "value": "認識"
+            "value": "AI認識"
           }
         },
         "ko": {
           "stringUnit": {
             "state": "translated",
-            "value": "인식"
+            "value": "AI 인식"
           }
         }
       }
@@ -21918,31 +21901,206 @@
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Translation"
+            "value": "AI Translation"
           }
         },
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "翻译"
+            "value": "AI 翻译"
           }
         },
         "zh-Hant": {
           "stringUnit": {
             "state": "translated",
-            "value": "翻譯"
+            "value": "AI 翻譯"
           }
         },
         "ja": {
           "stringUnit": {
             "state": "translated",
-            "value": "翻訳"
+            "value": "AI翻訳"
           }
         },
         "ko": {
           "stringUnit": {
             "state": "translated",
-            "value": "번역"
+            "value": "AI 번역"
+          }
+        }
+      }
+    },
+    "Time": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Time"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "耗时"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "耗時"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "所要時間"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "소요 시간"
+          }
+        }
+      }
+    },
+    "Recognition %.2f s": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Recognition %.2f s"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "识别 %.2f 秒"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "辨識 %.2f 秒"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "認識 %.2f 秒"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "인식 %.2f초"
+          }
+        }
+      }
+    },
+    "Translation %.2f s": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Translation %.2f s"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "翻译 %.2f 秒"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "翻譯 %.2f 秒"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "翻訳 %.2f 秒"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "번역 %.2f초"
+          }
+        }
+      }
+    },
+    "Input %@ tokens": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Input %@ tokens"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "输入 %@ tokens"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "輸入 %@ tokens"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "入力 %@ トークン"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "입력 %@ 토큰"
+          }
+        }
+      }
+    },
+    "Output %@ tokens": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Output %@ tokens"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "输出 %@ tokens"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "輸出 %@ tokens"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "出力 %@ トークン"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "출력 %@ 토큰"
           }
         }
       }
