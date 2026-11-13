@@ -48,7 +48,7 @@ final class ShareViewController: UIViewController {
         let state = AppState(settings: settings, history: .shared)
         self.state = state
         state.beginImport()
-        let host = ResultHostingController(rootView: AnyView(TranslationResultView(onClose: { [weak self] in self?.finish() })
+        let host = ResultHostingController(rootView: AnyView(TranslationResultView(onClose: { [weak self] in self?.finish() }, onOpenApp: { [weak self] in self?.openContainingApp() })
             .environmentObject(state).environmentObject(settings).environmentObject(state.history)
             .environment(\.locale, settings.interfaceLocale).environment(\.layoutDirection, settings.interfaceLayoutDirection)))
         self.host = host
@@ -138,6 +138,27 @@ final class ShareViewController: UIViewController {
     }
 
     deinit { loading?.cancel(); starting?.cancel() }
+
+    /// Open the app itself (for Settings and the rest) and end this overlay.
+    /// An extension has no direct way to open its app: the request travels up
+    /// the responder chain to the process's application object.
+    private func openContainingApp() {
+        guard let url = URL(string: "aytranslate://open") else { return }
+        let selector = NSSelectorFromString("openURL:options:completionHandler:")
+        var responder: UIResponder? = self
+        while let current = responder {
+            if current is UIApplication, current.responds(to: selector), let method = class_getInstanceMethod(type(of: current), selector) {
+                typealias Open = @convention(c) (AnyObject, Selector, NSURL, NSDictionary, AnyObject?) -> Void
+                unsafeBitCast(method_getImplementation(method), to: Open.self)(current, selector, url as NSURL, NSDictionary(), nil)
+                break
+            }
+            responder = current.next
+        }
+        Task { [weak self] in
+            try? await Task.sleep(for: .milliseconds(350))
+            self?.finish()
+        }
+    }
 
     private func finish() {
         guard !completed else { return }

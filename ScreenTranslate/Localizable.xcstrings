@@ -5930,160 +5930,6 @@
         }
       }
     },
-    "On-Device Engine": {
-      "extractionState": "manual",
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "On-Device Engine"
-          }
-        },
-        "zh-Hans": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "本机引擎"
-          }
-        },
-        "zh-Hant": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "本機引擎"
-          }
-        },
-        "ja": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "端末内エンジン"
-          }
-        },
-        "fr": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Moteur local"
-          }
-        },
-        "es": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Motor local"
-          }
-        },
-        "ko": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "기기 내 엔진"
-          }
-        },
-        "pt": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Mecanismo local"
-          }
-        },
-        "it": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Motore locale"
-          }
-        },
-        "de": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Lokale Engine"
-          }
-        },
-        "ar": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "محرك على الجهاز"
-          }
-        },
-        "ru": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Локальный движок"
-          }
-        }
-      }
-    },
-    "Free, private and available without an API key.": {
-      "extractionState": "manual",
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Free, private and available without an API key."
-          }
-        },
-        "zh-Hans": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "免费、注重隐私，无需 API Key。"
-          }
-        },
-        "zh-Hant": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "免費、注重隱私，無需 API Key。"
-          }
-        },
-        "ja": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "無料・端末内処理・APIキー不要。"
-          }
-        },
-        "fr": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Gratuit, local et sans clé API."
-          }
-        },
-        "es": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Gratis, local y sin API Key."
-          }
-        },
-        "ko": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "무료 기기 내 처리, API 키 불필요."
-          }
-        },
-        "pt": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Grátis, local e sem chave API."
-          }
-        },
-        "it": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Gratis, locale e senza chiave API."
-          }
-        },
-        "de": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Kostenlos, lokal und ohne API-Schlüssel."
-          }
-        },
-        "ar": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "مجاني ومحلي ولا يحتاج إلى مفتاح API."
-          }
-        },
-        "ru": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Бесплатно, локально и без ключа API."
-          }
-        }
-      }
-    },
     "Only services with image input enabled are offered for OCR.": {
       "extractionState": "manual",
       "localizations": {
@@ -6157,83 +6003,6 @@
           "stringUnit": {
             "state": "translated",
             "value": "Показаны только сервисы с включённым вводом изображений."
-          }
-        }
-      }
-    },
-    "Tap a saved service to switch instantly. Keys and other configurations are kept.": {
-      "extractionState": "manual",
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Tap a saved service to switch instantly. Keys and other configurations are kept."
-          }
-        },
-        "zh-Hans": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "轻点已保存的服务即可切换，其他服务的密钥与配置会保留。"
-          }
-        },
-        "zh-Hant": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "輕點已儲存的服務即可切換，其他服務的金鑰與配置會保留。"
-          }
-        },
-        "ja": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "タップで切り替えます。キーと設定は保持されます。"
-          }
-        },
-        "fr": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Touchez pour changer ; clés et réglages sont conservés."
-          }
-        },
-        "es": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Toca para cambiar; se conservan las claves y los ajustes."
-          }
-        },
-        "ko": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "눌러서 전환하세요. 키와 설정은 유지됩니다."
-          }
-        },
-        "pt": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Toque para alternar; chaves e configurações são mantidas."
-          }
-        },
-        "it": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Tocca per cambiare: chiavi e impostazioni restano salvate."
-          }
-        },
-        "de": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Tippen zum Wechseln; Schlüssel und Einstellungen bleiben erhalten."
-          }
-        },
-        "ar": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "اضغط للتبديل؛ تبقى المفاتيح والإعدادات محفوظة."
-          }
-        },
-        "ru": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Нажмите для переключения; ключи и настройки сохранятся."
           }
         }
       }
@@ -9776,83 +9545,6 @@
           "stringUnit": {
             "state": "translated",
             "value": "Копировать оригинал"
-          }
-        }
-      }
-    },
-    "Reset Zoom": {
-      "extractionState": "manual",
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Reset Zoom"
-          }
-        },
-        "zh-Hans": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "重置缩放"
-          }
-        },
-        "zh-Hant": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "重置縮放"
-          }
-        },
-        "ja": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "ズームをリセット"
-          }
-        },
-        "fr": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Réinitialiser le zoom"
-          }
-        },
-        "es": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Restablecer zoom"
-          }
-        },
-        "ko": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "확대/축소 초기화"
-          }
-        },
-        "pt": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Redefinir zoom"
-          }
-        },
-        "it": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Reimposta zoom"
-          }
-        },
-        "de": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Zoom zurücksetzen"
-          }
-        },
-        "ar": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "إعادة ضبط التكبير"
-          }
-        },
-        "ru": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Сбросить масштаб"
           }
         }
       }
@@ -19794,23 +19486,6 @@
         }
       }
     },
-    "Processing Time": {
-      "extractionState": "manual",
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Processing Time"
-          }
-        },
-        "zh-Hans": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "处理耗时"
-          }
-        }
-      }
-    },
     "OCR %.2f s · Translation %.2f s": {
       "extractionState": "manual",
       "localizations": {
@@ -19858,23 +19533,6 @@
           "stringUnit": {
             "state": "translated",
             "value": "其他设备优先读取 iCloud 设置。首次使用时，在已配置好的设备上传一次，之后的修改会自动同步。"
-          }
-        }
-      }
-    },
-    "OCR %.2f s · Translation %.2f s · Background %.2f s": {
-      "extractionState": "manual",
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "OCR %.2f s · Translation %.2f s · Background %.2f s"
-          }
-        },
-        "zh-Hans": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "识别 %.2f 秒 · 翻译 %.2f 秒 · 背景 %.2f 秒"
           }
         }
       }
@@ -20819,41 +20477,6 @@
         }
       }
     },
-    "Apple Vision reads on the device for free. An AI service reads handwriting and stylised lettering better, at your provider’s price.": {
-      "extractionState": "manual",
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Apple Vision reads on the device for free. An AI service reads handwriting and stylised lettering better, at your provider’s price."
-          }
-        },
-        "zh-Hans": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Apple Vision 在本机免费识别。AI 服务对手写和艺术字识别更准，费用由你的服务商收取。"
-          }
-        },
-        "zh-Hant": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Apple Vision 在本機免費辨識。AI 服務對手寫和藝術字辨識更準，費用由你的服務商收取。"
-          }
-        },
-        "ja": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Apple Visionはデバイス上で無料で認識します。AIサービスは手書きや装飾文字に強く、料金はプロバイダによります。"
-          }
-        },
-        "ko": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Apple Vision은 기기에서 무료로 인식합니다. AI 서비스는 손글씨와 장식 글자를 더 잘 읽으며 요금은 제공업체가 부과합니다."
-          }
-        }
-      }
-    },
     "Also Save API Keys": {
       "extractionState": "manual",
       "localizations": {
@@ -21169,41 +20792,6 @@
         }
       }
     },
-    "Use AI automatically when needed": {
-      "extractionState": "manual",
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Use AI automatically when needed"
-          }
-        },
-        "zh-Hans": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "需要时自动使用 AI"
-          }
-        },
-        "zh-Hant": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "需要時自動使用 AI"
-          }
-        },
-        "ja": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "必要なときは自動でAIを使う"
-          }
-        },
-        "ko": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "필요할 때 자동으로 AI 사용"
-          }
-        }
-      }
-    },
     "Ask before using AI": {
       "extractionState": "manual",
       "localizations": {
@@ -21216,13 +20804,13 @@
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "需要 AI 时先询问"
+            "value": "使用 AI 前先询问"
           }
         },
         "zh-Hant": {
           "stringUnit": {
             "state": "translated",
-            "value": "需要 AI 時先詢問"
+            "value": "使用 AI 前先詢問"
           }
         },
         "ja": {
@@ -21235,146 +20823,6 @@
           "stringUnit": {
             "state": "translated",
             "value": "AI 사용 전에 묻기"
-          }
-        }
-      }
-    },
-    "Assisting Service": {
-      "extractionState": "manual",
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Assisting Service"
-          }
-        },
-        "zh-Hans": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "辅助识别服务"
-          }
-        },
-        "zh-Hant": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "輔助辨識服務"
-          }
-        },
-        "ja": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "補助に使うサービス"
-          }
-        },
-        "ko": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "보조 서비스"
-          }
-        }
-      }
-    },
-    "AI Assistance": {
-      "extractionState": "manual",
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "AI Assistance"
-          }
-        },
-        "zh-Hans": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "AI 辅助识别"
-          }
-        },
-        "zh-Hant": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "AI 輔助辨識"
-          }
-        },
-        "ja": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "AIによる補助"
-          }
-        },
-        "ko": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "AI 보조"
-          }
-        }
-      }
-    },
-    "Add an AI service with image input to use this.": {
-      "extractionState": "manual",
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Add an AI service with image input to use this."
-          }
-        },
-        "zh-Hans": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "请先添加支持图像输入的 AI 服务。"
-          }
-        },
-        "zh-Hant": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "請先新增支援圖像輸入的 AI 服務。"
-          }
-        },
-        "ja": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "画像入力に対応したAIサービスを追加すると使えます。"
-          }
-        },
-        "ko": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "이미지 입력을 지원하는 AI 서비스를 추가하면 사용할 수 있습니다."
-          }
-        }
-      }
-    },
-    "When the on-device reading looks unreliable (handwriting, stylised lettering, unread speech bubbles), the screenshot is also read by your AI service. With both off, recognition always stays on the device.": {
-      "extractionState": "manual",
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "When the on-device reading looks unreliable (handwriting, stylised lettering, unread speech bubbles), the screenshot is also read by your AI service. With both off, recognition always stays on the device."
-          }
-        },
-        "zh-Hans": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "当本机识别看起来不可靠时（手写、艺术字、气泡里有没读出的字），截图会再交给你的 AI 服务识别。两项都关闭时，识别始终只在本机进行。"
-          }
-        },
-        "zh-Hant": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "當本機辨識看起來不可靠時（手寫、藝術字、對話框裡有沒讀出的字），截圖會再交給你的 AI 服務辨識。兩項都關閉時，辨識始終只在本機進行。"
-          }
-        },
-        "ja": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "デバイス上の認識が不確かな場合（手書き、装飾文字、吹き出しの読み残し）、スクリーンショットをAIサービスでも読み取ります。両方オフなら認識は常にデバイス上で行われます。"
-          }
-        },
-        "ko": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "기기 인식이 불확실해 보일 때(손글씨, 장식 글자, 말풍선의 읽지 못한 글자) 스크린샷을 AI 서비스로도 읽습니다. 둘 다 끄면 인식은 항상 기기에서만 이루어집니다."
           }
         }
       }
@@ -21480,6 +20928,1056 @@
           "stringUnit": {
             "state": "translated",
             "value": "기기만 사용"
+          }
+        }
+      }
+    },
+    "Order of Use": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Order of Use"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "使用顺序"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "使用順序"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "使用する順番"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "사용 순서"
+          }
+        }
+      }
+    },
+    "The first one is used. When it fails or reaches its spending limit the next one takes over, and you are told. The on-device engine is free and always last.": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "The first one is used. When it fails or reaches its spending limit the next one takes over, and you are told. The on-device engine is free and always last."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "默认使用第一个。它出错或达到花销上限时改用下一个，并提示你。本机引擎免费，始终排在最后。"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "預設使用第一個。它出錯或達到花費上限時改用下一個，並提示你。本機引擎免費，始終排在最後。"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "最初のサービスを使います。失敗するか利用上限に達すると次に切り替え、その旨を表示します。デバイス上のエンジンは無料で、常に最後です。"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "첫 번째 서비스를 사용합니다. 실패하거나 지출 한도에 도달하면 다음 서비스로 넘어가고 알려 줍니다. 기기 엔진은 무료이며 항상 마지막입니다."
+          }
+        }
+      }
+    },
+    "Add to the Order": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Add to the Order"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "加入顺序"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "加入順序"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "順番に追加"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "순서에 추가"
+          }
+        }
+      }
+    },
+    "In use": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "In use"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "使用中"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "使用中"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "使用中"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "사용 중"
+          }
+        }
+      }
+    },
+    "Last resort": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Last resort"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "最后使用"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "最後使用"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "最後に使用"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "마지막에 사용"
+          }
+        }
+      }
+    },
+    "Limit reached": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Limit reached"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "已达上限"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "已達上限"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "上限到達"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "한도 도달"
+          }
+        }
+      }
+    },
+    "Keys, prices and spending limits are set per service.": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Keys, prices and spending limits are set per service."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "密钥、价格和花销上限在各个服务里设置。"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "金鑰、價格和花費上限在各個服務裡設定。"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "キー、価格、利用上限はサービスごとに設定します。"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "키, 가격, 지출 한도는 서비스별로 설정합니다."
+          }
+        }
+      }
+    },
+    "AI Assistance (only when needed)": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "AI Assistance (only when needed)"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "AI 辅助识别（仅在需要时使用 AI）"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "AI 輔助辨識（僅在需要時使用 AI）"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "AI補助（必要なときだけAIを使う）"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "AI 보조(필요할 때만 AI 사용)"
+          }
+        }
+      }
+    },
+    "Add an AI service to the order above to use this.": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Add an AI service to the order above to use this."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "请先在上面的顺序里加入 AI 服务。"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "請先在上面的順序裡加入 AI 服務。"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "上の順番にAIサービスを追加すると使えます。"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "위 순서에 AI 서비스를 추가하면 사용할 수 있습니다."
+          }
+        }
+      }
+    },
+    "On: Apple Vision reads first, and the services above are used only when its reading looks unreliable (handwriting, stylised lettering, unread speech bubbles). Off: the services above read every screenshot.": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "On: Apple Vision reads first, and the services above are used only when its reading looks unreliable (handwriting, stylised lettering, unread speech bubbles). Off: the services above read every screenshot."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "开启：先用 Apple Vision 识别，只有本机读得不可靠时（手写、艺术字、气泡里有没读出的字）才使用上面的服务。关闭：每张截图都由上面的服务识别。"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "開啟：先用 Apple Vision 辨識，只有本機讀得不可靠時（手寫、藝術字、對話框裡有沒讀出的字）才使用上面的服務。關閉：每張截圖都由上面的服務辨識。"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "オン：まずApple Visionで読み取り、不確かな場合（手書き、装飾文字、吹き出しの読み残し）だけ上のサービスを使います。オフ：すべてのスクリーンショットを上のサービスで読み取ります。"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "켬: Apple Vision이 먼저 읽고, 불확실할 때(손글씨, 장식 글자, 말풍선의 읽지 못한 글자)만 위 서비스를 사용합니다. 끔: 모든 스크린샷을 위 서비스가 읽습니다."
+          }
+        }
+      }
+    },
+    "Apple Vision reads on the device for free. AI services read handwriting and stylised lettering better, at your provider’s price; set their order, and whether they are used only when needed, in OCR Engine.": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Apple Vision reads on the device for free. AI services read handwriting and stylised lettering better, at your provider’s price; set their order, and whether they are used only when needed, in OCR Engine."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Apple Vision 在本机免费识别。AI 服务对手写和艺术字识别更准，费用由服务商收取；在“识别引擎”里设置使用顺序，以及是否仅在需要时使用。"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Apple Vision 在本機免費辨識。AI 服務對手寫和藝術字辨識更準，費用由服務商收取；在「辨識引擎」裡設定使用順序，以及是否僅在需要時使用。"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Apple Visionはデバイス上で無料で認識します。AIサービスは手書きや装飾文字に強く、料金はプロバイダによります。順番と、必要なときだけ使うかどうかは「OCRエンジン」で設定します。"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Apple Vision은 기기에서 무료로 인식합니다. AI 서비스는 손글씨와 장식 글자를 더 잘 읽으며 요금은 제공업체가 부과합니다. 순서와 필요할 때만 사용할지는 OCR 엔진에서 설정합니다."
+          }
+        }
+      }
+    },
+    "Billing Currency": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Billing Currency"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "结算货币"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "結算貨幣"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "請求通貨"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "결제 통화"
+          }
+        }
+      }
+    },
+    "Input price / 1M tokens": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Input price / 1M tokens"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "输入价格 / 百万 token"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "輸入價格 / 百萬 token"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "入力価格 / 100万トークン"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "입력 가격 / 100만 토큰"
+          }
+        }
+      }
+    },
+    "Output price / 1M tokens": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Output price / 1M tokens"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "输出价格 / 百万 token"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "輸出價格 / 百萬 token"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "出力価格 / 100万トークン"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "출력 가격 / 100만 토큰"
+          }
+        }
+      }
+    },
+    "This month": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "This month"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "本月"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "本月"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "今月"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "이번 달"
+          }
+        }
+      }
+    },
+    "Total": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Total"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "累计"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "累計"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "累計"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "누적"
+          }
+        }
+      }
+    },
+    "Monthly Spending Limit": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Monthly Spending Limit"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "每月花销上限"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "每月花費上限"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "月間の利用上限"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "월 지출 한도"
+          }
+        }
+      }
+    },
+    "Limit": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Limit"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "上限"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "上限"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "上限"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "한도"
+          }
+        }
+      }
+    },
+    "Reset Usage Figures": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Reset Usage Figures"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "重置用量统计"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "重置用量統計"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "使用量をリセット"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "사용량 초기화"
+          }
+        }
+      }
+    },
+    "Cost": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Cost"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "费用"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "費用"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "料金"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "비용"
+          }
+        }
+      }
+    },
+    "Tokens are counted from what the provider reports for each request, and costed at the price in effect at that moment. When this month’s spending reaches the limit, this service is skipped: the next one in the order takes over, then the on-device engine. A limit needs a price.": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Tokens are counted from what the provider reports for each request, and costed at the price in effect at that moment. When this month’s spending reaches the limit, this service is skipped: the next one in the order takes over, then the on-device engine. A limit needs a price."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "token 数量取自服务商对每次请求的回报，并按当时生效的价格计费。本月花销达到上限后会跳过这个服务：改用顺序里的下一个，最后是本机引擎。设置上限需要先有价格。"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "token 數量取自服務商對每次請求的回報，並按當時生效的價格計費。本月花費達到上限後會跳過這個服務：改用順序裡的下一個，最後是本機引擎。設定上限需要先有價格。"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "トークン数は各リクエストでプロバイダが報告した値で、その時点の価格で計算します。今月の利用額が上限に達するとこのサービスは飛ばされ、順番の次、最後にデバイス上のエンジンが使われます。上限には価格が必要です。"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "토큰 수는 요청마다 제공업체가 보고한 값이며 그 시점의 가격으로 계산합니다. 이번 달 지출이 한도에 도달하면 이 서비스를 건너뛰고 순서의 다음, 마지막으로 기기 엔진을 사용합니다. 한도에는 가격이 필요합니다."
+          }
+        }
+      }
+    },
+    "Price provided by the service and kept up to date automatically.": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Price provided by the service and kept up to date automatically."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "价格由服务商提供，并自动保持最新。"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "價格由服務商提供，並自動保持最新。"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "価格はサービスから取得し、自動で最新に保ちます。"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "가격은 서비스에서 제공되며 자동으로 최신 상태를 유지합니다."
+          }
+        }
+      }
+    },
+    "This provider does not publish prices. Enter the price from its pricing page; update it when it changes.": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "This provider does not publish prices. Enter the price from its pricing page; update it when it changes."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "该服务商不通过接口公布价格。请按其价格页填写，变动时手动更新。"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "該服務商不透過介面公布價格。請按其價格頁填寫，變動時手動更新。"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "このプロバイダは価格を公開していません。料金ページの価格を入力し、変更時に更新してください。"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "이 제공업체는 가격을 공개하지 않습니다. 요금 페이지의 가격을 입력하고 변경 시 갱신하세요."
+          }
+        }
+      }
+    },
+    "%@ reached its spending limit and was skipped.": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@ reached its spending limit and was skipped."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@ 已达花销上限，已跳过。"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@ 已達花費上限，已跳過。"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@ は利用上限に達したため飛ばしました。"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@이(가) 지출 한도에 도달해 건너뛰었습니다."
+          }
+        }
+      }
+    },
+    "Switched to %@.": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Switched to %@."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "已改用 %@。"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "已改用 %@。"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@ に切り替えました。"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@(으)로 전환했습니다."
+          }
+        }
+      }
+    },
+    "OCR %.1f s · Translation %.1f s": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "OCR %.1f s · Translation %.1f s"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "识别 %.1f 秒 · 翻译 %.1f 秒"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "辨識 %.1f 秒 · 翻譯 %.1f 秒"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "認識 %.1f 秒 · 翻訳 %.1f 秒"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "인식 %.1f초 · 번역 %.1f초"
+          }
+        }
+      }
+    },
+    "Copy": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Copy"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "复制"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "複製"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "コピー"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "복사"
+          }
+        }
+      }
+    },
+    "Open AY Translate": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Open AY Translate"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "打开 AY Translate"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "打開 AY Translate"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "AY Translateを開く"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "AY Translate 열기"
+          }
+        }
+      }
+    },
+    "Usage · OCR": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "OCR"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "识别"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "辨識"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "認識"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "인식"
+          }
+        }
+      }
+    },
+    "Usage · Translation": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Translation"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "翻译"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "翻譯"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "翻訳"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "번역"
           }
         }
       }

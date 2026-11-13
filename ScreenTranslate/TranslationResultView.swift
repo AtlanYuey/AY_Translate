@@ -4,6 +4,8 @@ import UIKit
 
 struct TranslationResultView: View {
     var onClose: (() -> Void)? = nil
+    /// Set by the Share extension: leave the overlay and open the app itself.
+    var onOpenApp: (() -> Void)? = nil
     @EnvironmentObject private var appState: AppState
     @EnvironmentObject private var settings: AppSettings
     @Environment(\.dismiss) private var dismiss
@@ -12,7 +14,7 @@ struct TranslationResultView: View {
     @State private var showsSettings = false
     @State private var showsNotice = false
     @State private var resetZoom = UUID()
-    @State private var showsTiming = false
+    @State private var bannerMessage: String?
     @State private var backgroundSeconds: Double = 0
     @State private var palette: [UUID: SampledColor] = [:]
     @State private var restorations: [UUID: ScreenshotRendering.RestoredRegion] = [:]
@@ -40,9 +42,26 @@ struct TranslationResultView: View {
                 // opaque black loading canvas was the flash after screenshot.
                 if appState.hasSourceImage || (appState.phase != .idle && appState.phase != .loading) { Color.black }
                 else { Color.clear }
-                resultContent
+                resultContent(top: max(geometry.safeAreaInsets.top, 14) + 8)
                     .frame(maxWidth: .infinity, maxHeight: .infinity)
                 if processing { ProcessingEdgeGlow() }
+                // Questions and notes sit near the bottom, clear of the
+                // Dynamic Island and the status area at the top.
+                if appState.phase == .awaitingAssist {
+                    assistPrompt
+                        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .bottom)
+                        .padding(.horizontal, 24)
+                        .padding(.bottom, max(geometry.safeAreaInsets.bottom, 8) + 84)
+                }
+                if let bannerMessage {
+                    Text(verbatim: bannerMessage).font(.footnote).lineLimit(2)
+                        .padding(.horizontal, 12).padding(.vertical, 8)
+                        .glassEffect(.regular, in: Capsule())
+                        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .bottomLeading)
+                        .padding(.leading, 14).padding(.trailing, 130)
+                        .padding(.bottom, max(geometry.safeAreaInsets.bottom, 8) + 14)
+                        .allowsHitTesting(false)
+                }
                 controls
                     .padding(.trailing, 12)
                     .padding(.bottom, max(geometry.safeAreaInsets.bottom, 8) + 6)
@@ -88,8 +107,12 @@ struct TranslationResultView: View {
                 failureView(message).presentationDetents([.medium, .large])
             }
         }
-        .alert("Processing Time", isPresented: $showsTiming) { Button("OK", role: .cancel) {} } message: {
-            Text(AppLocalization.formatted("OCR %.2f s · Translation %.2f s · Background %.2f s", appState.recognitionSeconds, appState.translationSeconds, backgroundSeconds, language: settings.interfaceLanguage))
+        .task(id: appState.fallbackMessage) {
+            // "Switched to …": shown for a few seconds, kept in the note.
+            bannerMessage = appState.fallbackMessage
+            guard bannerMessage != nil else { return }
+            do { try await Task.sleep(for: .seconds(5)) } catch { return }
+            bannerMessage = nil
         }
         .alert("Recognition Note", isPresented: $showsNotice) { Button("OK", role: .cancel) {} } message: {
             Text(settings.text(appState.notice ?? ""))
@@ -124,7 +147,39 @@ struct TranslationResultView: View {
         }
     }
 
-    @ViewBuilder private var resultContent: some View {
+    private var assistPrompt: some View {
+        VStack(spacing: 12) {
+            Text("On-device recognition may be incomplete here. Use AI to help?")
+                .font(.subheadline.weight(.medium)).multilineTextAlignment(.center)
+            HStack(spacing: 12) {
+                Button("On-Device Only") { appState.resolveAssist(useAI: false) }.buttonStyle(.bordered)
+                Button("Use AI") { appState.resolveAssist(useAI: true) }.buttonStyle(.borderedProminent)
+            }
+        }
+        .padding(16)
+        .frame(maxWidth: 420)
+        .glassEffect(.regular, in: RoundedRectangle(cornerRadius: 22))
+    }
+
+    /// Timing and token use of this result, shown directly in the menu.
+    private var infoLines: [String] {
+        var lines: [String] = []
+        if appState.recognitionSeconds > 0 {
+            lines.append(AppLocalization.formatted("OCR %.1f s · Translation %.1f s", appState.recognitionSeconds, appState.translationSeconds, language: settings.interfaceLanguage))
+        }
+        func line(_ label: String, _ entry: UsageReport.Line) -> String? {
+            guard !entry.usage.isEmpty else { return nil }
+            var text = settings.text(label) + " " + entry.services.joined(separator: " → ") + " · "
+                + entry.usage.input.formatted() + " + " + entry.usage.output.formatted() + " tokens"
+            if entry.priced { text += " · " + entry.symbol + entry.cost.formatted(.number.precision(.fractionLength(0...4))) }
+            return text
+        }
+        if let text = line("Usage · OCR", appState.usageReport.recognition) { lines.append(text) }
+        if let text = line("Usage · Translation", appState.usageReport.translation) { lines.append(text) }
+        return lines
+    }
+
+    @ViewBuilder private func resultContent(top: CGFloat) -> some View {
         if let document = appState.displayedDocument, appState.phase != .awaitingConsent {
             ZStack(alignment: .top) {
                 if mode == .text && appState.document != nil {
@@ -138,29 +193,19 @@ struct TranslationResultView: View {
                 switch appState.phase {
                 case .ready where preparingImage:
                     ProgressView("Preparing image…").font(.footnote).padding(12)
-                        .glassEffect(.regular, in: Capsule()).padding(.top, 14)
+                        .glassEffect(.regular, in: Capsule()).padding(.top, top)
                 case .failed:
                     Button { showsRecovery = true } label: {
                         Label("Translation incomplete · Original preserved", systemImage: "exclamationmark.circle")
                             .font(.footnote).padding(.horizontal, 12).padding(.vertical, 8)
-                    }.buttonStyle(.plain).glassEffect(.regular.interactive(), in: Capsule()).padding(.top, 14)
-                case .awaitingAssist:
-                    VStack(spacing: 10) {
-                        Text("On-device recognition may be incomplete here. Use AI to help?")
-                            .font(.footnote.weight(.medium)).multilineTextAlignment(.center)
-                        HStack(spacing: 10) {
-                            Button("Use AI") { appState.resolveAssist(useAI: true) }.buttonStyle(.borderedProminent)
-                            Button("On-Device Only") { appState.resolveAssist(useAI: false) }.buttonStyle(.bordered)
-                        }.controlSize(.small)
-                    }.padding(14).glassEffect(.regular, in: RoundedRectangle(cornerRadius: 18))
-                        .padding(.top, 14).padding(.horizontal, 28)
+                    }.buttonStyle(.plain).glassEffect(.regular.interactive(), in: Capsule()).padding(.top, top)
                 case .loading, .reading, .translating, .preparing:
                     HStack(spacing: 8) {
                         ProgressView().controlSize(.small)
                         Text(LocalizedStringKey(appState.phase == .reading ? "Reading screen…" : "Translating…")).font(.footnote)
                         Text(verbatim: "→ " + document.target.nativeName).font(.footnote.weight(.medium))
                     }.padding(.horizontal, 12).padding(.vertical, 8)
-                        .glassEffect(.regular, in: Capsule()).padding(.top, 14)
+                        .glassEffect(.regular, in: Capsule()).padding(.top, top)
                 default: EmptyView()
                 }
             }
@@ -199,45 +244,32 @@ struct TranslationResultView: View {
         .glassEffect(.regular.interactive(), in: Capsule())
     }
 
+    /// Listed last-first on screen: copy sits nearest the finger, the figures
+    /// for this result at the top.
     @ViewBuilder private var resultMenu: some View {
-                if let document = appState.document {
-                    Button("Copy Translation", systemImage: "doc.on.doc") { UIPasteboard.general.string = document.translatedText }
-                    Button("Copy Original", systemImage: "doc.on.doc") { UIPasteboard.general.string = document.originalText }
-                    Button(LocalizedStringKey(mode == .text ? "Translated" : "Full Text"), systemImage: "text.alignleft") { mode = mode == .text ? .overlay : .text }
-                    Button("Reset Zoom", systemImage: "arrow.counterclockwise") { resetZoom = UUID() }
-                    Divider()
-                }
-                engineMenu(.ocr)
-                engineMenu(.translation)
-                Menu("Target Language") {
-                    ForEach(AppLanguage.targetLanguages) { language in
-                        Button(language.nativeName) { settings.target = language; appState.retry() }
-                    }
-                }
-                Button("Processing Time", systemImage: "stopwatch") { showsTiming = true }
-                Button("Settings", systemImage: "slider.horizontal.3") { showsSettings = true }
-                if case .failed = appState.phase {
-                    Button("Translation Details", systemImage: "exclamationmark.circle") { showsRecovery = true }
-                    Button("Try Again", systemImage: "arrow.clockwise") { appState.retry() }
-                }
-                if appState.notice != nil { Button("Recognition Note", systemImage: "info.circle") { showsNotice = true } }
-    }
-
-    private func engineMenu(_ profile: AIProfile) -> some View {
+        if let document = appState.document {
+            Menu {
+                Button("Copy Translation") { UIPasteboard.general.string = document.translatedText }
+                Button("Copy Original") { UIPasteboard.general.string = document.originalText }
+            } label: { Label("Copy", systemImage: "doc.on.doc") }
+            Button(LocalizedStringKey(mode == .text ? "Translated" : "Full Text"), systemImage: "text.alignleft") { mode = mode == .text ? .overlay : .text }
+        }
         Menu {
-            Button(LocalizedStringKey(profile == .ocr ? "Apple Vision · Free" : "Apple Translation · Free"), systemImage: "apple.logo") {
-                try? settings.selectService(nil, for: profile)
-                appState.retry()
+            ForEach(AppLanguage.targetLanguages) { language in
+                Button(language.nativeName) { settings.target = language; appState.retry() }
             }
-            ForEach(settings.serviceCatalog.services.filter { profile != .ocr || $0.supportsVision }) { service in
-                Button {
-                    do { try settings.selectService(service.id, for: profile); appState.retry() }
-                    catch { showsSettings = true }
-                } label: {
-                    Label { Text(service.name) } icon: { ProviderIcon(preset: service.preset) }
-                }
-            }
-        } label: { Text(LocalizedStringKey(profile == .ocr ? "OCR Engine" : "Translation Engine")) }
+        } label: { Label("Target Language", systemImage: "globe") }
+        if case .failed = appState.phase {
+            Button("Translation Details", systemImage: "exclamationmark.circle") { showsRecovery = true }
+            Button("Try Again", systemImage: "arrow.clockwise") { appState.retry() }
+        }
+        if appState.notice != nil { Button("Recognition Note", systemImage: "info.circle") { showsNotice = true } }
+        if let onOpenApp {
+            Section { Button("Open AY Translate", systemImage: "arrow.up.forward.app") { onOpenApp() } }
+        }
+        if !infoLines.isEmpty {
+            Section { ForEach(infoLines, id: \.self) { Text(verbatim: $0) } }
+        }
     }
 
     private func close() {

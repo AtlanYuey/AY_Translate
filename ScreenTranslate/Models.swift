@@ -246,18 +246,18 @@ final class AppSettings: ObservableObject {
     @Published var translationEngine: TranslationEngine {
         didSet { persist(translationEngine.rawValue, forKey: "translationEngine") }
     }
-    /// With Apple Vision selected: use a cloud recognizer by itself when the
-    /// local reading looks unreliable.
-    @Published var aiAssistAutomatic: Bool {
-        didSet { persist(aiAssistAutomatic, forKey: "aiAssistAutomatic") }
+    /// AI assistance: read on the device first and use the AI services of
+    /// the recognition order only when that reading looks unreliable. Off:
+    /// the order is used for every image (or never, when it is empty).
+    @Published var aiAssistEnabled: Bool {
+        didSet { persist(aiAssistEnabled, forKey: "aiAssistEnabled") }
     }
-    /// Otherwise ask first. Both off: recognition always stays on the device.
+    /// With assistance on: ask before the screenshot is sent.
     @Published var aiAssistAsks: Bool {
         didSet { persist(aiAssistAsks, forKey: "aiAssistAsks") }
     }
-    @Published var aiAssistServiceID: UUID? {
-        didSet { persist(aiAssistServiceID?.uuidString ?? "", forKey: "aiAssistService") }
-    }
+    /// Tokens and cost per saved service; device-local, never synced to iCloud.
+    @Published private(set) var usageLedger = AIUsageLedger()
     @Published var overlayTextScale: Double {
         didSet { persist(overlayTextScale, forKey: "overlayTextScale") }
     }
@@ -305,9 +305,8 @@ final class AppSettings: ObservableObject {
         savesHistory = defaults.bool(forKey: Keys.savesHistory)
         ocrEngine = OCREngine(rawValue: defaults.string(forKey: "ocrEngine") ?? "") ?? .appleVision
         translationEngine = TranslationEngine(rawValue: defaults.string(forKey: "translationEngine") ?? "") ?? .apple
-        aiAssistAutomatic = defaults.bool(forKey: "aiAssistAutomatic")
+        aiAssistEnabled = defaults.bool(forKey: "aiAssistEnabled")
         aiAssistAsks = defaults.bool(forKey: "aiAssistAsks")
-        aiAssistServiceID = defaults.string(forKey: "aiAssistService").flatMap(UUID.init(uuidString:))
         let textScale = defaults.double(forKey: "overlayTextScale")
         overlayTextScale = textScale == 0 ? 1 : min(1.8, max(0.8, textScale))
         showsUnchangedText = defaults.bool(forKey: "showsUnchangedText")
@@ -315,6 +314,7 @@ final class AppSettings: ObservableObject {
         defaultResultMode = ResultDisplayMode(rawValue: defaults.string(forKey: "defaultResultMode") ?? "") ?? .overlay
         serviceCatalog = defaults.data(forKey: "ai.services.v1").flatMap { try? JSONDecoder().decode(AIServiceCatalog.self, from: $0) } ?? AIServiceCatalog()
         interfaceLanguage = InterfaceLanguage(rawValue: defaults.string(forKey: "interfaceLanguage") ?? "") ?? .system
+        usageLedger = defaults.data(forKey: "ai.usage.v1").flatMap { try? JSONDecoder().decode(AIUsageLedger.self, from: $0) } ?? AIUsageLedger()
         synchronizationError = syncMessage
         migrateLegacyServices()
         iCloudIncludesAPIKeys = defaults.bool(forKey: "iCloudSyncAPIKeys")
@@ -339,7 +339,7 @@ final class AppSettings: ObservableObject {
         savesHistory = saved.savesHistory; ocrEngine = saved.ocrEngine; translationEngine = saved.translationEngine
         showsUnchangedText = saved.showsUnchangedText
         showsTextDetailsOnTap = saved.showsTextDetailsOnTap
-        aiAssistAutomatic = saved.aiAssistAutomatic; aiAssistAsks = saved.aiAssistAsks; aiAssistServiceID = saved.aiAssistServiceID
+        aiAssistEnabled = saved.aiAssistEnabled; aiAssistAsks = saved.aiAssistAsks; usageLedger = saved.usageLedger
         overlayTextScale = saved.overlayTextScale; defaultResultMode = saved.defaultResultMode
         interfaceLanguage = saved.interfaceLanguage; serviceCatalog = saved.serviceCatalog; serviceMigrationError = saved.serviceMigrationError
     }
@@ -350,11 +350,63 @@ final class AppSettings: ObservableObject {
 
     func selectedService(for profile: AIProfile) -> SavedAIService? { serviceCatalog.selected(for: profile) }
 
-    /// The image-capable service that helps Apple Vision: the chosen one, or
-    /// the first that can read images.
-    var assistService: SavedAIService? {
-        let capable = serviceCatalog.services.filter(\.supportsVision)
-        return capable.first { $0.id == aiAssistServiceID } ?? capable.first
+    /// The services used for a job, in order, while its AI engine is on.
+    func chain(for profile: AIProfile) -> [SavedAIService] {
+        let active = profile == .ocr ? ocrEngine == .ai : translationEngine == .ai
+        return active ? serviceCatalog.chain(for: profile) : []
+    }
+
+    /// Replace the order for a job. An empty order means on-device only.
+    func setChain(_ ids: [UUID], for profile: AIProfile) throws {
+        var updated = serviceCatalog
+        try updated.setChain(ids, for: profile)
+        persist(try JSONEncoder().encode(updated), forKey: "ai.services.v1")
+        serviceCatalog = updated
+        let empty = updated.chain(for: profile).isEmpty
+        if profile == .ocr { ocrEngine = empty ? .appleVision : .ai }
+        else { translationEngine = empty ? .apple : .ai }
+    }
+
+    // MARK: Usage, price and spending limit
+
+    func recordUsage(_ usage: AIUsage, service: SavedAIService) {
+        guard !usage.isEmpty else { return }
+        // The app and its Share extension keep separate copies when no App
+        // Group is available; take the other side's figures first.
+        if syncThroughKeychain, let data = (try? PreferencesBridge.read(from: keyStore))?["ai.usage.v1"] as? Data,
+           let shared = try? JSONDecoder().decode(AIUsageLedger.self, from: data) { usageLedger.merge(shared) }
+        usageLedger.record(usage, service: service.id, price: service.price)
+        if let data = try? JSONEncoder().encode(usageLedger) { persist(data, forKey: "ai.usage.v1") }
+    }
+
+    func resetUsage(forService id: UUID) {
+        usageLedger.reset(id)
+        if let data = try? JSONEncoder().encode(usageLedger) { persist(data, forKey: "ai.usage.v1") }
+    }
+
+    /// This month's spending has reached the service's limit (when one is set
+    /// and its price is known).
+    func isOverLimit(_ service: SavedAIService) -> Bool {
+        guard let limit = service.spendLimit, limit > 0, service.price != nil else { return false }
+        return usageLedger.entry(for: service.id).monthCost >= limit
+    }
+
+    /// Ask the provider for the model's current price, at most hourly. Only
+    /// providers that publish prices answer; a discount or change is picked
+    /// up here and applies to tokens used from then on.
+    func refreshPrice(forService id: UUID, force: Bool = false) async {
+        guard let service = serviceCatalog.services.first(where: { $0.id == id }) else { return }
+        let stamp = "ai.price.checked." + id.uuidString
+        guard force || Date().timeIntervalSince1970 - defaults.double(forKey: stamp) > 3600 else { return }
+        defaults.set(Date().timeIntervalSince1970, forKey: stamp)
+        guard let key = try? readAPIKey(forService: id),
+              let price = await OpenAIClient().price(configuration: service.configuration, apiKey: key),
+              var current = serviceCatalog.services.first(where: { $0.id == id }), current.price != price else { return }
+        current.inputPrice = price.input; current.outputPrice = price.output
+        var updated = serviceCatalog
+        guard (try? updated.upsert(current)) != nil, let data = try? JSONEncoder().encode(updated) else { return }
+        persist(data, forKey: "ai.services.v1")
+        serviceCatalog = updated
     }
 
     func readAPIKey(for profile: AIProfile) throws -> String {
@@ -424,11 +476,14 @@ final class AppSettings: ObservableObject {
         try selectService(service.id, for: profile, enableEngine: false)
     }
 
-    func consentIdentity(for profile: AIProfile) -> String { selectedService(for: profile)?.consentID ?? "" }
+    /// Identity of everything a job may send data to: every service of its order.
+    func consentIdentity(for profile: AIProfile) -> String {
+        serviceCatalog.chain(for: profile).map(\.consentID).joined(separator: "\n\n")
+    }
 
     func hasConsent(for profile: AIProfile) -> Bool {
-        guard let service = selectedService(for: profile) else { return false }
-        return hasConsent(for: profile, service: service)
+        let chain = serviceCatalog.chain(for: profile)
+        return !chain.isEmpty && chain.allSatisfy { hasConsent(for: profile, service: $0) }
     }
 
     func hasConsent(for profile: AIProfile, service: SavedAIService) -> Bool {
@@ -436,8 +491,7 @@ final class AppSettings: ObservableObject {
     }
 
     func grantConsent(for profile: AIProfile) {
-        guard let service = selectedService(for: profile) else { return }
-        grantConsent(for: profile, service: service)
+        for service in serviceCatalog.chain(for: profile) { grantConsent(for: profile, service: service) }
     }
 
     /// Given where a service is chosen, so recognition itself never has to ask.

@@ -4,6 +4,17 @@
 <dict>
 	<key>ContainingAppBundleIdentifier</key>
 	<string>com.atlanyuey.translate</string>
+	<key>CFBundleURLTypes</key>
+	<array>
+		<dict>
+			<key>CFBundleURLName</key>
+			<string>com.atlanyuey.translate</string>
+			<key>CFBundleURLSchemes</key>
+			<array>
+				<string>aytranslate</string>
+			</array>
+		</dict>
+	</array>
 	<key>SharedAppGroup</key>
 	<string>group.com.atlanyuey.translate</string>
 	<key>SharedKeychainGroup</key>

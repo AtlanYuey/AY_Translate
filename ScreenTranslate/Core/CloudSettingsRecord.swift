@@ -4,7 +4,7 @@ import Foundation
 /// their device; provider definitions contain endpoints/models, never API keys.
 nonisolated struct CloudSettingsRecord: Codable, Equatable {
     static let allowedKeys: Set<String> = ["defaultSourceLanguage", "defaultTargetLanguage", "translationAppearance",
-        "ocrEngine", "translationEngine", "aiAssistAutomatic", "aiAssistAsks", "aiAssistService", "overlayTextScale", "showsTextDetailsOnTap", "showsUnchangedText", "defaultResultMode", "interfaceLanguage", "ai.services.v1"]
+        "ocrEngine", "translationEngine", "aiAssistEnabled", "aiAssistAsks", "overlayTextScale", "showsTextDetailsOnTap", "showsUnchangedText", "defaultResultMode", "interfaceLanguage", "ai.services.v1"]
     /// API keys and cloud permissions, synced only after a separate opt-in.
     /// Never part of `allowedKeys`: the value is not kept in preferences.
     static let credentialsKey = "ai.credentials.v1"

@@ -11,6 +11,8 @@ struct ProcessingServices {
     /// Local-only judgement: does this on-device reading look unreliable
     /// enough for a cloud recognizer to be worth asking?
     var needsAssist: (UIImage, [RecognizedBlock]) async -> Bool = { _, _ in false }
+    /// The live translator also reports the tokens it used.
+    var aiTranslationMetered: (([RecognizedBlock], AppLanguage, AppLanguage, AIServiceConfiguration, String, UsageMeter) async throws -> [UUID: String])? = nil
 
     static var live: ProcessingServices {
         // Reuse the ephemeral connection pool for OCR, translation and retries;
@@ -35,7 +37,9 @@ struct ProcessingServices {
                     let paper = local.1.filter { !$0.isDialogue || !VisionTextRecognizer.isSkinToned(page, region: $0.bounds) }
                     return BubbleText.unreadAnchors(bubbles: paper, blocks: anchors, imageSize: CGSize(width: page.width, height: page.height))
                 } ?? []
-                var result = try await client.recognize(imageData: data, anchors: anchors + unread, configuration: configuration, apiKey: key, locator: local.0)
+                let meter = UsageMeter()
+                var result = try await client.recognize(imageData: data, anchors: anchors + unread, configuration: configuration, apiKey: key, locator: local.0, meter: meter)
+                result.usage = meter.usage
                 // Text only the model found joins its bubble and keeps its
                 // lettering colour, exactly like locally recognized lines.
                 result.blocks = OCRReconciler.separatingRuby(result.blocks)
@@ -58,6 +62,9 @@ struct ProcessingServices {
                         .filter { !$0.isDialogue || !VisionTextRecognizer.isSkinToned(upright, region: $0.bounds) }
                     return OCRAssist.isNeeded(blocks: blocks, bubbles: bubbles, imageSize: CGSize(width: upright.width, height: upright.height))
                 }.value
+            },
+            aiTranslationMetered: { blocks, source, target, configuration, key, meter in
+                try await client.translate(blocks, source: source == .automatic ? "auto-detect" : source.name, target: target.name + " (" + target.rawValue + ")", configuration: configuration, apiKey: key, meter: meter)
             }
         )
     }

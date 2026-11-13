@@ -29,6 +29,7 @@ AY Translate 由 AtlanYuey 于 2026 年基于 [Translate Screen](https://github.
 - `ScreenTranslate/ContentView.swift`
 - `ScreenTranslate/Core/AIRequestOptions.swift`
 - `ScreenTranslate/Core/AIServiceCatalog.swift`
+- `ScreenTranslate/Core/AIUsage.swift`
 - `ScreenTranslate/Core/AppLocalization.swift`
 - `ScreenTranslate/Core/BackgroundSampling.swift`
 - `ScreenTranslate/Core/BubbleDetector.swift`
@@ -137,6 +138,7 @@ AY Translate 由 AtlanYuey 于 2026 年基于 [Translate Screen](https://github.
 - `Tests/ScreenTranslationCoreTests/RestorationAndSyncTests.swift`
 - `Tests/ScreenTranslationCoreTests/SerialWorkGateTests.swift`
 - `Tests/ScreenTranslationCoreTests/ServiceAndAppearanceTests.swift`
+- `Tests/ScreenTranslationCoreTests/ServiceOrderAndUsageTests.swift`
 - `Tests/ScreenTranslationCoreTests/VerticalInkDetectorTests.swift`
 - `Tests/ScreenTranslationCoreTests/VisionCoreTests.swift`
 - `Tests/ScreenTranslationCoreTests/VisionScreenshotBenchmarkTests.swift`

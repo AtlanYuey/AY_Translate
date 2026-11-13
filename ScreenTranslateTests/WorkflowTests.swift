@@ -182,23 +182,24 @@ final class WorkflowTests: XCTestCase {
         state.closeResult()
     }
 
-    func testAIAssistRunsOnlyForUnreliableReadingsWithAnApprovedServiceAndAsksWhenToldTo() async throws {
+    func testAIAssistanceUsesTheOrderOnlyForUnreliableReadingsAndAsksWhenToldTo() async throws {
         try settings.saveConfiguration(.init(baseURL: "https://example.test/v1", model: "vision"), keyReplacement: nil, for: .ocr)
-        let service = try XCTUnwrap(settings.assistService)
-        settings.ocrEngine = .appleVision
+        settings.ocrEngine = .ai
+        settings.grantConsent(for: .ocr)
+        settings.aiAssistEnabled = true
         settings.aiAssistAsks = true
-        var uploads = 0
+        var uploads = 0, unreliable = false
         let region = block()
         var injected = services { _, _ in [region] }
         injected.aiOCR = { _, anchors, _, _ in uploads += 1; return OCRResult(blocks: anchors) }
-        injected.needsAssist = { _, _ in true }
+        injected.needsAssist = { _, _ in unreliable }
         let state = AppState(settings: settings, history: HistoryStore(fileURL: historyURL), services: injected)
         let picture = image()
-        // Not approved where the service was chosen: no question, no upload.
+        // A reliable on-device reading costs nothing and asks nothing.
         state.process(picture)
         try await waitUntil { state.phase == .translating }
         XCTAssertEqual(uploads, 0)
-        settings.grantConsent(for: .ocr, service: service)
+        unreliable = true
         state.process(picture)
         try await waitUntil { state.phase == .awaitingAssist }
         XCTAssertEqual(uploads, 0)
@@ -206,10 +207,35 @@ final class WorkflowTests: XCTestCase {
         try await waitUntil { state.phase == .translating }
         XCTAssertEqual(uploads, 0)
         state.closeResult()
-        settings.aiAssistAutomatic = true
+        settings.aiAssistAsks = false
         state.process(picture)
         try await waitUntil { state.phase == .translating }
         XCTAssertEqual(uploads, 1)
+        state.closeResult()
+    }
+
+    func testAFailingServiceHandsOverToTheNextInTheOrderAndSaysSo() async throws {
+        let first = SavedAIService(name: "First", configuration: .init(baseURL: "https://first.test/v1", model: "m"))
+        let second = SavedAIService(name: "Second", configuration: .init(baseURL: "https://second.test/v1", model: "m"))
+        try settings.saveService(first, keyReplacement: nil)
+        try settings.saveService(second, keyReplacement: nil)
+        try settings.setChain([first.id, second.id], for: .translation)
+        settings.grantConsent(for: .translation)
+        let region = block()
+        var asked: [String] = []
+        var injected = services { _, _ in [region] }
+        injected.aiTranslation = { blocks, _, _, configuration, _ in
+            asked.append(configuration.baseURL)
+            if configuration.baseURL.contains("first") { throw AIServiceError.http(500) }
+            return [blocks[0].id: "你好，世界"]
+        }
+        let state = AppState(settings: settings, history: HistoryStore(fileURL: historyURL), services: injected)
+        state.process(image())
+        try await waitUntil { state.phase == .ready }
+        XCTAssertEqual(asked, ["https://first.test/v1", "https://second.test/v1"])
+        XCTAssertEqual(state.document?.blocks.first?.translation, "你好，世界")
+        XCTAssertTrue(state.fallbackMessage?.contains("Second") == true)
+        XCTAssertTrue(state.notice?.contains("http_500") == true)
         state.closeResult()
     }
 

@@ -27,7 +27,7 @@ struct SettingsView: View {
                     ForEach(AppLanguage.sourceLanguages) { Text($0 == .automatic ? settings.text($0.name) : $0.nativeName).tag($0) }
                 }
             } header: { Text("OCR") } footer: {
-                Text("Apple Vision reads on the device for free. An AI service reads handwriting and stylised lettering better, at your provider’s price.")
+                Text("Apple Vision reads on the device for free. AI services read handwriting and stylised lettering better, at your provider’s price; set their order, and whether they are used only when needed, in OCR Engine.")
             }
             Section {
                 NavigationLink { EngineSelectionView(profile: .translation) } label: {
@@ -71,9 +71,12 @@ struct SettingsView: View {
 
     }
 
+    /// The first service of the order (and how many stand behind it), or the
+    /// on-device engine when no AI service is in use.
     private func engineName(_ profile: AIProfile) -> String {
-        let local = profile == .ocr ? settings.ocrEngine == .appleVision : settings.translationEngine == .apple
-        return local ? settings.text(profile == .ocr ? "Apple Vision · Free" : "Apple Translation · Free") : settings.selectedService(for: profile)?.name ?? settings.text("Choose Provider")
+        let chain = settings.chain(for: profile)
+        guard let first = chain.first else { return settings.text(profile == .ocr ? "Apple Vision · Free" : "Apple Translation · Free") }
+        return chain.count > 1 ? first.name + " +" + String(chain.count - 1) : first.name
     }
 }
 

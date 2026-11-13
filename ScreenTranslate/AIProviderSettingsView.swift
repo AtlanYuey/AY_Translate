@@ -115,6 +115,7 @@ struct AIServiceEditor: View {
     @State private var imageTestTask: Task<Void, Never>?
     @State private var error: String?
     @State private var consent: CloudConsentRequest?
+    @State private var priceNote: String?
 
     private var discoveryIdentity: String { service.configuration.baseURL + "\n" + key + "\n" + String(discoveryRevision) }
     private var probes: [TranslationProbe] { TranslationProbe.samples(excluding: settings.target.rawValue) }
@@ -187,6 +188,7 @@ struct AIServiceEditor: View {
                     Text("Sends only a built-in sample image to this service. Shows the AI transcription or the specific error, without falling back to Apple Vision. Provider fees may apply.")
                 }
             }
+            costSection
             Section {
                 Text("The key stays visible for checking pasted text. It is saved only in this device’s Keychain, separately for each service.")
                 Text("Changing the endpoint clears a previously saved key. Paste a replacement for the new destination.")
@@ -228,6 +230,18 @@ struct AIServiceEditor: View {
         .onChange(of: modelSelection) { _, value in
             if value != "__other__" { service.configuration.model = value }
         }
+        .task(id: service.configuration.baseURL + "\n" + service.configuration.model + "\n" + String(initialized)) {
+            // Providers that publish prices fill these fields in themselves,
+            // every time this page opens; a discount shows up here.
+            guard initialized, !service.configuration.model.isEmpty else { return }
+            do { try await Task.sleep(for: .milliseconds(900)) } catch { return }
+            if let price = await OpenAIClient().price(configuration: service.configuration, apiKey: key), !Task.isCancelled {
+                service.inputPrice = price.input; service.outputPrice = price.output
+                priceNote = "Price provided by the service and kept up to date automatically."
+            } else if !Task.isCancelled {
+                priceNote = "This provider does not publish prices. Enter the price from its pricing page; update it when it changes."
+            }
+        }
         .onChange(of: service.configuration.baseURL) { _, _ in
             models = []; modelSelection = "__other__"; discoveryError = nil; discovering = false
             // Do not send a saved credential automatically to an edited host/path.
@@ -246,6 +260,52 @@ struct AIServiceEditor: View {
             Button("OK", role: .cancel) { error = nil }
         } message: { Text(settings.text(error ?? "")) }
         .cloudConsentAlert($consent, settings: settings)
+    }
+
+    /// Price, this month's use and an optional spending limit.
+    @ViewBuilder private var costSection: some View {
+        let entry = settings.usageLedger.entry(for: service.id)
+        let symbol = service.currencySymbol
+        Section {
+            if service.preset.billsInYuanOrDollars {
+                Picker("Billing Currency", selection: Binding(get: { service.billingCurrency }, set: { service.currency = $0 })) {
+                    Text(verbatim: "¥ CNY").tag("CNY")
+                    Text(verbatim: "$ USD").tag("USD")
+                }
+            }
+            LabeledContent("Input price / 1M tokens") {
+                TextField("0", value: $service.inputPrice, format: .number).keyboardType(.decimalPad).multilineTextAlignment(.trailing)
+            }
+            LabeledContent("Output price / 1M tokens") {
+                TextField("0", value: $service.outputPrice, format: .number).keyboardType(.decimalPad).multilineTextAlignment(.trailing)
+            }
+            if let priceNote { Text(LocalizedStringKey(priceNote)).font(.footnote).foregroundStyle(.secondary) }
+            LabeledContent("This month") {
+                Text(verbatim: usageText(entry.monthUsage, cost: entry.monthCost, symbol: symbol))
+            }
+            LabeledContent("Total") {
+                Text(verbatim: usageText(entry.totalUsage, cost: entry.totalCost, symbol: symbol))
+            }
+            Toggle("Monthly Spending Limit", isOn: Binding(get: { service.spendLimit != nil }, set: { service.spendLimit = $0 ? (service.spendLimit ?? 1) : nil }))
+            if service.spendLimit != nil {
+                LabeledContent(LocalizedStringKey("Limit")) {
+                    HStack(spacing: 4) {
+                        Text(verbatim: symbol)
+                        TextField("1", value: $service.spendLimit, format: .number).keyboardType(.decimalPad).multilineTextAlignment(.trailing)
+                    }
+                }
+            }
+            if !entry.totalUsage.isEmpty {
+                Button("Reset Usage Figures", role: .destructive) { settings.resetUsage(forService: service.id) }
+            }
+        } header: { Text("Cost") } footer: {
+            Text("Tokens are counted from what the provider reports for each request, and costed at the price in effect at that moment. When this month’s spending reaches the limit, this service is skipped: the next one in the order takes over, then the on-device engine. A limit needs a price.")
+        }
+    }
+
+    private func usageText(_ usage: AIUsage, cost: Double, symbol: String) -> String {
+        let tokens = usage.total.formatted() + " tokens"
+        return service.price == nil && cost == 0 ? tokens : tokens + " · " + symbol + cost.formatted(.number.precision(.fractionLength(0...4)))
     }
 
     private func cancelTest() {
@@ -341,43 +401,59 @@ extension View {
     }
 }
 
+/// The order AI services are tried in for one job. The first is used; a later
+/// one takes over when an earlier one fails or reaches its spending limit;
+/// the on-device engine is always the last resort (and the only one when the
+/// order is empty).
 struct EngineSelectionView: View {
     @EnvironmentObject private var settings: AppSettings
     let profile: AIProfile
     @State private var error: String?
     @State private var consent: CloudConsentRequest?
 
-    private var localSelected: Bool {
-        profile == .ocr ? settings.ocrEngine == .appleVision : settings.translationEngine == .apple
+    private var chain: [SavedAIService] { settings.chain(for: profile) }
+    private var unused: [SavedAIService] {
+        let used = Set(chain.map(\.id))
+        return settings.serviceCatalog.services.filter { !used.contains($0.id) && (profile != .ocr || $0.supportsVision) }
     }
 
     var body: some View {
         List {
             Section {
-                Button { select(nil) } label: {
-                    HStack {
-                        Label(LocalizedStringKey(profile == .ocr ? "Apple Vision · Free" : "Apple Translation · Free"), systemImage: "apple.logo")
+                ForEach(Array(chain.enumerated()), id: \.element.id) { index, service in
+                    HStack(spacing: 10) {
+                        Text(verbatim: String(index + 1)).font(.footnote.monospacedDigit().weight(.semibold)).foregroundStyle(.secondary).frame(width: 16)
+                        ServiceRow(service: service)
                         Spacer()
-                        if localSelected { Image(systemName: "checkmark").foregroundStyle(.blue) }
-                    }.foregroundStyle(.primary)
+                        if settings.isOverLimit(service) { Text("Limit reached").font(.caption).foregroundStyle(.orange) }
+                        Button { move(index, by: -1) } label: { Image(systemName: "chevron.up") }.disabled(index == 0)
+                        Button { move(index, by: 1) } label: { Image(systemName: "chevron.down") }.disabled(index == chain.count - 1)
+                        Button { setChain(chain.map(\.id).filter { $0 != service.id }) } label: { Image(systemName: "minus.circle.fill").foregroundStyle(.red) }
+                    }.buttonStyle(.borderless)
                 }
-            } header: { Text("On-Device Engine") } footer: { Text("Free, private and available without an API key.") }
-            if profile == .ocr && localSelected { assistSection }
-            Section {
-                ForEach(settings.serviceCatalog.services.filter { profile != .ocr || $0.supportsVision }) { service in
-                    Button { select(service.id) } label: {
-                        HStack {
-                            ServiceRow(service: service)
-                            Spacer()
-                            if !localSelected && settings.selectedService(for: profile)?.id == service.id {
-                                Image(systemName: "checkmark").foregroundStyle(.blue)
-                            }
-                        }.foregroundStyle(.primary)
+                HStack(spacing: 10) {
+                    Text(verbatim: String(chain.count + 1)).font(.footnote.monospacedDigit().weight(.semibold)).foregroundStyle(.secondary).frame(width: 16)
+                    Label(LocalizedStringKey(profile == .ocr ? "Apple Vision · Free" : "Apple Translation · Free"), systemImage: "apple.logo")
+                    Spacer()
+                    Text(LocalizedStringKey(chain.isEmpty ? "In use" : "Last resort")).font(.caption).foregroundStyle(.secondary)
+                }
+            } header: { Text("Order of Use") } footer: {
+                Text("The first one is used. When it fails or reaches its spending limit the next one takes over, and you are told. The on-device engine is free and always last.")
+            }
+            if !unused.isEmpty {
+                Section("Add to the Order") {
+                    ForEach(unused) { service in
+                        Button { add(service) } label: {
+                            HStack { ServiceRow(service: service); Spacer(); Image(systemName: "plus.circle.fill").foregroundStyle(.green) }.foregroundStyle(.primary)
+                        }
                     }
                 }
+            }
+            if profile == .ocr { assistSection }
+            Section {
                 NavigationLink { AIServicesView() } label: { Label("Manage AI Services", systemImage: "plus.circle") }
-            } header: { Text("Saved Services") } footer: {
-                Text(LocalizedStringKey(profile == .ocr ? "Only services with image input enabled are offered for OCR." : "Tap a saved service to switch instantly. Keys and other configurations are kept."))
+            } footer: {
+                Text(LocalizedStringKey(profile == .ocr ? "Only services with image input enabled are offered for OCR." : "Keys, prices and spending limits are set per service."))
             }
         }
         .navigationTitle(LocalizedStringKey(profile == .ocr ? "OCR Engine" : "Translation Engine"))
@@ -387,51 +463,36 @@ struct EngineSelectionView: View {
         .cloudConsentAlert($consent, settings: settings)
     }
 
-    /// Apple Vision stays the engine; a cloud recognizer steps in only for
-    /// images the device could not read reliably.
+    /// Whether the services above read every screenshot, or only the ones the
+    /// device could not read reliably — and whether to ask first.
     @ViewBuilder private var assistSection: some View {
-        let capable = settings.serviceCatalog.services.filter(\.supportsVision)
         Section {
-            Toggle("Use AI automatically when needed", isOn: assistBinding(\.aiAssistAutomatic))
-            if !settings.aiAssistAutomatic {
-                Toggle("Ask before using AI", isOn: assistBinding(\.aiAssistAsks))
+            Toggle("AI Assistance (only when needed)", isOn: $settings.aiAssistEnabled)
+            if settings.aiAssistEnabled {
+                Toggle("Ask before using AI", isOn: $settings.aiAssistAsks)
             }
-            if (settings.aiAssistAutomatic || settings.aiAssistAsks) && capable.count > 1 {
-                Picker("Assisting Service", selection: Binding(get: { settings.assistService?.id }, set: { chooseAssist($0) })) {
-                    ForEach(capable) { Text(verbatim: $0.name).tag(Optional($0.id)) }
-                }
-            }
-        } header: { Text("AI Assistance") } footer: {
-            Text(LocalizedStringKey(capable.isEmpty
-                ? "Add an AI service with image input to use this."
-                : "When the on-device reading looks unreliable (handwriting, stylised lettering, unread speech bubbles), the screenshot is also read by your AI service. With both off, recognition always stays on the device."))
-        }.disabled(capable.isEmpty)
+        } footer: {
+            Text(LocalizedStringKey(chain.isEmpty
+                ? "Add an AI service to the order above to use this."
+                : "On: Apple Vision reads first, and the services above are used only when its reading looks unreliable (handwriting, stylised lettering, unread speech bubbles). Off: the services above read every screenshot."))
+        }.disabled(chain.isEmpty)
     }
 
-    private func assistBinding(_ option: ReferenceWritableKeyPath<AppSettings, Bool>) -> Binding<Bool> {
-        Binding(get: { settings[keyPath: option] }, set: { enabled in
-            guard enabled, let service = settings.assistService, !settings.hasConsent(for: .ocr, service: service) else {
-                settings[keyPath: option] = enabled
-                return
-            }
-            consent = CloudConsentRequest(profile: .ocr, service: service) { settings[keyPath: option] = true }
-        })
+    private func add(_ service: SavedAIService) {
+        let ids = chain.map(\.id) + [service.id]
+        if settings.hasConsent(for: profile, service: service) { setChain(ids) }
+        else { consent = CloudConsentRequest(profile: profile, service: service) { setChain(ids) } }
     }
 
-    private func chooseAssist(_ id: UUID?) {
-        guard let service = settings.serviceCatalog.services.first(where: { $0.id == id }) else { return }
-        if settings.hasConsent(for: .ocr, service: service) { settings.aiAssistServiceID = id }
-        else { consent = CloudConsentRequest(profile: .ocr, service: service) { settings.aiAssistServiceID = id } }
+    private func move(_ index: Int, by offset: Int) {
+        var ids = chain.map(\.id)
+        guard ids.indices.contains(index), ids.indices.contains(index + offset) else { return }
+        ids.swapAt(index, index + offset)
+        setChain(ids)
     }
 
-    private func select(_ id: UUID?) {
-        if let service = settings.serviceCatalog.services.first(where: { $0.id == id }), !settings.hasConsent(for: profile, service: service) {
-            consent = CloudConsentRequest(profile: profile, service: service) { apply(id) }
-        } else { apply(id) }
-    }
-
-    private func apply(_ id: UUID?) {
-        do { try settings.selectService(id, for: profile) }
+    private func setChain(_ ids: [UUID]) {
+        do { try settings.setChain(ids, for: profile) }
         catch { self.error = error.localizedDescription }
     }
 }
