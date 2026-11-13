@@ -117,11 +117,14 @@ struct AIServiceEditor: View {
     @State private var consent: CloudConsentRequest?
     @State private var priceNote: String?
 
+    private var priceIdentity: String { [service.configuration.baseURL, service.configuration.model, initialized ? "1" : "0"].joined(separator: "\n") }
     private var discoveryIdentity: String { service.configuration.baseURL + "\n" + key + "\n" + String(discoveryRevision) }
     private var probes: [TranslationProbe] { TranslationProbe.samples(excluding: settings.target.rawValue) }
     private var probe: TranslationProbe { probes.first { $0.id == probeID } ?? probes[0] }
 
-    var body: some View {
+    /// The form and its loading tasks. Kept apart from the change handlers
+    /// below: one long modifier chain is more than the type checker manages.
+    private var form: some View {
         Form {
             Section("Service Details") {
                 TextField("Service Name", text: $service.name)
@@ -227,10 +230,14 @@ struct AIServiceEditor: View {
             catch { if identity == discoveryIdentity { discoveryError = error.localizedDescription } }
             if identity == discoveryIdentity { discovering = false }
         }
+    }
+
+    var body: some View {
+        form
         .onChange(of: modelSelection) { _, value in
             if value != "__other__" { service.configuration.model = value }
         }
-        .task(id: service.configuration.baseURL + "\n" + service.configuration.model + "\n" + String(initialized)) {
+        .task(id: priceIdentity) {
             // Providers that publish prices fill these fields in themselves,
             // every time this page opens; a discount shows up here.
             guard initialized, !service.configuration.model.isEmpty else { return }
@@ -304,8 +311,10 @@ struct AIServiceEditor: View {
     }
 
     private func usageText(_ usage: AIUsage, cost: Double, symbol: String) -> String {
-        let tokens = usage.total.formatted() + " tokens"
-        return service.price == nil && cost == 0 ? tokens : tokens + " · " + symbol + cost.formatted(.number.precision(.fractionLength(0...4)))
+        let tokens: String = usage.total.formatted() + " tokens"
+        if service.price == nil && cost == 0 { return tokens }
+        let amount: String = cost.formatted(.number.precision(.fractionLength(0...4)))
+        return tokens + " · " + symbol + amount
     }
 
     private func cancelTest() {

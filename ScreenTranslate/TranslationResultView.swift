@@ -169,10 +169,14 @@ struct TranslationResultView: View {
         }
         func line(_ label: String, _ entry: UsageReport.Line) -> String? {
             guard !entry.usage.isEmpty else { return nil }
-            var text = settings.text(label) + " " + entry.services.joined(separator: " → ") + " · "
-                + entry.usage.input.formatted() + " + " + entry.usage.output.formatted() + " tokens"
-            if entry.priced { text += " · " + entry.symbol + entry.cost.formatted(.number.precision(.fractionLength(0...4))) }
-            return text
+            let name: String = entry.services.joined(separator: " → ")
+            let tokens: String = entry.usage.input.formatted() + " + " + entry.usage.output.formatted()
+            var parts: [String] = [settings.text(label) + " " + name, tokens + " tokens"]
+            if entry.priced {
+                let amount: String = entry.cost.formatted(.number.precision(.fractionLength(0...4)))
+                parts.append(entry.symbol + amount)
+            }
+            return parts.joined(separator: " · ")
         }
         if let text = line("Usage · OCR", appState.usageReport.recognition) { lines.append(text) }
         if let text = line("Usage · Translation", appState.usageReport.translation) { lines.append(text) }
