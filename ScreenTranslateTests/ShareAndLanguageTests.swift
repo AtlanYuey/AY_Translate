@@ -168,7 +168,7 @@ final class ShareAndLanguageTests: XCTestCase {
 
     func testIPAEmbedsAShortcutsDiscoverableShareExtensionAndRequestsFullScreen() throws {
         XCTAssertEqual(Bundle.main.bundleIdentifier, "com.atlanyuey.translate")
-        XCTAssertEqual(Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String, "1.7.0")
+        XCTAssertEqual(Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String, "1.1.0")
         XCTAssertEqual(Bundle.main.object(forInfoDictionaryKey: "SharedAppGroup") as? String, "group.com.atlanyuey.translate")
         XCTAssertTrue(try XCTUnwrap(LegalNotices.text("NOTICE")).contains("Bahaa"))
         XCTAssertTrue(try XCTUnwrap(LegalNotices.text("Apache-2.0")).contains("Apache License"))

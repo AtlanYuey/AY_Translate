@@ -162,8 +162,6 @@ AY Translate 由 AtlanYuey 于 2026 年基于 [Translate Screen](https://github.
 - `docs/provider-icon-sources/provider-siliconFlow.svg`
 - `docs/provider-icon-sources/provider-zhipu.svg`
 - `docs/releases/1.1.0.md`
-- `docs/releases/1.2.0.md`
-- `docs/releases/1.3.0.md`
 - `"docs/\344\270\255\346\226\207\347\225\214\351\235\242\344\270\216\350\275\273\351\207\217\351\242\204\350\247\210.md"`
 - `"docs/\345\205\250\345\261\217\346\211\251\345\261\225\344\270\216\345\277\253\346\215\267\346\214\207\344\273\244\350\260\203\346\237\245.md"`
 - `"docs/\345\256\236\346\227\266\347\277\273\350\257\221\350\257\204\344\274\260.md"`

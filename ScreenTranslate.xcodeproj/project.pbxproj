@@ -339,7 +339,7 @@ C30000000000000000000006 = {isa = PBXTargetDependency; target = 1D480245301A3A6C
 					"$(inherited)",
 					"@executable_path/Frameworks",
 				);
-				MARKETING_VERSION = 1.7.0;
+				MARKETING_VERSION = 1.1.0;
 				PRODUCT_BUNDLE_IDENTIFIER = com.atlanyuey.translate;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				STRING_CATALOG_GENERATE_SYMBOLS = YES;
@@ -375,7 +375,7 @@ C30000000000000000000006 = {isa = PBXTargetDependency; target = 1D480245301A3A6C
 					"$(inherited)",
 					"@executable_path/Frameworks",
 				);
-				MARKETING_VERSION = 1.7.0;
+				MARKETING_VERSION = 1.1.0;
 				PRODUCT_BUNDLE_IDENTIFIER = com.atlanyuey.translate;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				STRING_CATALOG_GENERATE_SYMBOLS = YES;
@@ -396,7 +396,7 @@ C30000000000000000000006 = {isa = PBXTargetDependency; target = 1D480245301A3A6C
                 CURRENT_PROJECT_VERSION = 8;
                 GENERATE_INFOPLIST_FILE = YES;
                 IPHONEOS_DEPLOYMENT_TARGET = 26.5;
-                MARKETING_VERSION = 1.7.0;
+                MARKETING_VERSION = 1.1.0;
                 PRODUCT_BUNDLE_IDENTIFIER = com.atlanyuey.translate.Tests;
                 PRODUCT_NAME = "$(TARGET_NAME)";
                 SDKROOT = iphoneos;
@@ -415,7 +415,7 @@ C30000000000000000000006 = {isa = PBXTargetDependency; target = 1D480245301A3A6C
                 CURRENT_PROJECT_VERSION = 8;
                 GENERATE_INFOPLIST_FILE = YES;
                 IPHONEOS_DEPLOYMENT_TARGET = 26.5;
-                MARKETING_VERSION = 1.7.0;
+                MARKETING_VERSION = 1.1.0;
                 PRODUCT_BUNDLE_IDENTIFIER = com.atlanyuey.translate.Tests;
                 PRODUCT_NAME = "$(TARGET_NAME)";
                 SDKROOT = iphoneos;
@@ -426,10 +426,10 @@ C30000000000000000000006 = {isa = PBXTargetDependency; target = 1D480245301A3A6C
             };
             name = Release;
         };
-B2000000000000000000000F = {isa = XCBuildConfiguration; buildSettings = {APPLICATION_EXTENSION_API_ONLY = YES; CODE_SIGN_STYLE = Automatic; CODE_SIGN_ENTITLEMENTS = ScreenTranslateShare/ScreenTranslateShare.entitlements; CURRENT_PROJECT_VERSION = 8; GENERATE_INFOPLIST_FILE = YES; INFOPLIST_FILE = ScreenTranslateShare/Info.plist; IPHONEOS_DEPLOYMENT_TARGET = 26.5; LD_RUNPATH_SEARCH_PATHS = ("$(inherited)", "@executable_path/Frameworks", "@executable_path/../../Frameworks"); MARKETING_VERSION = 1.7.0; PRODUCT_BUNDLE_IDENTIFIER = com.atlanyuey.translate.ShareExtension; PRODUCT_NAME = "$(TARGET_NAME)"; SKIP_INSTALL = YES; SWIFT_ACTIVE_COMPILATION_CONDITIONS = "$(inherited) SCREEN_TRANSLATE_SHARE_EXTENSION"; SWIFT_DEFAULT_ACTOR_ISOLATION = MainActor; SWIFT_APPROACHABLE_CONCURRENCY = YES; SWIFT_VERSION = 5.0; SWIFT_EMIT_LOC_STRINGS = YES; TARGETED_DEVICE_FAMILY = "1,2"; }; name = Debug; };
-B20000000000000000000010 = {isa = XCBuildConfiguration; buildSettings = {APPLICATION_EXTENSION_API_ONLY = YES; CODE_SIGN_STYLE = Automatic; CODE_SIGN_ENTITLEMENTS = ScreenTranslateShare/ScreenTranslateShare.entitlements; CURRENT_PROJECT_VERSION = 8; GENERATE_INFOPLIST_FILE = YES; INFOPLIST_FILE = ScreenTranslateShare/Info.plist; IPHONEOS_DEPLOYMENT_TARGET = 26.5; LD_RUNPATH_SEARCH_PATHS = ("$(inherited)", "@executable_path/Frameworks", "@executable_path/../../Frameworks"); MARKETING_VERSION = 1.7.0; PRODUCT_BUNDLE_IDENTIFIER = com.atlanyuey.translate.ShareExtension; PRODUCT_NAME = "$(TARGET_NAME)"; SKIP_INSTALL = YES; SWIFT_ACTIVE_COMPILATION_CONDITIONS = "$(inherited) SCREEN_TRANSLATE_SHARE_EXTENSION"; SWIFT_DEFAULT_ACTOR_ISOLATION = MainActor; SWIFT_APPROACHABLE_CONCURRENCY = YES; SWIFT_VERSION = 5.0; SWIFT_EMIT_LOC_STRINGS = YES; TARGETED_DEVICE_FAMILY = "1,2"; }; name = Release; };
-C30000000000000000000009 = {isa = XCBuildConfiguration; buildSettings = {CODE_SIGN_STYLE = Automatic; GENERATE_INFOPLIST_FILE = YES; CURRENT_PROJECT_VERSION = 8; MARKETING_VERSION = 1.7.0; PRODUCT_BUNDLE_IDENTIFIER = com.atlanyuey.translate.UITests; PRODUCT_NAME = "$(TARGET_NAME)"; SWIFT_VERSION = 5.0; TEST_TARGET_NAME = ScreenTranslate; TARGETED_DEVICE_FAMILY = "1,2"; }; name = Debug; };
-C3000000000000000000000A = {isa = XCBuildConfiguration; buildSettings = {CODE_SIGN_STYLE = Automatic; GENERATE_INFOPLIST_FILE = YES; CURRENT_PROJECT_VERSION = 8; MARKETING_VERSION = 1.7.0; PRODUCT_BUNDLE_IDENTIFIER = com.atlanyuey.translate.UITests; PRODUCT_NAME = "$(TARGET_NAME)"; SWIFT_VERSION = 5.0; TEST_TARGET_NAME = ScreenTranslate; TARGETED_DEVICE_FAMILY = "1,2"; }; name = Release; };
+B2000000000000000000000F = {isa = XCBuildConfiguration; buildSettings = {APPLICATION_EXTENSION_API_ONLY = YES; CODE_SIGN_STYLE = Automatic; CODE_SIGN_ENTITLEMENTS = ScreenTranslateShare/ScreenTranslateShare.entitlements; CURRENT_PROJECT_VERSION = 8; GENERATE_INFOPLIST_FILE = YES; INFOPLIST_FILE = ScreenTranslateShare/Info.plist; IPHONEOS_DEPLOYMENT_TARGET = 26.5; LD_RUNPATH_SEARCH_PATHS = ("$(inherited)", "@executable_path/Frameworks", "@executable_path/../../Frameworks"); MARKETING_VERSION = 1.1.0; PRODUCT_BUNDLE_IDENTIFIER = com.atlanyuey.translate.ShareExtension; PRODUCT_NAME = "$(TARGET_NAME)"; SKIP_INSTALL = YES; SWIFT_ACTIVE_COMPILATION_CONDITIONS = "$(inherited) SCREEN_TRANSLATE_SHARE_EXTENSION"; SWIFT_DEFAULT_ACTOR_ISOLATION = MainActor; SWIFT_APPROACHABLE_CONCURRENCY = YES; SWIFT_VERSION = 5.0; SWIFT_EMIT_LOC_STRINGS = YES; TARGETED_DEVICE_FAMILY = "1,2"; }; name = Debug; };
+B20000000000000000000010 = {isa = XCBuildConfiguration; buildSettings = {APPLICATION_EXTENSION_API_ONLY = YES; CODE_SIGN_STYLE = Automatic; CODE_SIGN_ENTITLEMENTS = ScreenTranslateShare/ScreenTranslateShare.entitlements; CURRENT_PROJECT_VERSION = 8; GENERATE_INFOPLIST_FILE = YES; INFOPLIST_FILE = ScreenTranslateShare/Info.plist; IPHONEOS_DEPLOYMENT_TARGET = 26.5; LD_RUNPATH_SEARCH_PATHS = ("$(inherited)", "@executable_path/Frameworks", "@executable_path/../../Frameworks"); MARKETING_VERSION = 1.1.0; PRODUCT_BUNDLE_IDENTIFIER = com.atlanyuey.translate.ShareExtension; PRODUCT_NAME = "$(TARGET_NAME)"; SKIP_INSTALL = YES; SWIFT_ACTIVE_COMPILATION_CONDITIONS = "$(inherited) SCREEN_TRANSLATE_SHARE_EXTENSION"; SWIFT_DEFAULT_ACTOR_ISOLATION = MainActor; SWIFT_APPROACHABLE_CONCURRENCY = YES; SWIFT_VERSION = 5.0; SWIFT_EMIT_LOC_STRINGS = YES; TARGETED_DEVICE_FAMILY = "1,2"; }; name = Release; };
+C30000000000000000000009 = {isa = XCBuildConfiguration; buildSettings = {CODE_SIGN_STYLE = Automatic; GENERATE_INFOPLIST_FILE = YES; CURRENT_PROJECT_VERSION = 8; MARKETING_VERSION = 1.1.0; PRODUCT_BUNDLE_IDENTIFIER = com.atlanyuey.translate.UITests; PRODUCT_NAME = "$(TARGET_NAME)"; SWIFT_VERSION = 5.0; TEST_TARGET_NAME = ScreenTranslate; TARGETED_DEVICE_FAMILY = "1,2"; }; name = Debug; };
+C3000000000000000000000A = {isa = XCBuildConfiguration; buildSettings = {CODE_SIGN_STYLE = Automatic; GENERATE_INFOPLIST_FILE = YES; CURRENT_PROJECT_VERSION = 8; MARKETING_VERSION = 1.1.0; PRODUCT_BUNDLE_IDENTIFIER = com.atlanyuey.translate.UITests; PRODUCT_NAME = "$(TARGET_NAME)"; SWIFT_VERSION = 5.0; TEST_TARGET_NAME = ScreenTranslate; TARGETED_DEVICE_FAMILY = "1,2"; }; name = Release; };
 /* End XCBuildConfiguration section */
 
 /* Begin XCConfigurationList section */
