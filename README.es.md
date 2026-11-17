@@ -18,7 +18,7 @@
 </p>
 
 <p align="center">
-  <a href="https://github.com/AtlanYuey/AY-Translate/releases/latest"><strong>Descargar la última versión</strong></a> ·
+  <a href="https://github.com/AtlanYuey/AY_Translate/releases/latest"><strong>Descargar la última versión</strong></a> ·
   <a href="#funciones">Funciones</a> ·
   <a href="#primeros-pasos">Primeros pasos</a> ·
   <a href="#ajustes">Ajustes</a>

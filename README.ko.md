@@ -18,7 +18,7 @@
 </p>
 
 <p align="center">
-  <a href="https://github.com/AtlanYuey/AY-Translate/releases/latest"><strong>최신 버전 다운로드</strong></a> ·
+  <a href="https://github.com/AtlanYuey/AY_Translate/releases/latest"><strong>최신 버전 다운로드</strong></a> ·
   <a href="#주요-기능">주요 기능</a> ·
   <a href="#시작하기">시작하기</a> ·
   <a href="#설정">설정</a>

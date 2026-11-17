@@ -18,7 +18,7 @@
 </p>
 
 <p align="center">
-  <a href="https://github.com/AtlanYuey/AY-Translate/releases/latest"><strong>Download latest release</strong></a> ·
+  <a href="https://github.com/AtlanYuey/AY_Translate/releases/latest"><strong>Download latest release</strong></a> ·
   <a href="#features">Features</a> ·
   <a href="#get-started">Get started</a> ·
   <a href="#settings">Settings</a>

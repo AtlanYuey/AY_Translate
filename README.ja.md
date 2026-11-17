@@ -18,7 +18,7 @@
 </p>
 
 <p align="center">
-  <a href="https://github.com/AtlanYuey/AY-Translate/releases/latest"><strong>最新版をダウンロード</strong></a> ·
+  <a href="https://github.com/AtlanYuey/AY_Translate/releases/latest"><strong>最新版をダウンロード</strong></a> ·
   <a href="#主な機能">主な機能</a> ·
   <a href="#使い方">使い方</a> ·
   <a href="#設定">設定</a>

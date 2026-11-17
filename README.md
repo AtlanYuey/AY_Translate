@@ -18,7 +18,7 @@
 </p>
 
 <p align="center">
-  <a href="https://github.com/AtlanYuey/AY-Translate/releases/latest"><strong>下载最新版</strong></a> ·
+  <a href="https://github.com/AtlanYuey/AY_Translate/releases/latest"><strong>下载最新版</strong></a> ·
   <a href="#功能一览">功能一览</a> ·
   <a href="#开始使用">开始使用</a> ·
   <a href="#设置入口">设置入口</a>
