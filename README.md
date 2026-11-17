@@ -1,78 +1,75 @@
-# AY Translate
+<p align="center">
+  <b>简体中文</b> ·
+  <a href="README.en.md">English</a> ·
+  <a href="README.es.md">Español</a> ·
+  <a href="README.ja.md">日本語</a> ·
+  <a href="README.ko.md">한국어</a>
+</p>
 
-<p><img src="ScreenTranslate/BrandAssets.xcassets/AYBrandIcon.imageset/AYBrandIcon.png" width="112" alt="AY Translate 应用图标"></p>
+<p align="center">
+  <img src="ScreenTranslate/BrandAssets.xcassets/AYBrandIcon.imageset/AYBrandIcon.png" width="112" alt="应用图标">
+</p>
 
-iPhone / iPad 截图翻译工具：识别画面里的文字，把译文画回原来的位置，随时切换原图对照。漫画气泡、竖排日文、手写字、游戏和网页截图都能处理。
+<h1 align="center">AY Translate</h1>
 
-最低支持 **iOS / iPadOS 26.5**。[下载最新版本](https://github.com/AtlanYuey/AY_Translate/releases/latest)
+<p align="center">
+  <strong>在原画面里读译文</strong><br>
+  iPhone · iPad&nbsp; | &nbsp;iOS / iPadOS 26.5+
+</p>
 
-## 安装
+<p align="center">
+  <a href="https://github.com/AtlanYuey/AY-Translate/releases/latest"><strong>下载最新版</strong></a> ·
+  <a href="#功能一览">功能一览</a> ·
+  <a href="#开始使用">开始使用</a> ·
+  <a href="#设置入口">设置入口</a>
+</p>
 
-发布页提供的是**未签名**的 `AY-Translate-<版本>-unsigned.ipa`，需要用你自己的证书签名后安装（Xcode、fastlane、Feather 等均可）。
+<p align="center">
+  <img src="docs/images/translate.png" width="26%" alt="翻译首页">
+  <img src="docs/images/settings-zh.png" width="26%" alt="中文设置">
+  <img src="docs/images/ai-services.png" width="26%" alt="AI 服务列表">
+</p>
 
-应用由两部分组成，各需一个描述文件：
+<p align="center"><sub>翻译首页 · 设置 · AI 服务。截图来自 iOS 模拟器，服务配置为示例。</sub></p>
 
-| 部分 | Bundle ID | 需要的能力 |
-| --- | --- | --- |
-| 主程序 | `com.atlanyuey.translate` | App Groups；如需 iCloud 同步，再开 iCloud（键值存储） |
-| 分享扩展 | `com.atlanyuey.translate.ShareExtension` | App Groups |
+## 功能一览
 
-两者使用同一个 App Group：`group.com.atlanyuey.translate`。截屏后在当前应用上方显示译图，靠的就是这个分享扩展，所以必须分别签名，不能省掉。用通配符描述文件也能装上，但没有 App Group 和 iCloud：设置会改走钥匙串在主程序和扩展之间中转，iCloud 同步不可用。具体步骤见 [签名与 iCloud 配置](docs/Signing-and-iCloud.md)。
+AY Translate 可以分别选择文字识别和翻译引擎，再把译文放回截图里。阅读漫画、游戏界面或网页时，可以保留画面的上下文，随时切换原图核对。
 
-## 能做什么
-
-- **在原图上读译文**：按原文的位置、字号和方向排版，竖排就竖排。原文从背景上干净地擦除，不留灰块。
-- **漫画气泡**：自动找出对话气泡，一个气泡算一句话，在气泡里排版、不出框。连在一起的两个气泡会分开翻译；注音假名不会混进正文；数字、水印、版权行这类不需要翻译的内容保持原样。
-- **本机免费，AI 可选**：默认用 Apple Vision 识别、Apple 翻译，不需要 API Key。也可以添加 OpenAI 兼容的 AI 服务（Gemini、OpenAI、DeepSeek、通义千问、Kimi、智谱、硅基流动、OpenRouter 或自建服务），识别和翻译分别选。
-- **AI 按顺序使用，出错自动接替**：识别和翻译各有一个服务顺序。第一个出错或达到花销上限时，下一个接手，最后由本机引擎兜底；发生切换时会提示。
-- **只在需要时用 AI**：开启“AI 辅助识别”后，先用本机识别；只有读得不可靠时（手写、艺术字、气泡里还有没读出的字）才交给 AI，可以设为先问你。
-- **用量和花销**：每个服务记录本月和累计的输入、输出 token 和金额，可设每月花销上限。公布价格的服务商（如 OpenRouter）自动取价，其余手动填写；国内服务商可选人民币或美元。
-- **截屏即翻译**：内置快捷指令，绑定操作按钮或轻点背面，在当前应用上方直接看译图，关闭后回到原处。
-- **可选的历史与 iCloud 同步**：历史默认关闭。iCloud 同步语言、显示、AI 服务配置；API 密钥要另外勾选才同步。截图和历史永远不上传。
+| 功能 | 实际体验 |
+| --- | --- |
+| 原位翻译 | 结合原文的位置、字号和方向排版。翻译漫画时按气泡组织句子，支持竖排日文。 |
+| 默认在本机处理 | 使用 Apple Vision 和苹果翻译，无需账号或 API 密钥。首次使用可能需要下载语言模型。 |
+| 自选 AI 服务 | 支持 Gemini、OpenAI、DeepSeek、OpenRouter 等服务和自建兼容接口。识别与翻译各自排序，失败或达到花销上限时依次切换，最后由本机引擎接手。 |
+| AI 辅助识别 | 可以先用本机识别，只在手写字、艺术字或漏字等情况需要补读时使用 AI，也可以设置为调用前询问。 |
+| 截图快捷翻译 | 将内置快捷指令绑定到操作按钮或轻点背面，在当前应用上方查看结果。 |
+| 费用与隐私 | 可查看各服务的用量和费用并设月度上限。授权后，AI 识别会将图片发给所选服务，AI 翻译会发送识别出的文字。历史记录可按需开启。 |
 
 ## 开始使用
 
-1. 打开“翻译”页，选好源语言（可自动检测）和目标语言。第一次用苹果翻译时，按系统提示下载语言模型。
-2. 点“选择图片翻译”，或在任意应用的分享菜单里选 AY Translate。
-3. 截屏触发：设置 → 快捷操作 → 操作按钮与快捷指令 → 添加截图翻译指令，再到系统设置里绑定操作按钮或轻点背面。
-4. 使用 AI：设置 → AI 服务 → 添加 AI 服务，填地址、API Key、模型，可以先测试翻译或测试图片识别。然后在“识别引擎”或“翻译引擎”的使用顺序里加入它。加入时会询问是否允许把截图或文字发给这个服务，翻译过程中不再弹窗。
+1. 从发布页下载未签名的 IPA，用自己的证书为**主应用和分享扩展**签名后安装。若使用只接受一份描述文件的签名工具，需确认描述文件同时覆盖两个 Bundle ID。[签名配置方法](docs/Signing-and-iCloud.md)
+2. 打开「翻译」，选好源语言和目标语言，然后点击「选择图片翻译」。也可以在系统分享菜单中选择 AY Translate。
+3. 想用截图触发，在「设置 → 快捷操作 → 操作按钮与快捷指令」添加截图翻译指令，再到系统设置绑定操作按钮或轻点背面。
+4. 想用 AI，在「设置 → AI 服务」添加接口地址、API 密钥和模型，测试后加入相应引擎的使用顺序。
 
-## 设置在哪里
+在结果页双指缩放、拖动查看细节，双击切换缩放。点击右下角图标切换原图和译图，长按可读全文、复制原文或译文，以及查看处理耗时和 AI 用量。
 
-| 想调整什么 | 位置 |
+## 设置入口
+
+| 想调整什么 | 在哪里 |
 | --- | --- |
-| 软件界面语言 | 设置 → 界面 → 软件语言 |
-| 识别用哪些服务、按什么顺序 | 设置 → 文字识别 → 识别引擎 → 使用顺序 |
-| 只在需要时用 AI 识别、是否先问 | 设置 → 文字识别 → 识别引擎 → AI 辅助识别 / 使用 AI 前先询问 |
-| 翻译用哪些服务、目标语言 | 设置 → 译文 → 翻译引擎、目标语言 |
-| 添加、编辑 AI 服务 | 设置 → AI 服务（模型列表、请求参数、测试） |
-| 价格、用量、每月花销上限 | 设置 → AI 服务 → 选中服务 → 费用 |
-| 译文样式、字号、默认显示 | 设置 → 显示 |
+| 软件界面语言 | 设置 → 软件语言 |
+| 源语言、识别引擎、AI 辅助与使用顺序 | 设置 → 文字识别 |
+| 目标语言、翻译引擎与使用顺序 | 设置 → 译文 |
+| 模型、请求参数、识别或翻译测试、用量和费用 | 设置 → AI 服务 → 选择服务 |
+| 译文字号、显示样式、默认结果、点字详情 | 设置 → 显示 |
 | 保存或清空历史 | 设置 → 翻译历史 |
-| iCloud 同步、同步 API 密钥、复制配置 | 设置 → 配置同步 |
-| 撤销云端许可、隐私说明 | 设置 → 隐私 |
-| 版本、开源许可、处理诊断 | 设置 → 关于 AY Translate |
+| iCloud 同步、配置复制 | 设置 → 配置同步 |
+| 撤销云端调用许可 | 设置 → 隐私 |
+| 版本、处理诊断、开源许可 | 设置 → 关于 AY Translate |
 
-## 译图页面
-
-- 双指缩放、拖动；双击切换缩放。
-- 点右下角的图标：在译图和原图之间切换。
-- 长按这个图标：菜单最上面是这次的耗时，以及 AI 识别、AI 翻译各自的输入/输出 token 和花费；下面是目标语言、全文阅读、复制（译文或原文）、识别说明和“打开 AY Translate”。
-- 点 × 关闭；从快捷指令或分享菜单进入时会回到原来的应用。
-
-## 隐私
-
-- 默认全部在本机处理，没有服务器、账号、统计或广告。
-- 只有你选了 AI 服务并允许后，才会把截图（识别）或识别出的文字（翻译）发给**你自己配置的**服务；费用和数据保留政策以服务商为准。
-- API Key 只存在钥匙串里，不写入日志或历史；开启“同时保存 API 密钥”后才会进入你的 iCloud。
-
-## 开发
-
-- 核心逻辑（识别结果整理、气泡检测、排版、AI 请求）在 `ScreenTranslate/Core`，是一个可在 Linux 上测试的 Swift 包：`swift test`。
-- 带真实 Apple Vision、模拟器界面和打包的完整验证在 GitHub Actions：`.github/workflows/release-ipa.yml`，可手动运行，推送 `v*` 标签时还会发布未签名 IPA。
-- `Tests/ScreenTranslationCoreTests/LiveServiceTests.swift` 可对真实 AI 服务做端到端检查，默认跳过；用法见文件开头的说明。
-- 更新记录见 [CHANGELOG](CHANGELOG.md)，各版本说明在 [docs/releases](docs/releases)，设计和实测记录在 [docs/AY-Translate-1.1.0.md](docs/AY-Translate-1.1.0.md)。
+有 Apple 开发者账号的用户可以开启 iCloud 设置同步，并单独选择是否同步 API 密钥。截图和历史不参与同步。[iCloud 配置方法](docs/Signing-and-iCloud.md)
 
 ---
 
-基于 Bahaa 及贡献者的 [Translate Screen](https://github.com/0xffvirus/translate-screen) 修改，以 [Apache 2.0](LICENSE) 发布；原作者声明和第三方许可见 [NOTICE](NOTICE)，修改清单见 [MODIFICATIONS](MODIFICATIONS.md)。
+基于 Bahaa 及贡献者的 Translate Screen，采用 Apache 2.0 许可证。[上游项目](https://github.com/0xffvirus/translate-screen) · [许可证](LICENSE) · [署名与第三方许可](NOTICE)
